@@ -4,18 +4,7 @@ pdfalto parses PDF files and produces an XML representations in ALTO format.
 
 pdfalto is a fork of pdf2xml http://sourceforge.net/projects/pdf2xml, developed at XRCE, with modifications for robustness, addition of features and output format in ALTO.  
 
-
-
-## pdf2xml
-
-This is a modified version of pdf2xml available at http://sourceforge.net/projects/pdf2xml developed by XRCE (Hervé Déjean, Sophie Andrieu, Jean-Yves Vion-Dury, Emmanuel Giguet).
-
 The latest stable release is version *0.1*. 
-
-## version 2.1 (development)
-- Adding CMake Build
-
-- more to come!
 
 ### Compilation
 
@@ -42,7 +31,8 @@ See the file INSTALL for more details.
 See `Compilation` for version 2.0 (at the moment nothing has changed)
 
 
-## version 2.0 (stable)
+## (stable)
+
 This following modifications have been made:
 
 - encode URI (using `xmlURIEscape` from libxml2) for the @href attribute content to avoid blocking XML wellformedness issues. From our experiments, this problem happens in average for 2-3 scholar PDF out of one thousand.
@@ -59,44 +49,6 @@ From our experiments, the raw order can diverge quite significantly from the ord
 
 See the file INSTALL for more details. 
 
-### Linux
-
-* Install libxml2 (development headers). See http://xmlsoft.org/ 
-
-* Install libmotif-dev (development headers) 
-
-* Download xpdf. See http://www.foolabs.com/xpdf/
-
-* The makefile has been adapted to work with the following directory format
-(iconv, libxml2 and dirent root dirs should be at the same level of pdf2xml's sources):  
-
-```bash
-drwxr-xr-x 1 lfoppiano 197121 0 ago  1 10:44 pdf2xml/ (<- pdf2xml source)
-drwxr-xr-x 1 lfoppiano 197121 0 lug 28 09:06 xpdf-3.04/
-```
-
-* Compile xpdf (see the file INSTALL in their source directory), then create `libxpdf.a` in `xpdf-XX/xpdf/` with 
-
-> ar -rc libxpdf.a *.o
-
-* Compile the zlib and png libraries, under subdirectory `/images`: 
-
-> make -f <MAKEFILE>
-(MAKEFILE being make.bat or make.linux64)
-
-* Update Makefile.linux (paths to xpdf) 
-
-For Linux 32 bits:
-
-> make -f Makefile.linux
-
-Use Makefile.linux64 for last version on Linux 64bits
-
-> make -f Makefile.linux64
-
-This should build the executable:
-
-    exe/pdftoxml.exe
     
 ### Windows 
 
@@ -163,7 +115,7 @@ drwxr-xr-x 1 lfoppiano 197121 0 lug 28 09:06 xpdf-3.04/
 
 ## Contributor
 
-This pdf2xml version has been modified by Patrice Lopez (patrice.lopez@science-miner.com).
+The pdf2xml version has been modified by Patrice Lopez (patrice.lopez@science-miner.com).
 
 The first windows version (1.0.0) has been built by [@pboumenot](https://github.com/boumenot) and ported on windows 7 for 64 bit. 
 
@@ -173,80 +125,6 @@ The version 2.0 for windows (native and cygwin) was built by [@lfoppiano](https:
 
 As the original pdf2xml, GPL2. 
 
-
-## Original readme 
-====
-
-pdftoxml
-====
-
-version 1.0.0
-July 2007 
-
-The Xpdf software and documentation are
-copyright 1996-2007 Glyph & Cog, LLC.
-
-Email: derekn@foolabs.com
-WWW: http://www.foolabs.com/xpdf/
-
-The PDF data structures, operators, and specification are
-copyright 1985-2006 Adobe Systems Inc.
-
-The libxml2 software and documentation are released under the MIT License. 
-See the Copyright file in the distribution for the precise wording.
-
-What is pdftoxml?
--------------
-
-pdftoxml is an open source PDF to XML convertor.  
-pdftoxml runs under Linux and on Win32 systems.
-
-pdftoxml is based on xpdf and is essentially a (large) modification 
-of pdftotext in order to generate XML instead of plain text. 
-The XML generation uses the libxml2 library
-
-
-Distribution
-------------
-
-pdftoxml is licensed under the GNU General Public License (GPL), version 2.  
-
-
-Compatibility
--------------
-
-pdftoxml is developed and tested on a Linux 2.4 x86 system.
-In addition, it has been compiled on a Win32 system. 
-
-Getting pdftoxml
-------------
-
-The latest version is available from: https://sourceforge.net/projects/pdf2xml
-Source code is available from: http://pdf2xml.cvs.sourceforge.net/pdf2xml/
-
-
-Running pdftoxml
-------------
-
-To run pdftoxml, simply type:
-
-  pdftoxml.exe file.pdf
-
-Command line options and many other details are(should be) described in sourceforge
-
-
-Compiling pdftoxml
---------------
-
-See the separate file, INSTALL.
-
-
-Contributors
-----
-
-Hervé Déjean   (src) 
-Sophie Andrieu (src)
-Jean-Yves Vion-Dury (schemas)
 
 
 

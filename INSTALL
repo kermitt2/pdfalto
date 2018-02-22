@@ -1,19 +1,8 @@
-pdftoxml
-====
 
-version 2.0.0
-2007-jul-12
-
-The Xpdf software and documentation are
-copyright 1996-2007 Glyph & Cog, LLC.
-Email: derekn@foolabs.com
-WWW: http://www.foolabs.com/xpdf/
-
-
-Compiling pdftoxml
+Compiling pdfalto
 --------------
 
-pdftoxml is written in C++ (with a little bit of C).  It should work with
+pdfalto is written in C++ (with a little bit of C).  It should work with
 any ANSI-compliant C++ and C compilers.  
 
 The following notes give specific instructions for compiling on
@@ -25,7 +14,7 @@ different systems.
 ***  UNIX  ***
 **************
 
-    pdftoxml
+    pdfalto
         |- png 
         |- zlib 
         |- exe
@@ -49,7 +38,7 @@ different systems.
 
 Installation has been done using the above project organization:
 
-    pdftoxml
+    pdfalto
         |- exe
         |- src
         |- iconv-1.9.1.win32
@@ -109,7 +98,7 @@ Eclipse configuration with mingw:
 		* Select Discovery Options: 
 			* select GCC per project scanner ino profile
 			* COmpiler invocation command: mingw32-g++.exe
-	* create the pdftoxml project 
+	* create the pdfalto project 
 	* build your project
 				
 			
