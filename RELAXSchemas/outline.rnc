@@ -1,0 +1,58 @@
+#==============================
+# Xerox Research Centre Europe 
+#==============================
+# Schema in RelaxNG compact for the XML output outline file from pdftoxml tool
+# Created by Sophie Andrieu 
+#
+# 05/2006
+
+namespace rng = "http://relaxng.org/ns/structure/1.0"
+datatypes xsd = "http://www.w3.org/2001/XMLSchema-datatypes"
+
+namespace a="http://relaxng.org/ns/compatibility/annotations/1.0"
+
+## Schema for capturing the structure of xml output outline from the pdftoxml tool
+## do not change the policy which consists in having a "a-XXX" and "c-XXX" 
+## definition for each "XXX" tag definition, as it furthers the modular use of
+## this schema by other component-related schemas
+
+start=TocItems 
+
+## A TocItems is composed of a sequence of TocItemList 
+TocItems=element TOCITEMS {a-TocItems, TocItemList+}
+
+a-TocItems=attribute nbPages {xsd:nonNegativeInteger}
+
+## A TocItemList contains some Item
+TocItemList=element TOCITEMLIST {a-TocItemList, c-TocItemList*}
+
+a-TocItemList=
+        attribute level {xsd:nonNegativeInteger},
+        attribute idItemParent {xsd:nonNegativeInteger}?
+        
+c-TocItemList=(Item* | TocItemList*)
+   
+## An Item is composed of one String and one Link
+Item=element ITEM {a-Item, c-Item}
+
+a-Item=attribute id {xsd:nonNegativeInteger}
+c-Item=(String, Link)
+
+## A String contains textual content
+String=element STRING {c-String}
+
+c-String=text 
+     
+## A Link is an empty tag but it has attributes informations
+Link=element LINK {a-Link, c-Link}
+
+a-Link=a-Position, attribute page {xsd:nonNegativeInteger}
+c-Link=empty
+
+## Attribut group of position information
+a-Position = 
+        attribute top {xsd:decimal},
+        attribute bottom {xsd:decimal},
+        attribute left {xsd:decimal},
+        attribute right {xsd:decimal}
+

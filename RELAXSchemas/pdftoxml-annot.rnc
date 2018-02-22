@@ -1,0 +1,19 @@
+#==============================
+# Xerox Research Centre Europe
+# =============================
+#
+# Schema in RelaxNG compact for the XML output after merge annotations conversion
+#
+# Created by Sophie Andrieu
+#
+# 11/2006
+
+namespace rng = "http://relaxng.org/ns/structure/1.0"
+datatypes xsd = "http://www.w3.org/2001/XMLSchema-datatypes"
+
+namespace dtd="http://relaxng.org/ns/compatibility/datatypes/1.0"
+namespace a="http://relaxng.org/ns/compatibility/annotations/1.0"
+
+include "pdftoxml.rnc"
+
+a-Token &= attribute idAnnot { xsd:string { pattern = "p\d+_a\d+" } }?

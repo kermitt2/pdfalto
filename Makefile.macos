@@ -1,0 +1,65 @@
+#========================================================================
+#
+# pdftoxml Makefile
+#
+# author: Sophie Andrieu, Herve Dejean
+# Xerox Research Centre Europe
+# (c) cpry XRCE 2007
+#
+#========================================================================
+
+XPDF = ./xpdf
+
+CC=gcc
+#CFLAGS=-Wall  -I$(XPDF) -I/usr/include/glib-2.0 -I/usr/lib6Yp4-I/usr/lib64/glib-2.0/include 
+CFLAGS=-Wall  -I$(XPDF) -I/usr/include/libxml2 -I/usr/lib64/include 
+CXX=g++
+CXXFLAGS=$(CFLAGS) 
+CXXFLAGSGOO=-I$(XPDF)/goo
+CXXFLAGSFOFI=-I$(XPDF)/fofi
+
+LIBPROG=ar
+DEL = rm 
+
+# Directories
+DIRXPDF=$(XPDF)/xpdf
+DIRGOO=$(XPDF)/goo
+DIRPNG=./image/png
+DIRZLIB=./image/zlib
+DIRFOFI=$(XPDF)/fofi
+
+DIRSRC=src
+DIREXE=exe
+
+
+# Executable name
+PDFALTOEXE=pdfalto.exe
+
+# Main target
+all: pdfaltoEXE
+
+compile.src: 
+	$(CXX)  $(CXXFLAGS) $(CXXFLAGSGOO) $(CXXFLAGSFOFI) -I$(DIRXPDF)   -o $(DIRSRC)/ConstantsUtils.o -c $(DIRSRC)/ConstantsUtils.cc
+	$(CXX)  $(CXXFLAGS) $(CXXFLAGSGOO) $(CXXFLAGSFOFI) -I$(DIRXPDF)  -o $(DIRSRC)/ConstantsXMLALTO.o -c $(DIRSRC)/ConstantsXMLALTO.cc
+	$(CXX) $(CXXFLAGS) $(CXXFLAGSGOO) $(CXXFLAGSFOFI) -I$(DIRXPDF) -Ilibxml2  -o $(DIRSRC)/Parameters.o -c $(DIRSRC)/Parameters.cc
+	$(CXX) $(CXXFLAGS) $(CXXFLAGSGOO) $(CXXFLAGSFOFI) -I$(DIRXPDF) -I/usr/include/libxml2   -o $(DIRSRC)/AnnotsXrce.o -c $(DIRSRC)/AnnotsXrce.cc
+	$(CXX) $(CXXFLAGS) $(CXXFLAGSGOO) $(CXXFLAGSFOFI) -I$(DIRXPDF)  -I/usr/include/libxml2     -o $(DIRSRC)/PDFDocXrce.o -c $(DIRSRC)/PDFDocXrce.cc
+	$(CXX) $(CXXFLAGS) $(CXXFLAGSGOO) $(CXXFLAGSFOFI) -I$(DIRXPDF) -I$(DIRPNG) -I/usr/include/libxml2 -o $(DIRSRC)/XmlAltoOutputDev.o -c $(DIRSRC)/XmlAltoOutputDev.cc
+	$(CXX) $(CXXFLAGS) $(CXXFLAGSGOO) $(CXXFLAGSFOFI) -I$(DIRSRC) -I$(DIRXPDF) -I$(DIRPNG) -I$(DIRZLIB) -I/usr/include/libxml2  -o $(DIRSRC)/pdfalto.o -c $(DIRSRC)/pdfalto.cc
+	$(LIBPROG) -rc $(DIRSRC)/libsrc.a $(DIRSRC)/*.o
+
+
+
+# Target to create the executable for pdfalto (locate in exe directory)
+pdfaltoEXE: compile.src
+	$(CXX) $(CXXFLAGS) $(CXXFLAGSGOO) $(CXXFLAGSFOFI) -I$(DIRXPDF) -I$(DIRSRC) -I$(DIRPNG) -I$(DIRZLIB) -I/usr/include/libxml2 -o $(DIREXE)/$(PDFALTOEXE) $(DIRSRC)/pdfalto.cc $(DIRSRC)/libsrc.a $(DIRXPDF)/libxpdf.a $(DIRGOO)/libGoo.a $(DIRFOFI)/libfofi.a $(DIRPNG)/libpng.dylib -lm -lxml2 
+#on mac works also with .a
+
+
+# Clean target to delete all .o files, .a files library and .exe files
+clean:
+	$(DEL) $(DIRSRC)/libsrc.a
+	$(DEL) $(DIRSRC)/*.o
+	$(DEL) $(DIREXE)/*.exe
+
+

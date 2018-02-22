@@ -1,0 +1,467 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  ======================
+  Xerox Research Centre Europe
+  ======================
+  
+  
+  Originally created by Sophie Andrieu
+  translation into RelaxNG by Jean-Yves Vion-Dury 
+  
+  04/2006
+-->
+<!-- default namespace DS = "http://www.xrce.xerox.com/DS" -->
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema" elementFormDefault="qualified">
+  <!-- attribute groups -->
+  <xs:attributeGroup name="a-Base">
+    <xs:attribute name="base" use="required" type="xs:anyURI"/>
+  </xs:attributeGroup>
+  <!-- xml:base {xsd:anyURI}? -->
+  <xs:attributeGroup name="a-Size">
+    <xs:attribute name="width" use="required" type="xs:decimal"/>
+    <xs:attribute name="height" use="required" type="xs:decimal"/>
+  </xs:attributeGroup>
+  <xs:attributeGroup name="a-Position">
+    <xs:attribute name="x" use="required" type="xs:decimal"/>
+    <xs:attribute name="y" use="required" type="xs:decimal"/>
+  </xs:attributeGroup>
+  <xs:attributeGroup name="a-Basic">
+    <xs:attributeGroup ref="a-Size"/>
+    <xs:attributeGroup ref="a-Position"/>
+  </xs:attributeGroup>
+  <xs:element name="DOCUMENT">
+    <xs:complexType>
+      <xs:sequence>
+        <xs:element ref="METADATA"/>
+        <xs:element maxOccurs="unbounded" ref="PAGE"/>
+      </xs:sequence>
+    </xs:complexType>
+  </xs:element>
+  <xs:element name="METADATA">
+    <xs:complexType>
+      <xs:sequence>
+        <xs:element ref="PDFFILENAME"/>
+        <xs:element maxOccurs="unbounded" ref="PROCESS"/>
+      </xs:sequence>
+    </xs:complexType>
+  </xs:element>
+  <xs:element name="PDFFILENAME" type="xs:string"/>
+  <xs:element name="PROCESS">
+    <xs:complexType>
+      <xs:complexContent>
+        <xs:extension base="c-Process">
+          <xs:attributeGroup ref="a-Process"/>
+        </xs:extension>
+      </xs:complexContent>
+    </xs:complexType>
+  </xs:element>
+  <xs:attributeGroup name="a-Process">
+    <xs:attribute name="name" use="required" type="xs:string"/>
+    <xs:attribute name="cmd" use="required" type="xs:string"/>
+  </xs:attributeGroup>
+  <xs:complexType name="c-Process">
+    <xs:sequence>
+      <xs:element ref="VERSION"/>
+      <xs:element ref="CREATIONDATE"/>
+    </xs:sequence>
+  </xs:complexType>
+  <xs:element name="VERSION">
+    <xs:complexType>
+      <xs:complexContent>
+        <xs:extension base="Comment">
+          <xs:attributeGroup ref="a-Version"/>
+        </xs:extension>
+      </xs:complexContent>
+    </xs:complexType>
+  </xs:element>
+  <xs:attributeGroup name="a-Version">
+    <xs:attribute name="value" use="required" type="xs:string"/>
+  </xs:attributeGroup>
+  <xs:complexType name="Comment">
+    <xs:annotation>
+      <xs:documentation>A Comment contains string data</xs:documentation>
+    </xs:annotation>
+    <xs:sequence>
+      <xs:element ref="COMMENT"/>
+    </xs:sequence>
+  </xs:complexType>
+  <xs:element name="COMMENT" type="xs:string"/>
+  <xs:element name="CREATIONDATE" type="xs:string"/>
+  <xs:attributeGroup name="sid">
+    <xs:annotation>
+      <xs:documentation>id correspondinf to the flow in the PDF</xs:documentation>
+    </xs:annotation>
+    <xs:attribute name="sid" use="required">
+      <xs:simpleType>
+        <xs:restriction base="xs:string">
+          <xs:pattern value="p\d+_s\d+"/>
+        </xs:restriction>
+      </xs:simpleType>
+    </xs:attribute>
+  </xs:attributeGroup>
+  <xs:attributeGroup name="a-Page">
+    <xs:attributeGroup ref="a-Size"/>
+    <xs:attribute name="number" use="required" type="xs:positiveInteger"/>
+    <xs:attribute name="id" use="required">
+      <xs:simpleType>
+        <xs:restriction base="xs:string">
+          <xs:pattern value="p\d+"/>
+        </xs:restriction>
+      </xs:simpleType>
+    </xs:attribute>
+    <xs:attribute name="format">
+      <xs:simpleType>
+        <xs:restriction base="xs:token">
+          <xs:enumeration value="A3"/>
+          <xs:enumeration value="landscape"/>
+        </xs:restriction>
+      </xs:simpleType>
+    </xs:attribute>
+  </xs:attributeGroup>
+  <xs:group name="c-Page">
+    <xs:choice>
+      <xs:group ref="c-boxes"/>
+      <xs:element minOccurs="0" maxOccurs="unbounded" ref="IMAGE"/>
+      <xs:element minOccurs="0" maxOccurs="unbounded" ref="VECTORIALIMAGES"/>
+      <xs:element minOccurs="0" maxOccurs="unbounded" ref="TEXT"/>
+      <xs:element minOccurs="0" maxOccurs="unbounded" ref="BLOCK"/>
+    </xs:choice>
+  </xs:group>
+  <xs:element name="PAGE">
+    <xs:complexType>
+      <xs:group minOccurs="0" maxOccurs="unbounded" ref="c-Page"/>
+      <xs:attributeGroup ref="a-Page"/>
+    </xs:complexType>
+  </xs:element>
+  <xs:attributeGroup name="a-box">
+    <xs:attribute name="x1" use="required" type="xs:string"/>
+    <xs:attribute name="y1" use="required" type="xs:string"/>
+    <xs:attribute name="x2" use="required" type="xs:string"/>
+    <xs:attribute name="y2" use="required" type="xs:string"/>
+  </xs:attributeGroup>
+  <xs:group name="c-boxes">
+    <xs:sequence>
+      <xs:element ref="MEDIABOX"/>
+      <xs:element ref="CROPBOX"/>
+      <xs:element ref="BLEEDBOX"/>
+      <xs:element ref="ARTBOX"/>
+      <xs:element ref="TRIMBOX"/>
+    </xs:sequence>
+  </xs:group>
+  <xs:element name="MEDIABOX">
+    <xs:complexType>
+      <xs:attributeGroup ref="a-box"/>
+    </xs:complexType>
+  </xs:element>
+  <xs:element name="TRIMBOX">
+    <xs:complexType>
+      <xs:attributeGroup ref="a-box"/>
+    </xs:complexType>
+  </xs:element>
+  <xs:element name="CROPBOX">
+    <xs:complexType>
+      <xs:attributeGroup ref="a-box"/>
+    </xs:complexType>
+  </xs:element>
+  <xs:element name="BLEEDBOX">
+    <xs:complexType>
+      <xs:attributeGroup ref="a-box"/>
+    </xs:complexType>
+  </xs:element>
+  <xs:element name="ARTBOX">
+    <xs:complexType>
+      <xs:attributeGroup ref="a-box"/>
+    </xs:complexType>
+  </xs:element>
+  <xs:attributeGroup name="a-Image">
+    <xs:attributeGroup ref="a-Basic"/>
+    <xs:attribute name="inline">
+      <xs:simpleType>
+        <xs:restriction base="xs:token">
+          <xs:enumeration value="false"/>
+          <xs:enumeration value="true"/>
+        </xs:restriction>
+      </xs:simpleType>
+    </xs:attribute>
+    <xs:attribute name="href" use="required" type="xs:anyURI"/>
+    <xs:attribute name="mask">
+      <xs:simpleType>
+        <xs:restriction base="xs:token">
+          <xs:enumeration value="true"/>
+        </xs:restriction>
+      </xs:simpleType>
+    </xs:attribute>
+    <xs:attribute name="id">
+      <xs:simpleType>
+        <xs:restriction base="xs:string">
+          <xs:pattern value="p\d+_i\d+"/>
+        </xs:restriction>
+      </xs:simpleType>
+    </xs:attribute>
+    <xs:attributeGroup ref="sid"/>
+  </xs:attributeGroup>
+  <xs:element name="IMAGE">
+    <xs:complexType>
+      <xs:attributeGroup ref="a-Image"/>
+    </xs:complexType>
+  </xs:element>
+  <xs:attributeGroup name="a-VectorialImages">
+    <xs:attributeGroup ref="a-Base"/>
+  </xs:attributeGroup>
+  <xs:group name="c-VectorialImages">
+    <xs:sequence>
+      <xs:element minOccurs="0" maxOccurs="unbounded" ref="GROUP"/>
+      <xs:element minOccurs="0" maxOccurs="unbounded" ref="CLIP"/>
+    </xs:sequence>
+  </xs:group>
+  <xs:element name="VECTORIALIMAGES">
+    <xs:complexType>
+      <xs:group minOccurs="0" maxOccurs="unbounded" ref="c-VectorialImages"/>
+      <xs:attributeGroup ref="a-VectorialImages"/>
+    </xs:complexType>
+  </xs:element>
+  <xs:attributeGroup name="a-Group">
+    <xs:attributeGroup ref="sid"/>
+    <xs:attribute name="style" type="xs:string"/>
+    <xs:attribute name="closed">
+      <xs:simpleType>
+        <xs:restriction base="xs:token">
+          <xs:enumeration value="true"/>
+        </xs:restriction>
+      </xs:simpleType>
+    </xs:attribute>
+    <xs:attribute name="clipZone">
+      <xs:simpleType>
+        <xs:restriction base="xs:string">
+          <xs:pattern value="p\d+_c\d+"/>
+        </xs:restriction>
+      </xs:simpleType>
+    </xs:attribute>
+  </xs:attributeGroup>
+  <xs:group name="c-Group">
+    <xs:choice>
+      <xs:element minOccurs="0" maxOccurs="unbounded" ref="M"/>
+      <xs:element minOccurs="0" maxOccurs="unbounded" ref="L"/>
+      <xs:element minOccurs="0" maxOccurs="unbounded" ref="C"/>
+    </xs:choice>
+  </xs:group>
+  <xs:element name="GROUP" substitutionGroup="c-Clip"/>
+  <xs:attributeGroup name="a-Clip">
+    <xs:annotation>
+      <xs:documentation>Path clipping area</xs:documentation>
+    </xs:annotation>
+    <xs:attributeGroup ref="a-Basic"/>
+    <xs:attribute name="evenodd">
+      <xs:simpleType>
+        <xs:restriction base="xs:token">
+          <xs:enumeration value="false"/>
+          <xs:enumeration value="true"/>
+        </xs:restriction>
+      </xs:simpleType>
+    </xs:attribute>
+    <xs:attribute name="idClipZone">
+      <xs:simpleType>
+        <xs:restriction base="xs:string">
+          <xs:pattern value="p\d+_c\d+"/>
+        </xs:restriction>
+      </xs:simpleType>
+    </xs:attribute>
+    <xs:attributeGroup ref="sid"/>
+  </xs:attributeGroup>
+  <xs:element name="c-Clip" abstract="true">
+    <xs:complexType>
+      <xs:group minOccurs="0" maxOccurs="unbounded" ref="c-Group"/>
+      <xs:attributeGroup ref="a-Group"/>
+    </xs:complexType>
+  </xs:element>
+  <xs:complexType name="c-Clip">
+    <xs:sequence>
+      <xs:element ref="c-Clip"/>
+    </xs:sequence>
+  </xs:complexType>
+  <xs:element name="CLIP">
+    <xs:complexType>
+      <xs:complexContent>
+        <xs:extension base="c-Clip">
+          <xs:attributeGroup ref="a-Clip"/>
+        </xs:extension>
+      </xs:complexContent>
+    </xs:complexType>
+  </xs:element>
+  <xs:attributeGroup name="a-M">
+    <xs:attributeGroup ref="a-Position"/>
+  </xs:attributeGroup>
+  <xs:element name="M">
+    <xs:complexType>
+      <xs:attributeGroup ref="a-M"/>
+    </xs:complexType>
+  </xs:element>
+  <xs:attributeGroup name="a-L">
+    <xs:attributeGroup ref="a-Position"/>
+  </xs:attributeGroup>
+  <xs:element name="L">
+    <xs:complexType>
+      <xs:attributeGroup ref="a-L"/>
+    </xs:complexType>
+  </xs:element>
+  <xs:attributeGroup name="a-C">
+    <xs:attribute name="x1" use="required" type="xs:decimal"/>
+    <xs:attribute name="y1" use="required" type="xs:decimal"/>
+    <xs:attribute name="x2" use="required" type="xs:decimal"/>
+    <xs:attribute name="y2" use="required" type="xs:decimal"/>
+    <xs:attribute name="x3" use="required" type="xs:decimal"/>
+    <xs:attribute name="y3" use="required" type="xs:decimal"/>
+  </xs:attributeGroup>
+  <xs:element name="C">
+    <xs:complexType>
+      <xs:attributeGroup ref="a-C"/>
+    </xs:complexType>
+  </xs:element>
+  <xs:attributeGroup name="a-Block">
+    <xs:annotation>
+      <xs:documentation>A block element is a sequence of TEXT elements</xs:documentation>
+    </xs:annotation>
+    <xs:attribute name="id">
+      <xs:simpleType>
+        <xs:restriction base="xs:string">
+          <xs:pattern value="p\d+_b\d+"/>
+        </xs:restriction>
+      </xs:simpleType>
+    </xs:attribute>
+  </xs:attributeGroup>
+  <xs:element name="c-Block" abstract="true">
+    <xs:complexType>
+      <xs:sequence>
+        <xs:element maxOccurs="unbounded" ref="c-Text"/>
+      </xs:sequence>
+      <xs:attributeGroup ref="a-Text"/>
+    </xs:complexType>
+  </xs:element>
+  <xs:element name="BLOCK">
+    <xs:complexType>
+      <xs:sequence>
+        <xs:element maxOccurs="unbounded" ref="c-Block"/>
+      </xs:sequence>
+      <xs:attributeGroup ref="a-Block"/>
+    </xs:complexType>
+  </xs:element>
+  <xs:attributeGroup name="a-Text">
+    <xs:attributeGroup ref="a-Basic"/>
+    <xs:attribute name="id">
+      <xs:simpleType>
+        <xs:restriction base="xs:string">
+          <xs:pattern value="p\d+_t\d+"/>
+        </xs:restriction>
+      </xs:simpleType>
+    </xs:attribute>
+  </xs:attributeGroup>
+  <xs:element name="c-Text" abstract="true">
+    <xs:complexType>
+      <xs:simpleContent>
+        <xs:restriction base="xs:anyType">
+          <xs:simpleType>
+            <xs:restriction base="xs:string">
+              <xs:minLength value="1"/>
+            </xs:restriction>
+          </xs:simpleType>
+          <xs:attributeGroup ref="a-Token"/>
+        </xs:restriction>
+      </xs:simpleContent>
+    </xs:complexType>
+  </xs:element>
+  <xs:element name="TEXT" substitutionGroup="c-Block"/>
+  <xs:attributeGroup name="a-Token">
+    <xs:attributeGroup ref="a-Basic"/>
+    <xs:attributeGroup ref="sid"/>
+    <xs:attribute name="id" use="required">
+      <xs:simpleType>
+        <xs:restriction base="xs:string">
+          <xs:pattern value="p\d+_w\d+"/>
+        </xs:restriction>
+      </xs:simpleType>
+    </xs:attribute>
+    <xs:attribute name="type" type="xs:integer"/>
+    <xs:attributeGroup ref="a-tokenImage"/>
+    <xs:attribute name="font-name" type="xs:string"/>
+    <xs:attribute name="font-size" type="xs:decimal"/>
+    <xs:attribute name="font-color">
+      <xs:simpleType>
+        <xs:restriction base="xs:string">
+          <xs:pattern value="#[A-Fa-f0-9]{6}"/>
+        </xs:restriction>
+      </xs:simpleType>
+    </xs:attribute>
+    <xs:attribute name="bold" type="xs:string"/>
+    <xs:attribute name="italic" type="xs:string"/>
+    <xs:attribute name="all-cap" type="xs:string"/>
+    <xs:attribute name="symbolic" type="xs:string"/>
+    <xs:attribute name="serif" type="xs:string"/>
+    <xs:attribute name="small-cap" type="xs:string"/>
+    <xs:attribute name="fixed-width" type="xs:string"/>
+    <xs:attributeGroup ref="a-Detail"/>
+    <xs:attribute name="base" type="xs:decimal"/>
+    <xs:attribute name="rotation">
+      <xs:simpleType>
+        <xs:restriction base="xs:token">
+          <xs:enumeration value="0"/>
+          <xs:enumeration value="1"/>
+          <xs:enumeration value="2"/>
+          <xs:enumeration value="3"/>
+        </xs:restriction>
+      </xs:simpleType>
+    </xs:attribute>
+    <xs:attribute name="angle" type="xs:decimal"/>
+  </xs:attributeGroup>
+  <!-- c-Token= xsd:string text -->
+  <xs:element name="TOKEN" substitutionGroup="c-Text"/>
+  <xs:attributeGroup name="a-tokenText">
+    <xs:attributeGroup ref="a-Font"/>
+    <xs:attributeGroup ref="a-Detail"/>
+    <xs:attribute name="base" type="xs:decimal"/>
+    <xs:attribute name="rotation">
+      <xs:simpleType>
+        <xs:restriction base="xs:token">
+          <xs:enumeration value="0"/>
+          <xs:enumeration value="1"/>
+          <xs:enumeration value="2"/>
+          <xs:enumeration value="3"/>
+        </xs:restriction>
+      </xs:simpleType>
+    </xs:attribute>
+    <xs:attribute name="angle" type="xs:decimal"/>
+  </xs:attributeGroup>
+  <xs:attributeGroup name="a-tokenImage">
+    <xs:attribute name="href" type="xs:anyURI"/>
+  </xs:attributeGroup>
+  <xs:attributeGroup name="a-Detail">
+    <xs:attribute name="angle-skewing-y" type="xs:decimal"/>
+    <xs:attribute name="angle-skewing-x" type="xs:decimal"/>
+    <xs:attribute name="word-space" type="xs:decimal"/>
+    <xs:attribute name="char-space" type="xs:decimal"/>
+    <xs:attribute name="leading" type="xs:decimal"/>
+    <xs:attribute name="horiz-scaling" type="xs:decimal"/>
+    <xs:attribute name="render" type="xs:decimal"/>
+    <xs:attribute name="rise" type="xs:decimal"/>
+  </xs:attributeGroup>
+  <xs:attributeGroup name="a-Font">
+    <xs:annotation>
+      <xs:documentation>font-name attribute can be normalized or not (default is normalized otherwise not) </xs:documentation>
+    </xs:annotation>
+    <xs:attribute name="font-name" use="required" type="xs:string"/>
+    <xs:attribute name="font-size" use="required" type="xs:decimal"/>
+    <xs:attribute name="font-color" use="required">
+      <xs:simpleType>
+        <xs:restriction base="xs:string">
+          <xs:pattern value="#[A-Fa-f0-9]{6}"/>
+        </xs:restriction>
+      </xs:simpleType>
+    </xs:attribute>
+    <xs:attribute name="bold" type="xs:string"/>
+    <xs:attribute name="italic" type="xs:string"/>
+    <xs:attribute name="all-cap" type="xs:string"/>
+    <xs:attribute name="symbolic" type="xs:string"/>
+    <xs:attribute name="serif" type="xs:string"/>
+    <xs:attribute name="small-cap" type="xs:string"/>
+    <xs:attribute name="fixed-width" type="xs:string"/>
+  </xs:attributeGroup>
+</xs:schema>

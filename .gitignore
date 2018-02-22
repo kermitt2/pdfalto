@@ -1,0 +1,11 @@
+*.o
+*.obj
+*.a
+*.lo
+*.so
+*.dll
+*.dylib
+*.la
+*.exe
+.idea
+.iml

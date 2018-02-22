@@ -1,0 +1,351 @@
+# ======================
+# Xerox Research Centre Europe
+# ======================
+# 
+# 
+# Originally created by Sophie Andrieu
+# translation into RelaxNG by Jean-Yves Vion-Dury 
+# 
+# 04/2006
+
+# default namespace DS = "http://www.xrce.xerox.com/DS"
+
+namespace a = "http://relaxng.org/ns/compatibility/annotations/1.0"
+namespace rng = "http://relaxng.org/ns/structure/1.0"
+
+a:cvs-header [
+  "\x{a}" ~
+  "   $Header: /cvsroot-fuse/pdf2xml/pdf2xml/RELAXSchemas/pdftoxml.rnc,v 1.4 2010/04/26 12:45:55 dejean Exp $\x{a}" ~
+  "   "
+]
+a:cvs-log [
+  "\x{a}" ~
+  "    $Log: pdftoxml.rnc,v $
+  "    Revision 1.4  2010/04/26 12:45:55  dejean
+  "    for win and linux
+  "\x{a}" ~
+  "    Revision 1.3  2010/04/26 09:29:41  dejean\x{a}" ~
+  "    ADD PAGES BOXES\x{a}" ~
+  "\x{a}" ~
+  "    Revision 1.2  2008/02/06 10:48:28  dejean\x{a}" ~
+  "    TOKEN/@type added (LR direction)\x{a}" ~
+  "    some modif about yes, no , true, false attribute values.\x{a}" ~
+  "\x{a}" ~
+  "    Revision 1.1  2008/01/29 08:53:24  dejean\x{a}" ~
+  "    v 1.2\x{a}" ~
+  "\x{a}" ~
+  "    Revision 1.17  2007/12/14 10:48:41  hdejean\x{a}" ~
+  "    new attributes: TOKEN/@sid, GROUP/@sid, IMAGE/@sid\x{a}" ~
+  "    GROUP/@style optional\x{a}" ~
+  "\x{a}" ~
+  "    Revision 1.16  2007/11/30 16:39:36  hdejean\x{a}" ~
+  "    commented the default nsamespace: DS\x{a}" ~
+  "\x{a}" ~
+  "    Revision 1.15  2007/11/30 16:38:46  hdejean\x{a}" ~
+  "    add baseline to TOKEN\x{a}" ~
+  "\x{a}" ~
+  "    Revision 1.14  2006/11/08 09:14:41  sandrieu\x{a}" ~
+  "    Update METADATA tags schemas : add a PROCESS tag which will store informations for all component execution.\x{a}" ~
+  "\x{a}" ~
+  "    Revision 1.13  2006/08/18 08:47:18  sandrieu\x{a}" ~
+  "    Change id value of IMAGE tag (pNum_iNum).\x{a}" ~
+  "    TOKEN tag always contain an id attribute (TOKEN as word or TOKEN as image inline).\x{a}" ~
+  "\x{a}" ~
+  "    Revision 1.12  2006/08/16 13:41:27  sandrieu\x{a}" ~
+  "    Add id attribute to IMAGE tag.\x{a}" ~
+  "    Add id and format attribute to PAGE tag.\x{a}" ~
+  "\x{a}" ~
+  "    Revision 1.11  2006/08/11 09:19:30  sandrieu\x{a}" ~
+  "    Add comments.\x{a}" ~
+  "    Change the TOKEN tag definition :\x{a}" ~
+  "     - it can be a characters sequence\x{a}" ~
+  "     - it can be an image which is inline in the stream\x{a}" ~
+  "    In these two cases, attributes are differents.\x{a}" ~
+  "\x{a}" ~
+  "    Revision 1.10  2006/06/20 14:56:29  sandrieu\x{a}" ~
+  "    Change the CLIP tag : now, a CLIP tag contains a GROUP tag.\x{a}" ~
+  """    Add "idClipZone" and "clipZone" attributes to CLIP tag and GROUP tag : it's necessary for matching GROUP instructions with CLIP area.\x{a}""" ~
+  "\x{a}" ~
+  "    Revision 1.9  2006/06/13 14:27:15  sandrieu\x{a}" ~
+  "    Add the METADATA tag which is a child of DOCUMENT tag. The METADATA tag contains PDFFILENAME tag and VERSION tag.\x{a}" ~
+  "\x{a}" ~
+  "    Revision 1.8  2006/05/19 14:24:48  sandrieu\x{a}" ~
+  "    Add the BLOCK tag which contain a sequence of TEXT tag. A PAGE tag can contain a sequence of BLOCK tags or a sequence of TEXT tags.\x{a}" ~
+  "\x{a}" ~
+  "    Revision 1.7  2006/04/27 12:19:36  sandrieu\x{a}" ~
+  "    Change the attribut name smallcap to small-cap.\x{a}" ~
+  "\x{a}" ~
+  "    Revision 1.6  2006/04/27 12:13:29  sandrieu\x{a}" ~
+  "    Correction about conversion attribut debug to detail.\x{a}" ~
+  "\x{a}" ~
+  "    Revision 1.5  2006/04/27 09:37:57  viondury\x{a}" ~
+  '    changed xsd:boolean attributes into "false" | "true"\x{a}' ~
+  '    fix omitted id attribute for TOKEN with lexical structure "p\d+_w\d+"\x{a}' ~
+  "\x{a}" ~
+  "    Revision 1.4  2006/04/27 09:10:33  viondury\x{a}" ~
+  "    normalization of all attribute names and values:\x{a}" ~
+  "\x{a}" ~
+  "    	- all uppercase attribute names become lowercase\x{a}" ~
+  "    	- compound names are dash-separated (e.g. charSpace becomes char-space)\x{a}" ~
+  '    	- IMAGE@inline was "0"/"1" -> becomes "false"/"true"\x{a}' ~
+  "    	- suppression of default values for optional attributes\x{a}" ~
+  '    	- suppression of number limits in TEXT@id attribute (was "p\d{3}_t\d{2}", becomes "p\d+_t\d+")\x{a}' ~
+  "\x{a}" ~
+  '    changed structure of ids for FRAME from "table-XX-YY" into "frame-XX-YY" and TEXT@imbedded-in accordingly.\x{a}' ~
+  "\x{a}" ~
+  "    Revision 1.3  2006/04/26 09:40:25  viondury\x{a}" ~
+  "    minor: fixed cvs-log problem\x{a}" ~
+  "\x{a}" ~
+  "    "
+]
+
+## Schema for capturing the structure of xml output from the pdftoxml tool
+## do not change the policy which consists in having a "a-XXX" and "c-XXX" 
+## definition for each "XXX" tag definition, as it furthers the modular use of
+## this schema by other component-related schemas
+
+## Example of XML document :  attributes are not consistant
+## 
+## <DOCUMENT>
+##    <METADATA>
+##        <PDFFILENAME>file.pdf</PDFFILENAME>
+##        <PROCESS name="pdftoxml" cmd="">
+##            <VERSION value="1.0">
+##                <COMMENT/>
+##            </VERSION>
+##            <CREATIONDATE>Wed Nov 08 09:32:03 2006</CREATIONDATE>
+##        </PROCESS>
+##    </METADATA>
+##    <PAGE width="419" height="595" number="1">
+##        <IMAGE x="25" y="31" width="377" height="534" inline="0" href="file.xml_data/image-1.ppm" /> 
+##        <TEXT x="44" y="384" width="123" height="15" id="p1_t1">
+##            <TOKEN id="p1_w1" rotation="0" angle="0" font-name="Courier" bold="no" italic="no" font-size="15" font-color="#000000" x="44" y="384" width="24" height="14">This</TOKEN>
+##            <TOKEN id="p1_w2" rotation="0" angle="0" font-name="Courier" bold="no" italic="no" font-size="15" font-color="#000000" x="73" y="384" width="12" height="14">is</TOKEN>
+##            <TOKEN id="p1_w3" rotation="0" angle="0" font-name="Courier" bold="no" italic="no" font-size="15" font-color="#000000" x="89" y="384" width="25" height="14">a</TOKEN>
+##            <TOKEN id="p1_w4" rotation="0" angle="0" font-name="Courier" bold="no" italic="no" font-size="15" font-color="#000000" x="118" y="384" width="49" height="14">line.</TOKEN>
+##        </TEXT>
+##        <TEXT x="60" y="500" width="33" height="12" id="p1_t2">
+##            <TOKEN id="p1_w5" rotation="0" angle="0" font-name="Courier" bold="no" italic="no" font-size="12" font-color="#000000" x="60" y="500" width="13" height="12">page</TOKEN>
+##            <TOKEN id="p1_w6" rotation="0" angle="0" font-name="Courier" bold="no" italic="no" font-size="12" font-color="#000000" x="75" y="500" width="6" height="12">12</TOKEN>
+##        </TEXT>
+##    </PAGE>
+##    <PAGE>
+##        ....
+##    </PAGE>
+##    <xi:include xmlns:xi="http://www.w3.org/2001/XInclude" xmlns="http://www.xrce.xerox.com/DS" href="file.xml_data/image-5.vec"/>
+## </DOCUMENT>
+start = Document | Page | VectorialImages
+# attribute groups
+a-Base = attribute base { xsd:anyURI }
+# xml:base {xsd:anyURI}?
+a-Size =
+  attribute width { xsd:decimal },
+  attribute height { xsd:decimal }
+a-Position =
+  attribute x { xsd:decimal },
+  attribute y { xsd:decimal }
+a-Basic = a-Size, a-Position
+
+## A document is composed of a Metadata and a sequence of Pages 
+Document = element DOCUMENT { Metadata, Page+ }
+
+## Document = element DOCUMENT { a-Base, Metadata, Page+ }
+
+## A Metadata contains a PdfFileName and a Process
+Metadata = element METADATA { PdfFileName, Process+ }
+
+## A PdfFileName contains textual data which is the PDF file name 
+PdfFileName = element PDFFILENAME { text }
+
+## A Process contains a Version and a CreationDate 
+Process = element PROCESS { a-Process, c-Process }
+a-Process =
+  attribute name { xsd:string },
+  attribute cmd { xsd:string }
+c-Process = Version, CreationDate
+
+## A Version contains a Comment
+Version = element VERSION { a-Version, Comment }
+a-Version = attribute value { xsd:string }
+
+## A Comment contains string data
+Comment = element COMMENT { text }
+
+## A CreationDate contains string data which is a complete date
+CreationDate = element CREATIONDATE { text }
+
+## id correspondinf to the flow in the PDF
+sid =
+  attribute sid {
+    xsd:string { pattern = "p\d+_s\d+" }
+  }
+
+## A Page contains: images and/or text and/or vectors
+## as a Page can be xincluded, it must accept the xml:base attribute 
+a-Page =
+  # a-Base,
+  a-Size,
+  attribute number { xsd:positiveInteger },
+  attribute id {
+    xsd:string { pattern = "p\d+" }
+  },
+  attribute format { "A3" | "landscape" }?
+c-Page = c-boxes | Image* | VectorialImages* | Text* | Block*
+Page = element PAGE { a-Page, c-Page* }
+a-box =
+  attribute x1 { xsd:string },
+  attribute y1 { xsd:string },
+  attribute x2 { xsd:string },
+  attribute y2 { xsd:string }
+c-boxes = c-mediabox, c-cropbox, c-bleedbox, c-artbox, c-trimbox
+
+## page boxes
+c-mediabox = element MEDIABOX { a-box }
+c-trimbox = element TRIMBOX { a-box }
+c-cropbox = element CROPBOX { a-box }
+c-bleedbox = element BLEEDBOX { a-box }
+c-artbox = element ARTBOX { a-box }
+
+## Caracteristics about an image included in a page
+## I had to a put an optional mask in order to validate an old "out.xml" instance
+a-Image =
+  a-Basic,
+  # attribute rotation {"false| true" }?,
+  attribute inline { "false" | "true" }?,
+  attribute href { xsd:anyURI },
+  attribute mask { "true" }?,
+  attribute id {
+    xsd:string { pattern = "p\d+_i\d+" }
+  }?,
+  sid
+c-Image = empty
+Image = element IMAGE { a-Image, c-Image }
+
+## Added a-base in order xinclude to be ok (it adds a base attribute after inclusion)
+## as a VectorialImage can be xincluded, it must accept the xml:base attribute 
+a-VectorialImages = a-Base
+c-VectorialImages = Group*, Clip*
+VectorialImages = element VECTORIALIMAGES { a-VectorialImages, c-VectorialImages* }
+
+## Vectorial group type which can contain VectorMoveType and/or VectorLineType and/or VectorCurveType
+## I had to make it optional in order to validate UNE2.xml
+a-Group =
+  sid,
+  attribute style { xsd:string }?,
+  attribute closed { "true" }?,
+  attribute clipZone {
+    xsd:string { pattern = "p\d+_c\d+" }
+  }?
+c-Group = M* | L* | C*
+Group = element GROUP { a-Group, c-Group* }
+
+## Path clipping area
+a-Clip =
+  a-Basic,
+  attribute evenodd { "false" | "true" }?,
+  attribute idClipZone {
+    xsd:string { pattern = "p\d+_c\d+" }
+  }?,
+  sid
+c-Clip = Group
+Clip = element CLIP { a-Clip, c-Clip }
+a-M = a-Position
+c-M = empty
+M = element M { a-M, c-M }
+a-L = a-Position
+c-L = empty
+L = element L { a-L, c-L }
+a-C =
+  attribute x1 { xsd:decimal },
+  attribute y1 { xsd:decimal },
+  attribute x2 { xsd:decimal },
+  attribute y2 { xsd:decimal },
+  attribute x3 { xsd:decimal },
+  attribute y3 { xsd:decimal }
+c-C = empty
+C = element C { a-C, c-C }
+
+## A block element is a sequence of TEXT elements
+a-Block =
+  attribute id {
+    xsd:string { pattern = "p\d+_b\d+" }
+  }?
+c-Block = Text
+Block = element BLOCK { a-Block, c-Block+ }
+
+## A text element is a sequence of TOKEN elements
+## ids must follow the page structure
+a-Text =
+  a-Basic,
+  attribute id {
+    xsd:string { pattern = "p\d+_t\d+" }
+  }?
+c-Text = Token
+Text = element TEXT { a-Text, c-Text+ }
+
+## A token element can represent a real token or an image which is inline in the stream
+## (in this case, the TOKEN tag is empty)
+a-Token =
+  a-Basic,
+  sid,
+  attribute id {
+    xsd:string { pattern = "p\d+_w\d+" }
+  },
+  attribute type { xsd:integer }?,
+  (a-tokenImage? | a-tokenText?)
+# c-Token= xsd:string text 
+Token =
+  element TOKEN {
+    a-Token,
+    xsd:string { minLength = "1" }
+  }
+
+## rotation attribute can have four differents values :
+##  - 0 : left to right direction
+##  - 1 : bottom up direction
+##  - 2 : right to left direction
+##  - 3 : top down direction
+## 
+## angle attribute is a degree value 0 to 360 degrees where :
+##  - 0 degree is the 0 rotation
+##  - 90 degrees is the 1 rotation
+##  - 180 degrees is the 2 rotation
+##  - 270 degrees is the 3 rotation
+a-tokenText =
+  a-Font,
+  a-Detail?,
+  attribute base { xsd:decimal }?,
+  attribute rotation { "0" | "1" | "2" | "3" }?,
+  attribute angle { xsd:decimal }?
+
+## Theses attributes are added when the token is an image inline
+## the href attribute get the image path                 
+a-tokenImage = attribute href { xsd:anyURI }?
+
+## Attributes which are added when verbose option is selected
+## angle-skewing-y attribute is the value of token skewing for the angle value of y token axis
+## angle-skewing-x attribute is the value of token skewing for the angle value of x token axis
+a-Detail =
+  attribute angle-skewing-y { xsd:decimal }?,
+  attribute angle-skewing-x { xsd:decimal }?,
+  attribute word-space { xsd:decimal }?,
+  attribute char-space { xsd:decimal }?,
+  attribute leading { xsd:decimal }?,
+  attribute horiz-scaling { xsd:decimal }?,
+  attribute render { xsd:decimal }?,
+  attribute rise { xsd:decimal }?
+
+## font-name attribute can be normalized or not (default is normalized otherwise not) 
+a-Font =
+  attribute font-name { xsd:string },
+  attribute font-size { xsd:decimal },
+  attribute font-color {
+    xsd:string { pattern = "#[A-Fa-f0-9]{6}" }
+  },
+  attribute bold { xsd:string }?,
+  attribute italic { xsd:string }?,
+  attribute all-cap { xsd:string }?,
+  attribute symbolic { xsd:string }?,
+  attribute serif { xsd:string }?,
+  attribute small-cap { xsd:string }?,
+  attribute fixed-width { xsd:string }?

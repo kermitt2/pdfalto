@@ -1,0 +1,116 @@
+pdftoxml
+====
+
+version 2.0.0
+2007-jul-12
+
+The Xpdf software and documentation are
+copyright 1996-2007 Glyph & Cog, LLC.
+Email: derekn@foolabs.com
+WWW: http://www.foolabs.com/xpdf/
+
+
+Compiling pdftoxml
+--------------
+
+pdftoxml is written in C++ (with a little bit of C).  It should work with
+any ANSI-compliant C++ and C compilers.  
+
+The following notes give specific instructions for compiling on
+different systems.
+
+
+
+**************
+***  UNIX  ***
+**************
+
+    pdftoxml
+        |- png 
+        |- zlib 
+        |- exe
+        |- src
+        |- xpdf
+            |- fofi
+            |- goo
+            |- splash
+            |- xpdf
+
+        CMakeLists.txt
+        
+
+* Install libxml2 (Should be already installed on your linux distribution). See http://xmlsoft.org/
+* Install libmotif
+
+
+***************
+***  Win32  ***
+***************
+
+Installation has been done using the above project organization:
+
+    pdftoxml
+        |- exe
+        |- src
+        |- iconv-1.9.1.win32
+
+            |- include
+            |- lib
+
+        |- libxml2-2.6.19+win32
+
+            |- bin
+            |- include
+
+                |- libxml
+
+            |- lib
+
+        |- xpdf
+            |- fofi
+            |- goo
+            |- splash
+            |- xpdf
+
+        CMakeLists.txt
+
+With cygwin, the  procedure is(should be!) the same as for Unix
+
+with MinGW
+
+  * Download MinGW (Minimalist GNU for Windows) at http://www.mingw.org/download.shtml
+
+  * Open a DOS window.
+  
+  * update make.bat if necessary (paths)
+   
+  * ./make.bat
+
+
+
+***********************
+***  Win32/Eclipse  ***
+***********************
+
+With mingw:
+  * Install the following libraries:
+      libxml2-2.6.19+.win32, iconv-1.9.1.win32, zlib-1.2.3.win32: http://www.zlatkovic.com/pub/libxml
+       
+  * Download MinGW (Minimalist GNU for Windows) at http://www.mingw.org/download.shtml
+     * select MinGW-3.1.0-1.exe.
+     * execute MinGW-3.1.0-1.exe to install MinGW.
+     * add to the environment variable Path the directory bin which is the installation of MinGW-3.1.0-1 (for example : C:\MinGW\bin).
+     * update the Makefile if necessary (CC, GCC and LIBPRO varaibles)
+
+Eclipse configuration with mingw: 
+	* Select Window > Preferences, C/C++/Make/New Make Project. 
+	    * Select Make Builder: Unselect Use default and add the Build command as: mingw32-make.exe -k all
+		* Select binary Parser: select PE Windows Parser
+		* Select Discovery Options: 
+			* select GCC per project scanner ino profile
+			* COmpiler invocation command: mingw32-g++.exe
+	* create the pdftoxml project 
+	* build your project
+				
+			
+	

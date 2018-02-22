@@ -1,0 +1,52 @@
+#==============================
+# Xerox Research Centre Europe 
+#==============================
+# Schema in RelaxNG compact for the XML output annots file from pdftoxml tool
+# Created by Sophie Andrieu 
+#
+# 09/2006
+
+namespace rng = "http://relaxng.org/ns/structure/1.0"
+datatypes xsd = "http://www.w3.org/2001/XMLSchema-datatypes"
+
+namespace a="http://relaxng.org/ns/compatibility/annotations/1.0"
+
+## Schema for capturing the structure of xml output annots from the pdftoxml tool
+
+start=Annotations 
+
+## An Annotations is composed of a sequence of Annotation 
+Annotations=element ANNOTATIONS {Annotation+}
+
+## An Annotation contains Popup (optional) and QuadPoints
+Annotation=element ANNOTATION {a-Annotation, c-Annotation}
+
+a-Annotation=
+        attribute subtype { "Highlight" | "Underline" },
+        attribute id { xsd:string { pattern = "p\d+_a\d+" } },
+        attribute pagenum {xsd:nonNegativeInteger},
+        attribute author {xsd:string}
+        
+c-Annotation=(Popup? | QuadPoints)
+   
+## A Popup is composed of one Content (optional)
+Popup=element POPUP {a-Popup, c-Popup}
+
+a-Popup=attribute open {"false" | "true"}
+c-Popup=(Content?)
+
+## A Content contain string data
+Content=element CONTENT {text}
+
+## A QuadPoints is composed of Quadrilateral
+QuadPoints=element QUADPOINTS {Quadrilateral+}
+
+## A Quadrilateral is composed of Point
+Quadrilateral=element QUADRILATERAL {Point+}
+
+## A Point contains two attributes (x and y value)
+Point=element POINT {a-Popup}
+
+a-Point=
+        attribute x {xsd:decimal},
+        attribute y {xsd:decimal}
