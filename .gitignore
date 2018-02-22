@@ -9,3 +9,4 @@
 *.exe
 .idea
 .iml
+*.old

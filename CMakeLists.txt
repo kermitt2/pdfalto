@@ -20,7 +20,7 @@ set(SOURCE_FILES
         )
 
 include(ExternalProject)
-ExternalProject_Add(xpdf
+ExternalProject_Add(xpdf-4.00
         SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/xpdf-4.00
         CONFIGURE_COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/xpdf/configure --prefix=<INSTALL_DIR>
         BUILD_COMMAND ${MAKE})
@@ -28,16 +28,16 @@ ExternalProject_Add(xpdf
 set(XPDF_BUILD_DIR ${CMAKE_CURRENT_SOURCE_DIR}/xpdf-4.00/build)
 
 add_executable(pdfalto ${SOURCE_FILES})
-add_dependencies(pdfalto xpdf)
+add_dependencies(pdfalto xpdf-4.00)
 
 target_link_libraries(pdfalto png zlib xml2 ${XPDF_BUILD_DIR}/lib/libxpdf.a ${XPDF_BUILD_DIR}/fofi/libfofi.a ${XPDF_BUILD_DIR}/goo/libGoo.a)
 target_include_directories(pdfalto
         PUBLIC /usr/include/libxml2
         PUBLIC image/png
-        PUBLIC xpdf
-        PUBLIC xpdf/goo
-        PUBLIC xpdf/fofi
-        PUBLIC xpdf/xpdf
+        PUBLIC xpdf-4.00
+        PUBLIC xpdf-4.00/goo
+        PUBLIC xpdf-4.00/fofi
+        PUBLIC xpdf-4.00/xpdf
         PUBLIC ${XPDF_BUILD_DIR}
         )
 
