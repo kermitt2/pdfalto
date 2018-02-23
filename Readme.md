@@ -36,7 +36,7 @@ General usage is as follow:
   --saveconf <string>    : save all command line parameters in the specified XML <file>
 ```
 
-In addition to the ALTO file describing the PDF content, the following files are generated:
+In addition to the [ALTO](https://github.com/altoxml/documentation/wiki) file describing the PDF content, the following files are generated:
 
 * `_annot.xml` file containing a description of the annotations in the PDF (e.g. GOTO, external http links, ...) obtained with `-annotation` option
 
@@ -189,7 +189,7 @@ From our experiments, the raw order can diverge quite significantly from the ord
 
 xpdf is developed by Glyph & Cog, LLC (1996-2017) and distributed under GPL2 or GPL3 license. 
 
-pdf2xml is orignally written by Hervé Déjean, Sophie Andrieu, Jean-Yves Vion-Dury (XRCE) under GPL2 license. 
+pdf2xml is orignally written by Hervé Déjean, Sophie Andrieu, Jean-Yves Vion-Dury and  Emmanuel Giguet (XRCE) under GPL2 license. 
 
 pdf2xml has been modified and forked by Patrice Lopez (patrice.lopez@science-miner.com) and Achraf Azhar (achraf.azhar@inria.fr).
 

@@ -19,7 +19,7 @@ class Parameters;
 extern Parameters *parameters;
 
 /** 
- * Parameters class : parameters listing used into pdftoxml as options <br></br>
+ * Parameters class : parameters listing used into pdfalto as options <br></br>
  */
  
 class Parameters {

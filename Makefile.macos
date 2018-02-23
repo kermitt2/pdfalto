@@ -1,10 +1,6 @@
 #========================================================================
 #
-# pdftoxml Makefile
-#
-# author: Sophie Andrieu, Herve Dejean
-# Xerox Research Centre Europe
-# (c) cpry XRCE 2007
+# pdfalto Makefile
 #
 #========================================================================
 

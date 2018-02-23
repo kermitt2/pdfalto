@@ -31,4 +31,4 @@ del %DIRSRC%\libsrc.lib
 
 del *.obj
 
-%CXX% %CXXFLAGS% -o %DIREXE%\pdftoxml.exe %DIRSRC%\pdftoxml.cc /EHsc /I..\dirent\include /I%DIRPNG%  /I%DIRZLIB% /I%DIRXPDF% /I%DIRXPDF_ROOT% /I%DIRLIBXML%\include /I%DIRICONV%\include %DIRLIBXML%\lib\libxml2.lib %DIRSRC%\libsrc.lib %DIRXPDF%\libxpdf.lib %DIRFOFI%\fofi.lib %DIRGOO%\Goo.lib %DIRPNG%\libpng.lib advapi32.lib
+%CXX% %CXXFLAGS% -o %DIREXE%\pdfalto.exe %DIRSRC%\pdfalto.cc /EHsc /I..\dirent\include /I%DIRPNG%  /I%DIRZLIB% /I%DIRXPDF% /I%DIRXPDF_ROOT% /I%DIRLIBXML%\include /I%DIRICONV%\include %DIRLIBXML%\lib\libxml2.lib %DIRSRC%\libsrc.lib %DIRXPDF%\libxpdf.lib %DIRFOFI%\fofi.lib %DIRGOO%\Goo.lib %DIRPNG%\libpng.lib advapi32.lib

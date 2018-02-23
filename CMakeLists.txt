@@ -25,7 +25,6 @@ set(SOURCE_FILES
 set(XPDF_BUILD_DIR ${CMAKE_CURRENT_SOURCE_DIR}/xpdf-4.00/build)
 
 add_executable(pdfalto ${SOURCE_FILES})
-#add_dependencies(pdfalto xpdf-4.00)
 
 target_link_libraries(pdfalto png zlib xml2 ${XPDF_BUILD_DIR}/xpdf/lib/libxpdf.a ${XPDF_BUILD_DIR}/fofi/libfofi.a ${XPDF_BUILD_DIR}/goo/libgoo.a)
 target_include_directories(pdfalto

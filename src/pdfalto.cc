@@ -125,8 +125,8 @@ static ArgDesc argDesc[] = {
 
 /**
 * Main method which execute pdfalto tool <br/>
-* This file pdfalto.cc is based on pdftotext.cc, Copyright 1997-2003 Glyph & Cog, LLC <br/>
-* Usage: pdftoxml [options] <PDF-file> [<XML-file>] <br/>
+* This file pdfalto.cc is based on pdftotext.cc from xpdf library<br/>
+* Usage: pdfalto [options] <PDF-file> [<XML-file>] <br/>
 * -f <int> : first page to convert<br/>
 * -l <int> : last page to convert<br/>
 * -verbose : display pdf attributes<br/>
@@ -192,7 +192,7 @@ int main(int argc, char *argv[]) {
     cmd = new GString();
     globalParams = new GlobalParams(cfgFileName);
 
-    // Parameters specifics to pdftoxml
+    // Parameters specifics to pdfalto
     parameters = new Parameters();
 
 
