@@ -4399,20 +4399,17 @@ void XmlAltoOutputDev::startPage(int pageNum, GfxState *state) {
     if (parameters->getCutAllPages() == 0) {
         text->startPage(pageNum, state, gTrue);
     }
-
 }
 
 
 void XmlAltoOutputDev::endPage() {
 
-    printf("endPage");
     text->configuration();
     if (parameters->getDisplayText()) {
         text->dump(blocks, fullFontName);
     }
 
     text->endPage(dataDir);
-
 }
 
 void XmlAltoOutputDev::updateFont(GfxState *state) {

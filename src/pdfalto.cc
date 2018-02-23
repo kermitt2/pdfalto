@@ -107,7 +107,7 @@ static ArgDesc argDesc[] = {
         {"-q",       argFlag,     &quiet,         0,
                 "don't print any messages or errors"},
         {"-v",       argFlag,     &printVersion,  0,
-                "print copyright and version info"},
+                "print version info"},
         {"-h",       argFlag,     &printHelp,     0,
                 "print usage information"},
         {"-help",    argFlag,     &printHelp,     0,
@@ -141,7 +141,7 @@ static ArgDesc argDesc[] = {
 * -fullFontName : fonts names are not normalized<br/>
 * -nsURI : add the specified namespace URI<br/>
 * -q : don't print any messages or errors<br/>
-* -v : print copyright and version information<br/>
+* -v : print version information<br/>
 * -h : print usage information<br/>
 * -help : print usage information<br/>
 * --help : print usage information<br/>
@@ -182,7 +182,6 @@ int main(int argc, char *argv[]) {
             fprintf(stderr, PDFALTO_VERSION);
             fprintf(stderr, "\n");
             fprintf(stderr, "(Based on Xpdf version %s, %s)\n", xpdfVersion, xpdfCopyright);
-            fprintf(stderr, "%s\n", "Copyright 2004-2006 XRCE");
             if (!printVersion) {
                 printUsage("pdfalto", "<PDF-file> [<xml-file>]", argDesc);
             }
