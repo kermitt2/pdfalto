@@ -20,36 +20,39 @@ DEL=rm
 # Directories
 DIRXPDFLIB=$(XPDF)/build/xpdf/lib
 DIRXPDFSRC=$(XPDF)/xpdf
-DIRGOO=$(XPDF)/goo
+DIRXPDFSRCBUILD=$(XPDF)/build/
+DIRGOOSRC=$(XPDF)/goo
+DIRGOOLIB=$(XPDF)/build/goo
 DIRPNG=./image/png
 DIRZLIB=./image/zlib
-DIRFOFI=$(XPDF)/fofi
+DIRFOFISRC=$(XPDF)/fofi
+DIRFOFILIB=$(XPDF)/build/fofi
 
 DIRSRC=src
 DIREXE=exe
 
 
 # Executable name
-PDFTOXMLEXE=pdfalto.exe
+PDFALTOEXE=pdfalto.exe
 
 # Main target
-all: pdftoxmlEXE
+all: pdfaltoEXE
 
 compile.src: 
-	$(CXX)  $(CXXFLAGS) $(CXXFLAGSGOO) $(CXXFLAGSFOFI) -I$(DIRXPDFSRC)   -o $(DIRSRC)/ConstantsUtils.o -c $(DIRSRC)/ConstantsUtils.cc
-	$(CXX)  $(CXXFLAGS) $(CXXFLAGSGOO) $(CXXFLAGSFOFI) -I$(DIRXPDFSRC)  -o $(DIRSRC)/ConstantsXML.o -c $(DIRSRC)/ConstantsXML.cc
-	$(CXX) $(CXXFLAGS) $(CXXFLAGSGOO) $(CXXFLAGSFOFI) -I$(DIRXPDFSRC) -Ilibxml2  -o $(DIRSRC)/Parameters.o -c $(DIRSRC)/Parameters.cc
-	$(CXX) $(CXXFLAGS) $(CXXFLAGSGOO) $(CXXFLAGSFOFI) -I$(DIRXPDFSRC) -I/usr/include/libxml2   -o $(DIRSRC)/AnnotsXrce.o -c $(DIRSRC)/AnnotsXrce.cc
-	$(CXX) $(CXXFLAGS) $(CXXFLAGSGOO) $(CXXFLAGSFOFI) -I$(DIRXPDFSRC)  -I/usr/include/libxml2     -o $(DIRSRC)/PDFDocXrce.o -c $(DIRSRC)/PDFDocXrce.cc
-	$(CXX) $(CXXFLAGS) $(CXXFLAGSGOO) $(CXXFLAGSFOFI) -I$(DIRXPDFSRC)  -I/usr/include/libxml2 -o $(DIRSRC)/XmlOutputDev.o -c $(DIRSRC)/XmlOutputDev.cc
-	$(CXX) $(CXXFLAGS) $(CXXFLAGSGOO) $(CXXFLAGSFOFI) -I$(DIRSRC) -I$(DIRXPDFSRC) -I$(DIRPNG) -I$(DIRZLIB) -I/usr/include/libxml2  -o $(DIRSRC)/pdftoxml.o -c $(DIRSRC)/pdftoxml.cc
+	$(CXX)  $(CXXFLAGS) $(CXXFLAGSGOO) $(CXXFLAGSFOFI) -I$(DIRXPDFSRC) -I$(DIRXPDFSRCBUILD)  -o $(DIRSRC)/ConstantsUtils.o -c $(DIRSRC)/ConstantsUtils.cc
+	$(CXX)  $(CXXFLAGS) $(CXXFLAGSGOO) $(CXXFLAGSFOFI) -I$(DIRXPDFSRC)-I$(DIRXPDFSRCBUILD)  -o $(DIRSRC)/ConstantsXMLALTO.o -c $(DIRSRC)/ConstantsXMLALTO.cc
+	$(CXX) $(CXXFLAGS) $(CXXFLAGSGOO) $(CXXFLAGSFOFI) -I$(DIRXPDFSRC) -I$(DIRXPDFSRCBUILD) -Ilibxml2  -o $(DIRSRC)/Parameters.o -c $(DIRSRC)/Parameters.cc
+	$(CXX) $(CXXFLAGS) $(CXXFLAGSGOO) $(CXXFLAGSFOFI) -I$(DIRXPDFSRC) -I$(DIRXPDFSRCBUILD) -I/usr/include/libxml2   -o $(DIRSRC)/AnnotsXrce.o -c $(DIRSRC)/AnnotsXrce.cc
+	$(CXX) $(CXXFLAGS) $(CXXFLAGSGOO) $(CXXFLAGSFOFI) -I$(DIRXPDFSRC) -I$(DIRXPDFSRCBUILD) -I/usr/include/libxml2     -o $(DIRSRC)/PDFDocXrce.o -c $(DIRSRC)/PDFDocXrce.cc
+	$(CXX) $(CXXFLAGS) $(CXXFLAGSGOO) $(CXXFLAGSFOFI) -I$(DIRXPDFSRC) -I$(DIRXPDFSRCBUILD) -I/usr/include/libxml2 -o $(DIRSRC)/XmlAltoOutputDev.o -c $(DIRSRC)/XmlAltoOutputDev.cc
+	$(CXX) $(CXXFLAGS) $(CXXFLAGSGOO) $(CXXFLAGSFOFI) -I$(DIRSRC) -I$(DIRXPDFSRC) -I$(DIRXPDFSRCBUILD) -I$(DIRPNG) -I$(DIRZLIB) -I/usr/include/libxml2  -o $(DIRSRC)/pdfalto.o -c $(DIRSRC)/pdfalto.cc
 	$(LIBPROG) -rc $(DIRSRC)/libsrc.a $(DIRSRC)/*.o
 
 
 
 # Target to create the executable for pdfalto (locate in exe directory)
 pdfaltoEXE: compile.src
-	$(CXX) $(CXXFLAGS) $(CXXFLAGSGOO) $(CXXFLAGSFOFI) -I$(DIRXPDFSRC) -I$(DIRSRC) -I$(DIRPNG) -I$(DIRZLIB) -I/usr/include/libxml2 -o $(DIREXE)/$(PDFALTOLEXE) $(DIRSRC)/pdfalto.cc $(DIRSRC)/libsrc.a $(DIRXPDFLIB)/libxpdf.a $(DIRGOO)/libGoo.a $(DIRFOFI)/libfofi.a $(DIRPNG)/libpng.a -lm -lxml2 
+	$(CXX) $(CXXFLAGS) $(CXXFLAGSGOO) $(CXXFLAGSFOFI) -I$(DIRXPDFSRC) -I$(DIRXPDFSRCBUILD) -I$(DIRSRC) -I$(DIRPNG) -I$(DIRZLIB) -I/usr/include/libxml2 -o $(DIREXE)/$(PDFALTOLEXE) $(DIRSRC)/pdfalto.cc $(DIRSRC)/libsrc.a $(DIRXPDFLIB)/libxpdf.a $(DIRGOOLIB)/libgoo.a $(DIRFOFILIB)/libfofi.a $(DIRPNG)/libpng.a -lm -lxml2 
 
 
 

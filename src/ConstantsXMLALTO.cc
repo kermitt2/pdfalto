@@ -1,19 +1,6 @@
-//========================================================================
-//
-// ConstantsXMLALTO.h
-//
-// Contain all constants for tag XML, attributs XML and other informations
-// which are defined in the output file of pdftoxml.
-//
-// author: Achraf Azhar
-// 12-2017
-//
-//========================================================================
-
 #include "ConstantsXMLALTO.h"
 
-namespace ConstantsXMLALTO
-{
+namespace ConstantsXMLALTO {
 	// All tags ALTO XML dialect
 	const char *TAG_ALTO = "alto";
 
@@ -47,12 +34,8 @@ namespace ConstantsXMLALTO
     const char *TAG_SOFTWARE_NAME = "softwareName";
     const char *TAG_SOFTWARE_VERSION = "softwareVersion";
 
-
 	const char *TAG_STYLES = "Styles";
 	const char *TAG_LAYOUT = "Layout";
-
-
-
 
 	const char *TAG_METADATA = "METADATA";
 	const char *TAG_PDFFILE_METADATA = "PDF_METADATA";
@@ -216,8 +199,6 @@ namespace ConstantsXMLALTO
 	const char *TAG_BLEEDBOX = "BLEEDBOX";
 	const char *TAG_CROPBOX = "CROPBOX";
 	const char *TAG_ARTBOX = "ARTBOX";
-	const char *TAG_TRIMBOX = "TRIMBOX";
-
-	
+	const char *TAG_TRIMBOX = "TRIMBOX";	
 }
 

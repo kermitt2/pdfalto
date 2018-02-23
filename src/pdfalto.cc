@@ -1,7 +1,3 @@
-//
-// Created by azhar on 20/12/2017.
-//
-
 #include <aconf.h>
 #include <stdio.h>
 #include <stdlib.h>

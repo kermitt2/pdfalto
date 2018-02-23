@@ -6,9 +6,11 @@ pdfalto is a fork of pdf2xml http://sourceforge.net/projects/pdf2xml, developed 
 
 The latest stable release is version *0.1*. 
 
-### Compilation
+### Usage
 
-See the file INSTALL for more details. 
+...
+
+### Build
 
 ### Linux
 
@@ -16,16 +18,33 @@ See the file INSTALL for more details.
 
 * Install libmotif-dev (development headers) 
 
-* Xpdf is shipped as git submodule, to download it: 
+* Xpdf 4.00 is shipped as git submodule, to download it: 
 
 > git submodule update --init --recursive
 
-* To build: 
+* Build Xpdf 4.00: 
+
+> cd xpdf-4.00
+
+> mkdir build
+
+> cd build
+
+> cmake -DCMAKE_BUILD_TYPE=Release ../
+
+> make
+
+This will create a static library for xpdf-4.00 at the following path `xpdf-4.00/build/xpdf/lib/libxpdf.a`
+
+* Build pdfalto:
+
+> cd ../..
 
 > cmake .
 
 > make
-    
+
+
 ### Windows 
 
 See `Compilation` for version 2.0 (at the moment nothing has changed)

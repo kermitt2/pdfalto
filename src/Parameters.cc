@@ -1,16 +1,3 @@
-//========================================================================
-//
-// Parameters.cc
-//
-// Specifics parameters to pdftoxml
-//
-// author: Sophie Andrieu
-// modifications:
-// nov 2007 H Dejean: add savetoXML
-// Xerox Research Centre Europe
-//
-//========================================================================
-
 #include "Parameters.h"
 #include <stdio.h>
 

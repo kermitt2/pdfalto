@@ -1,28 +1,10 @@
-//========================================================================
-//
-// ConstantsUtils.h
-//
-// Contain all constants utils for the pdftoxml tool.
-//
-// author: Sophie Andrieu
-// 05-2006
-// Xerox Research Centre Europe
-//
-//========================================================================
-
 #ifndef CONSTANTSUTILS_H_
 #define CONSTANTSUTILS_H_
 
 /** 
- * ConstantsUtils namespace : contain some constants which are used into pdftoxml tool <br></br>
- * Xerox Research Centre Europe <br></br>
- * @date 05-2006 <br></br>
- * @author Sophie Andrieu
- * @version xpdf 3.01
+ * ConstantsUtils namespace : contain some constants which are used into pdfalto tool <br></br>
  */
- 
-namespace ConstantsUtils
-{
+namespace ConstantsUtils {
 	extern const char *EXTENSION_XML;
 	extern const char *EXTENSION_XML_MAJ;
 	extern const char *EXTENSION_VEC;
@@ -40,8 +22,6 @@ namespace ConstantsUtils
 	extern const char *PDFALTO_CREATOR;
 
 	extern const char *MEASUREMENT_UNIT;
-
 }
 
 #endif
-

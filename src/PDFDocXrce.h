@@ -1,15 +1,3 @@
-//====================================================================
-//
-// PDFDocXrce.h
-//
-// author: Sophie Andrieu
-//
-// 09-2006
-//
-// Xerox Research Centre Europe
-//
-//====================================================================
-
 #ifndef PDFDOCXRCE_H_
 #define PDFDOCXRCE_H_
 
@@ -30,13 +18,6 @@ class LinkAction;
 class LinkDest;
 class Outline;
 
-/** 
- * PDFDocXrce class <br></br>
- * This class extend the PDFDoc class<br></br>
- * Xerox Research Centre Europe <br></br>
- * @date 09-2006
- * @author Sophie Andrieu
- */
 class PDFDocXrce: public PDFDoc {
 	
 public:

@@ -10,3 +10,9 @@
 .idea
 .iml
 *.old
+CMakeFiles
+exe/*
+CMakeCache.txt
+*.cmake
+pdfalto
+Makefile

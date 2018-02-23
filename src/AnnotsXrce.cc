@@ -1,15 +1,3 @@
-//====================================================================
-//
-// AnnotsXrce.cc
-//
-// author: Sophie Andrieu
-//
-// 09-2006
-//
-// Xerox Research Centre Europe
-//
-//====================================================================
-
 #include "AnnotsXrce.h"
 #include <stdlib.h>
 #include "Object.h"
@@ -27,7 +15,7 @@ using namespace ConstantsXMLALTO;
 #include <libxml/xmlmemory.h>
 #include <libxml/parser.h>
 
-AnnotsXrce::AnnotsXrce(Object &objA, xmlNodePtr docrootA, Catalog *catalog,double *ctmA, int pageNumA){
+AnnotsXrce::AnnotsXrce(Object &objA, xmlNodePtr docrootA, Catalog *catalog,double *ctmA, int pageNumA) {
 	
 	idAnnot = 1;
 	double x, y;
@@ -57,7 +45,7 @@ AnnotsXrce::AnnotsXrce(Object &objA, xmlNodePtr docrootA, Catalog *catalog,doubl
 	}
 
 //	printf("%d\n", objA.arrayGetLength());
-  	for (int i = 0 ; i < objA.arrayGetLength() ; ++i){
+  	for (int i = 0 ; i < objA.arrayGetLength() ; ++i) {
   		objA.arrayGet(i, &kid);
   		if (kid.isDict()) {
   			Dict *dict;

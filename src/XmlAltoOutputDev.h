@@ -1,7 +1,3 @@
-//
-// Created by azhar on 20/12/2017.
-//
-
 #ifndef PDF2XML_XMLALTOOUTPUTDEV_H
 #define PDF2XML_XMLALTOOUTPUTDEV_H
 

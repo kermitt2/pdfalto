@@ -1,14 +1,3 @@
-//========================================================================
-//
-// Parameters.h
-//
-// Specifics parameters to pdftoxml
-//
-// author: Sophie Andrieu
-// Xerox Research Centre Europe
-//
-//========================================================================
-
 #ifndef PARAMETERS_H_
 #define PARAMETERS_H_
 
@@ -21,7 +10,7 @@
 #include <libxml/xmlmemory.h>
 #include <libxml/parser.h>
 
-#include "ConstantsXMLAlto.h"
+#include "ConstantsXMLALTO.h"
 using namespace ConstantsXMLALTO;
 
 class Parameters;
@@ -31,10 +20,6 @@ extern Parameters *parameters;
 
 /** 
  * Parameters class : parameters listing used into pdftoxml as options <br></br>
- * Xerox Research Centre Europe <br></br>
- * @date 05-2006
- * @author Sophie Andrieu
- * @version xpdf 3.01
  */
  
 class Parameters {

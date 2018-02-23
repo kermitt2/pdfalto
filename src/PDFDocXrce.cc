@@ -1,15 +1,3 @@
-//====================================================================
-//
-// PDFDocXrce.cc
-//
-// author: Sophie Andrieu
-//
-// 09-2006
-//
-// Xerox Research Centre Europe
-//
-//====================================================================
-
 #include "PDFDocXrce.h"
 #include <stdio.h>
 #include "XRef.h"
@@ -60,13 +48,13 @@ void PDFDocXrce::displayPages(OutputDev *out, xmlNodePtr docrootA, int firstPage
 
   			currentPage->getAnnots(&objAnnot);
   	  
-			// Annotation's objects list
+			  // Annotation's objects list
     		if (objAnnot.isArray()){
   	  			an = new AnnotsXrce(objAnnot, docrootA, getCatalog(),ctm, pageNum);  
   	  			delete an;		
   			}
   			objAnnot.free();
-		}			
+		  }			
   	}
 }
 

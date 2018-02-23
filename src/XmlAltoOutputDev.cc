@@ -1,7 +1,3 @@
-//
-// Created by azhar on 20/12/2017.
-//
-
 #include <aconf.h>
 #ifdef USE_GCC_PRAGMAS
 #pragma implementation
@@ -3408,7 +3404,8 @@ void TextPage::drawImage(GfxState *state, Object *ref, Stream *str, int width,
             // write the line
             p = imgStr->getLine();
             for (x = 0; x < width; ++x) {
-                colorMap->getRGB(p, &rgb);
+                GfxRenderingIntent ri;
+                colorMap->getRGB(p, &rgb, ri);
                 fputc(colToByte(rgb.r), f);
                 fputc(colToByte(rgb.g), f);
                 fputc(colToByte(rgb.b), f);
@@ -3763,7 +3760,8 @@ const char* TextPage::drawImageOrMask(GfxState *state, Object* ref, Stream *str,
                     Guchar* p = imgStr->getLine();
                     for (int x = 0; x < width; x++)
                     {
-                        colorMap->getRGB(p, &rgb);
+                        GfxRenderingIntent ri;
+                        colorMap->getRGB(p, &rgb, ri);
                         data[k++] = clamp(rgb.r >> 8);
                         data[k++] = clamp(rgb.g >> 8);
                         data[k++] = clamp(rgb.b >> 8);

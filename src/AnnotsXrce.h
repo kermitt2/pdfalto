@@ -1,15 +1,3 @@
-//====================================================================
-//
-// AnnotsXrce.h
-//
-// author: Sophie Andrieu
-//
-// 09-2006
-//
-// Xerox Research Centre Europe
-//
-//====================================================================
-
 #ifndef ANNOTSXRCE_H_
 #define ANNOTSXRCE_H_
 
@@ -27,11 +15,7 @@
 #include <libxml/parser.h>
 
 /** 
- * AnnotsXrce class <br></br>
  * This class is used to recover text markup annotations (Highlight and Underline)<br></br>
- * Xerox Research Centre Europe <br></br>
- * @date 09-2006
- * @author Sophie Andrieu
  */
 class AnnotsXrce {
 

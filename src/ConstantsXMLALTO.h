@@ -1,27 +1,11 @@
-//========================================================================
-//
-// ConstantsXMLALTO.h
-//
-// Contain all constants for tag XML, attributs XML and other informations 
-// which are defined in the output file of pdftoxml.
-//
-// author: Achraf Azhar
-// 12-2017
-//
-//========================================================================
-
 #ifndef CONSTANTSXMLALTO_H_
 #define CONSTANTSXMLALTO_H_
 
-/** 
- * ConstantsXMLALTO namespace : contain all constants XML ALTO (tag, attributes ALTO) which are used into pdfalto tool <br></br>
- * date : 12-2017 <br></br>
- * @author Achraf Azhar
- * @version xpdf 3.01
- */
-
-namespace ConstantsXMLALTO
-{
+/**
+  * Contain all constants for tag XML, attributs XML and other informations
+  * which are defined in the output file of pdfalto
+  */
+namespace ConstantsXMLALTO {
 	// All tags XML
 	extern const char *TAG_ALTO;
 	extern const char *ALTO_URI;
@@ -209,9 +193,7 @@ namespace ConstantsXMLALTO
 	extern const char *TAG_BLEEDBOX;
 	extern const char *TAG_CROPBOX;
 	extern const char *TAG_ARTBOX;
-	extern const char *TAG_TRIMBOX;
-
-	
+	extern const char *TAG_TRIMBOX;	
 }
 
 #endif
