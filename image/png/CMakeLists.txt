@@ -26,3 +26,4 @@ set(PNG_SOURCE_FILES
         )
 
 add_library(${PROJECT_NAME} SHARED ${PNG_SOURCE_FILES})
+target_link_libraries(png zlib)
