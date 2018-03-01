@@ -58,29 +58,15 @@ In future release, the embedded PDF metadata will be also generated as separated
 
 > git submodule update --init --recursive
 
-* Build Xpdf 4.00: 
-
-> cd xpdf-4.00
-
-> mkdir build
-
-> cd build
-
-> cmake -DCMAKE_BUILD_TYPE=Release ../
-
-> make
-
-This will create a static library for xpdf-4.00 at the following path `xpdf-4.00/build/xpdf/lib/libxpdf.a`
-
 * Build pdfalto:
 
-> cd ../..
+> cd pdfalto
 
 > cmake .
 
 > make
 
-The executable `pdfalto` is generated in the root directory. 
+The executable `pdfalto` is generated in the root directory. Additionally, this will create a static library for xpdf-4.00 at the following path `xpdf-4.00/build/xpdf/lib/libxpdf.a` and all the libraries and their respective subdirectory. 
 
 ### Windows 
 
