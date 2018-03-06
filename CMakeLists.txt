@@ -3,8 +3,14 @@ project(pdfalto)
 
 set(CMAKE_CXX_STANDARD 98)
 
+#build xpdf
+set ( XPDF_SUBDIR ${CMAKE_CURRENT_SOURCE_DIR}/xpdf-4.00)
+
+set(XPDF_BUILD_DIR ${XPDF_SUBDIR}/build)
+
 add_subdirectory(image/png)
 add_subdirectory(image/zlib)
+add_subdirectory(${XPDF_SUBDIR})
 
 set(SOURCE_FILES
         src/AnnotsXrce.cc
@@ -22,19 +28,16 @@ set(SOURCE_FILES
         src/XmlAltoOutputDev.h
         )
 
-set(XPDF_BUILD_DIR ${CMAKE_CURRENT_SOURCE_DIR}/xpdf-4.00/build)
-
 add_executable(pdfalto ${SOURCE_FILES})
 
-target_link_libraries(pdfalto png zlib xml2 ${XPDF_BUILD_DIR}/xpdf/lib/libxpdf.a ${XPDF_BUILD_DIR}/fofi/libfofi.a ${XPDF_BUILD_DIR}/goo/libgoo.a)
+target_link_libraries(pdfalto png zlib xml2 xpdf goo fofi ${XPDF_BUILD_DIR}/xpdf/lib/libxpdf.a)
 target_include_directories(pdfalto
         PUBLIC /usr/include/libxml2
         PUBLIC image/png
         PUBLIC image/zlib
-        PUBLIC xpdf-4.00/build
-        PUBLIC xpdf-4.00
-        PUBLIC xpdf-4.00/goo
-        PUBLIC xpdf-4.00/fofi
-        PUBLIC xpdf-4.00/xpdf
+        PUBLIC ${XPDF_SUBDIR}
+        PUBLIC ${XPDF_SUBDIR}/goo
+        PUBLIC ${XPDF_SUBDIR}/fofi
+        PUBLIC ${XPDF_SUBDIR}/xpdf
         PUBLIC ${XPDF_BUILD_DIR}
         )

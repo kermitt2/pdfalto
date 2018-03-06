@@ -48,7 +48,7 @@ In future release, the embedded PDF metadata will be also generated as separated
 
 # Build
 
-### Linux
+### Linux and MacOS
 
 * Install libxml2 (development headers). See http://xmlsoft.org/ 
 
@@ -58,29 +58,15 @@ In future release, the embedded PDF metadata will be also generated as separated
 
 > git submodule update --init --recursive
 
-* Build Xpdf 4.00: 
-
-> cd xpdf-4.00
-
-> mkdir build
-
-> cd build
-
-> cmake -DCMAKE_BUILD_TYPE=Release ../
-
-> make
-
-This will create a static library for xpdf-4.00 at the following path `xpdf-4.00/build/xpdf/lib/libxpdf.a`
-
 * Build pdfalto:
 
-> cd ../..
+> cd pdfalto
 
 > cmake .
 
 > make
 
-The executable `pdfalto` is generated in the root directory. 
+The executable `pdfalto` is generated in the root directory. Additionally, this will create a static library for xpdf-4.00 at the following path `xpdf-4.00/build/xpdf/lib/libxpdf.a` and all the libraries and their respective subdirectory. 
 
 ### Windows 
 
@@ -124,30 +110,6 @@ drwxr-xr-x 1 lfoppiano 197121 0 lug 28 09:06 xpdf-3.04/
 * Compile the zlib and png libraries, under the /images subdirectory in pdf2xml source: 
 
 > make.bat
-
-### MacOS
-
-*to be reviewed !*
-
-* Download the source corresponding to [Xpdf-4.00](https://github.com/kermitt2/xpdf-4.00) shipped as submodule using git:
-
-> git clone --recursive https://github.com/kermitt2/pdfalto.git
-
-* In order to compile Xpdf, we’ll need to have libxml, freestyle, X11 (xquartz on mac) openmotif installed (using home-brew for instance) and added to the environment (accessible from terminal)
-
-* Compile xpdf, then create `libxpdf.a` in `xpdf/xpdf/` with 
-
-> ar -rc libxpdf.a *.o
-
-* Compile the first zlib then png libraries (dependent), under subdirectory `/images`:
-
-> cmake CMakeList.txt
-
-> make -f Makefile 
-
-* Execute the compilation to generate pdfalto using :
-
-> make -f Makefile.macos 
 
 # Future work
 
