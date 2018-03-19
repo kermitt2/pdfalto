@@ -262,6 +262,7 @@ int main(int argc, char *argv[]) {
     }
 
     if (verbose){
+        globalParams->setPrintCommands(gTrue);
         cmd->append("-verbose ");
     }
 
@@ -409,6 +410,7 @@ int main(int argc, char *argv[]) {
                 xmlAltoOut->closeOutline(shortFileName);
             }
         }
+        xmlAltoOut->addStyles();
     }
     else {
         delete xmlAltoOut;
