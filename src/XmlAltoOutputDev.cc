@@ -1399,32 +1399,38 @@ void TextPage::addAttributsNode(xmlNodePtr node, TextWord *word, double &xMaxi,
     if (word->font != NULL) {
         if (word->font->isSymbolic()) {
             xmlNewProp(node, (const xmlChar*)ATTR_SYMBOLIC, (const xmlChar*)YES);
-        }
+        } else
+            xmlNewProp(node, (const xmlChar*)ATTR_SYMBOLIC, (const xmlChar*)NO);
+
         if (word->font->isSerif()) {
             xmlNewProp(node, (const xmlChar*)ATTR_SERIF, (const xmlChar*)YES);
-            fontStyleInfo->setFontType(word->font->isSerif());
-        }
+        } else
+            xmlNewProp(node, (const xmlChar*)ATTR_SERIF, (const xmlChar*)NO);
+        fontStyleInfo->setFontType(word->font->isSerif());
+
         if (word->font->isFixedWidth()) {
             xmlNewProp(node, (const xmlChar*)ATTR_FIXED_WIDTH,
                        (const xmlChar*)YES);
-            fontStyleInfo->setFontStyle(word->font->isFixedWidth());
-        }
+        } else
+            xmlNewProp(node, (const xmlChar*)ATTR_FIXED_WIDTH, (const xmlChar*)NO);
+        fontStyleInfo->setFontWidth(word->font->isFixedWidth());
     }
 
     if (word->isBold())
         xmlNewProp(node, (const xmlChar*)ATTR_BOLD, (const xmlChar*)YES);
     else
         xmlNewProp(node, (const xmlChar*)ATTR_BOLD, (const xmlChar*)NO);
+    fontStyleInfo->setIsBold(word->isBold());
 
     if (word->isItalic())
         xmlNewProp(node, (const xmlChar*)ATTR_ITALIC, (const xmlChar*)YES);
     else
         xmlNewProp(node, (const xmlChar*)ATTR_ITALIC, (const xmlChar*)NO);
+    fontStyleInfo->setIsItalic(word->isItalic());
 
     sprintf(tmp, "%g", word->fontSize);
     xmlNewProp(node, (const xmlChar*)ATTR_FONT_SIZE, (const xmlChar*)tmp);
     fontStyleInfo->setFontSize(word->fontSize);
-
 
     xmlNewProp(node, (const xmlChar*)ATTR_FONT_COLOR,
                (const xmlChar*)word->colortoString()->getCString());
@@ -1474,19 +1480,22 @@ void TextPage::addAttributsNode(xmlNodePtr node, TextWord *word, double &xMaxi,
     for(int x = 0; x < fontStyles.size(); x++) {
         if( fontStyleInfo->cmp(fontStyles[x]) ) {
             contains = gTrue;
+            fontStyleInfo->setId(x);
             break;
         }
     }
 
     if(!contains) {
         fontStyleInfo->setId(fontStyles.size());
-        sprintf(tmp, "font%d", fontStyleInfo->getId());
-        //xmlNewProp(node, (const xmlChar*)ATTR_STYLEREFS, (const xmlChar*)tmp);
         fontStyles.push_back(fontStyleInfo);
+
+        cout << "size :"
+             << fontStyles.size()  << std::endl;
     }
 
-//        cout << "size :"
-//             << fontStyles.size()  << std::endl;
+
+    sprintf(tmp, "font%d", fontStyleInfo->getId());
+    xmlNewProp(node, (const xmlChar*)ATTR_STYLEREFS, (const xmlChar*)tmp);
 
     free(tmp);
 }
@@ -1676,8 +1685,12 @@ GBool TextFontStyleInfo::cmp(TextFontStyleInfo *tsi) {
     if( ((fontName->cmp(tsi->getFontName())  == 0 )
             &&  (fontSize == tsi->getFontSize())
             && (fontColor->cmp(tsi->getFontColor())  == 0 )
-            //&& (fontType == tsi->getFontType())
-            //&& (fontStyle == tsi->getFontStyle())
+            && (fontType == tsi->getFontType())
+            && (fontWidth == tsi->getFontWidth())
+            && (isbold == tsi->isBold())
+            && (isitalic == tsi->isItalic())
+//            && (issubscript == tsi->isSubscript())
+//            && (issuperscript == tsi->isSuperscript())
     )
             )
         return gTrue;
@@ -4085,7 +4098,7 @@ XmlAltoOutputDev::XmlAltoOutputDev(GString *fileName, GString *fileNamePdf,
     xmlNodePtr nodeOCRProcessing = xmlNewNode(NULL, (const xmlChar*)TAG_OCRPROCESSING);
     nodeOCRProcessing->type = XML_ELEMENT_NODE;
     xmlAddChild(nodeDescription, nodeOCRProcessing);
-    xmlNewProp(nodeOCRProcessing, (const xmlChar*)ATTR_NAMEID_OCRPROCESSING,
+    xmlNewProp(nodeOCRProcessing, (const xmlChar*)ATTR_ID,
                (const xmlChar*)ATTR_VALUEID_OCRPROCESSING);
 
     xmlNodePtr nodeOCRProcessingStep = xmlNewNode(NULL, (const xmlChar*)TAG_OCRPROCESSINGSTEP);
@@ -4241,6 +4254,70 @@ void XmlAltoOutputDev::addInfo(PDFDocXrce *pdfdocxrce){
     }
     info.free();
 }
+
+
+void XmlAltoOutputDev::addStyles(){
+
+    char *tmp;
+    tmp=(char*)malloc(10*sizeof(char));
+
+    xmlNodePtr nodeSourceImageInfo = findNodeByName(docroot, (const xmlChar*)TAG_STYLES);
+    for (int j = 0; j < getText()->fontStyles.size(); ++j) {
+        xmlNodePtr textStyleNode = xmlNewNode(NULL, (const xmlChar *) TAG_TEXTSTYLE);
+
+        TextFontStyleInfo *fontStyleInfo = getText()->fontStyles[j];
+        textStyleNode->type = XML_ELEMENT_NODE;
+
+        xmlAddChild(nodeSourceImageInfo, textStyleNode);
+
+        sprintf(tmp, "font%d", fontStyleInfo->getId());
+        xmlNewProp(textStyleNode, (const xmlChar*)ATTR_ID, (const xmlChar*)tmp);
+
+        sprintf(tmp, "%s", fontStyleInfo->getFontNameCS()->getCString());
+        xmlNewProp(textStyleNode, (const xmlChar*)ATTR_FONTFAMILY, (const xmlChar*)tmp);
+
+        sprintf(tmp, "%.3f", fontStyleInfo->getFontSize());
+        xmlNewProp(textStyleNode, (const xmlChar*)ATTR_FONTSIZE, (const xmlChar*)tmp);
+
+        sprintf(tmp, "%s", fontStyleInfo->getFontType() ? "serif":"sans-serif");
+        xmlNewProp(textStyleNode, (const xmlChar*)ATTR_FONTTYPE, (const xmlChar*)tmp);
+
+        sprintf(tmp, "%s", fontStyleInfo->getFontWidth() ? "fixed":"proportional");
+        xmlNewProp(textStyleNode, (const xmlChar*)ATTR_FONTWIDTH, (const xmlChar*)tmp);
+
+        sprintf(tmp, "%s", fontStyleInfo->getFontColor()->getCString());
+        xmlNewProp(textStyleNode, (const xmlChar*)ATTR_FONTCOLOR, (const xmlChar*)tmp);
+
+        GString* fontStyle = new GString("");
+        if(fontStyleInfo->isBold())
+            fontStyle->append("bold");
+
+        if(fontStyleInfo->isItalic()){
+            if(fontStyle->getLength()>0)
+                fontStyle->append(" italics");
+            else fontStyle->append("italics");
+        }
+
+        if(fontStyleInfo->isSubscript()){
+            if(fontStyle->getLength()>0)
+                fontStyle->append(" subscript");
+            else fontStyle->append("subscript");
+        }
+
+        if(fontStyleInfo->isSuperscript()){
+            if(fontStyle->getLength()>0)
+                fontStyle->append(" superscript");
+            else fontStyle->append("superscript");
+        }
+
+        sprintf(tmp, "%s", fontStyle->getCString());
+        xmlNewProp(textStyleNode, (const xmlChar*)ATTR_FONTSTYLE, (const xmlChar*)tmp);
+
+
+    }
+    free(tmp);
+}
+
 
 
 xmlNodePtr XmlAltoOutputDev::findNodeByName(xmlNodePtr rootnode, const xmlChar * nodename)

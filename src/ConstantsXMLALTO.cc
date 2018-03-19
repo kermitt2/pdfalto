@@ -24,7 +24,6 @@ namespace ConstantsXMLALTO {
     const char *TAG_PDFFILENAME = "fileName";
 
     const char *TAG_OCRPROCESSING = "OCRProcessing";
-    const char *ATTR_NAMEID_OCRPROCESSING = "ID";
     const char *ATTR_VALUEID_OCRPROCESSING = "IdOcr";
 
     const char *TAG_OCRPROCESSINGSTEP = "ocrProcessingStep";
@@ -53,9 +52,19 @@ namespace ConstantsXMLALTO {
     const char *TAG_PRINTSPACE = "PrintSpace";
 
 	const char *TAG_TOKEN = "String";
+	const char *ATTR_STYLEREFS = "STYLEREFS";
+
     const char *ATTR_TOKEN_CONTENT = "CONTENT";
 
     const char *TAG_SPACING = "SP";
+
+    const char *TAG_TEXTSTYLE = "TextStyle";
+    const char *ATTR_FONTFAMILY = "FONTFAMILY";
+    const char *ATTR_FONTSIZE = "FONTSIZE";
+    const char *ATTR_FONTTYPE = "FONTTYPE";
+    const char *ATTR_FONTWIDTH = "FONTWIDTH";
+    const char *ATTR_FONTCOLOR = "FONTCOLOR";
+    const char *ATTR_FONTSTYLE = "FONTSTYLE";
 
 	const char *TAG_VECTORIALINSTRUCTIONS = "VECTORIALINSTRUCTIONS";
 	const char *TAG_GROUP = "GROUP";

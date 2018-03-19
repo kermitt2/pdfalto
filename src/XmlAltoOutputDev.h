@@ -126,8 +126,20 @@ public:
     GBool getFontType() const { return fontType; }
     void setFontType(GBool fonttype){fontType = fonttype;}
 
-    GBool getFontStyle() const { return fontStyle; }
-    void setFontStyle(GBool fontstyle){fontStyle = fontstyle;}
+    GBool getFontWidth() const { return fontWidth; }
+    void setFontWidth(GBool fontwidth){fontWidth = fontwidth;}
+
+    GBool isBold() const { return isbold; }
+    void setIsBold(GBool isBold){isbold = isBold;}
+
+    GBool isItalic() const { return isitalic; }
+    void setIsItalic(GBool isItalic){isitalic = isItalic;}
+
+    GBool isSubscript() const { return issubscript; }
+    void setIsSubscript(GBool isSubscript){issubscript = isSubscript;}
+
+    GBool isSuperscript() const { return issuperscript; }
+    void setIsSuperscript(GBool isSuperscript){issuperscript = isSuperscript;}
 
     // Compare two text fonts:  -1:<  0:=  +1:>
     GBool cmp(TextFontStyleInfo *tsi);
@@ -139,9 +151,14 @@ private:
     GString* fontName;
     double fontSize;
     GString* fontColor;
-    GBool fontType; //Enumeration : serif (gTrue) or sans-serif(gFalse)
-    GBool fontStyle; //Enumeration : proportional(gFalse) or fixed(gTrue)
-//#endif
+    GBool fontType = gFalse; //Enumeration : serif (gTrue) or sans-serif(gFalse)
+    GBool fontWidth = gFalse; //Enumeration : proportional(gFalse) or fixed(gTrue)
+
+    //see fontStylesType in alto schema
+    GBool isbold = gFalse;
+    GBool isitalic = gFalse;
+    GBool issubscript = gFalse;
+    GBool issuperscript = gFalse;
 
     friend class TextFontInfo;
 };
@@ -1083,6 +1100,9 @@ public:
      * @param doc The PDF document object */
     void addInfo(PDFDocXrce *doc);
 
+    /** Appends the styles metadata informations */
+    void addStyles();
+
     /** Picks and returns the needed data
      * @param infoDict dictionary containing metadata informations
      * @param key the element looking for */
@@ -1104,6 +1124,8 @@ public:
     xmlNodePtr getDocRoot(){return docroot;}
 
     xmlDocPtr getDoc(){return doc;}
+
+    TextPage * getText(){return text;}
 private:
 
     /** Generate the path

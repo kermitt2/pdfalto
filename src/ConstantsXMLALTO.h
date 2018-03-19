@@ -21,7 +21,6 @@ namespace ConstantsXMLALTO {
     extern const char *TAG_SOURCE_IMAGE_INFO;
     extern const char *TAG_OCRPROCESSING;
 
-    extern const char *ATTR_NAMEID_OCRPROCESSING;
     extern const char *ATTR_VALUEID_OCRPROCESSING;
 
     extern const char *TAG_OCRPROCESSINGSTEP;
@@ -51,9 +50,18 @@ namespace ConstantsXMLALTO {
 	extern const char *TAG_PRINTSPACE;
 
 	extern const char *TAG_TOKEN;
+	extern const char *ATTR_STYLEREFS;
     extern const char *ATTR_TOKEN_CONTENT;
 
     extern const char *TAG_SPACING;
+
+    extern const char *TAG_TEXTSTYLE;
+    extern const char *ATTR_FONTFAMILY;
+    extern const char *ATTR_FONTSIZE;
+    extern const char *ATTR_FONTTYPE;
+    extern const char *ATTR_FONTWIDTH;
+    extern const char *ATTR_FONTCOLOR;
+    extern const char *ATTR_FONTSTYLE;
 
 	extern const char *TAG_VECTORIALINSTRUCTIONS;
 	extern const char *TAG_GROUP;
