@@ -294,6 +294,113 @@ private:
     friend class TextPage;
 };
 
+
+
+
+class Image {
+public:
+
+    /** Construct a new <code>Image</code><br></br>
+     * An <code>Image</code> is an image which is localized in the stream and it is composed<br></br>
+     * by a x position, a y position, a width, a height and href which get the path of this image.<br></br>
+     * The two variables idWord and idImage are used in the lines building to include images.
+     * @param xPosition The x position of this image
+     * @param yPosition The y position of this image
+     * @param width The width value of this image
+     * @param height The height value of this image
+     * @param idWord The id of word which precede this image
+     * @param idImage The id of current image
+     * @param href The image href
+     * @param idx The absolute object index in the stream */
+    Image(double xPosition, double yPosition, double width, double height, GString* id, GString* sid, GString *href, GString* clipZone, GBool isInline);
+
+    /** Destructor
+     */
+    ~Image();
+
+    /** Get the absolute object index in the stream
+     * @return clipZone */
+    GString* getClipZone(){return clipZone;};
+    /** Get the x position of the image
+     *  @return The x position of the image */
+    double getXPositionImage(){return xPositionImage;}
+    /** Get the y position of the image
+     *  @return The y position of the image */
+    double getYPositionImage(){return yPositionImage;}
+    /** Get the width value of the image
+     *  @return The width value of the image */
+    double getWidthImage(){return widthImage;}
+    /** Get the height value of the image
+     *  @return The height value of the image */
+    double getHeightImage(){return heightImage;}
+    /** Get the id of the word which precede this image
+     *  @return The id of the word which precede this image */
+    GString* getImageId(){return imageId;}
+    /** Get the sid of this image
+     *  @return The id of this image */
+    GString* getImageSid(){return imageSid;}
+    /** Get the href of this image
+     *  @return The href of this image */
+    GString* getHrefImage(){return hrefImage;}
+
+    /** Get the href of this image
+     *  @return The href of this image */
+    GBool isImageInline(){return isInline;}
+
+    /** Modify the x position of the image
+     *  @param xPosition The new x position image value */
+    void setXPositionImage(double xPosition){xPositionImage = xPosition;}
+    /** Modify the y position of the image
+     *  @param yPosition The new y position image value */
+    void setYPositionImage(double yPosition){yPositionImage = yPosition;}
+    /** Modify the width value of the image
+     *  @param width The new width image value */
+    void setWidthImage(double width){widthImage = width;}
+    /** Modify the height value of the image
+     *  @param height The new height image value */
+    void setHeightImage(double height){heightImage = height;}
+    /** Modify the clipzone which precede this image
+     *  @param clipZone The new id value of the word which precede this image */
+    void setClipZone(GString* clipzone){clipZone = clipzone;}
+    /** Modify the id of the word which precede this image
+     *  @param id The new id value of the word which precede this image */
+    void setImageId(GString* id){imageId = id;}
+    /** Modify the imageSid of this image
+     *  @param imageSid The new imageSid value of this image */
+    void setImageSid(GString*id){imageSid = id;}
+    /** Modify the href of this image
+     *  @param href The new href value of this image */
+    void setHrefImage(GString *href){hrefImage = href;}
+
+private:
+
+    /** The absolute object index in the stream **/
+    int idx;
+    /** The x position of the image */
+    double xPositionImage;
+    /** The y position of the image */
+    double yPositionImage;
+    /** The width value of the image */
+    double widthImage;
+    /** The height value of the image */
+    double heightImage;
+    /** The id word which precede this image */
+    GString* imageId;
+    /** The id current image */
+    GString* imageSid;
+
+    GString* clipZone;
+    /** The path current image */
+    GString* hrefImage;
+
+    GBool isInline;
+
+    friend class TextWord;
+    friend class TextPage;
+};
+
+
+
 //------------------------------------------------------------------------
 // TextWord
 //------------------------------------------------------------------------
@@ -715,6 +822,8 @@ public:
     int getIdx(){return idx;};
 
     vector<ImageInline*> listeImageInline;
+
+    vector<Image*> listeImages;
 
     /** The list of all recognized font styles*/
     vector<TextFontStyleInfo*> fontStyles;

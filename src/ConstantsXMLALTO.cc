@@ -44,7 +44,7 @@ namespace ConstantsXMLALTO {
 
 
 	const char *TAG_PAGE = "Page";
-	const char *TAG_IMAGE = "IMAGE";
+	const char *TAG_IMAGE = "Illustration";
 	const char *TAG_VECTORIALIMAGES = "VECTORIALIMAGES";
 	const char *TAG_BLOCK = "TextBlock";
 	const char *TAG_TEXT = "TextLine";
@@ -101,7 +101,7 @@ namespace ConstantsXMLALTO {
 	const char *ATTR_WIDTH = "WIDTH";
 	const char *ATTR_HEIGHT = "HEIGHT";
 	const char *ATTR_PHYSICAL_IMG_NR = "PHYSICAL_IMG_NR";
-	const char *ATTR_HREF = "href";
+	const char *ATTR_HREF = "FILEID";
 	const char *ATTR_X = "HPOS";
 	const char *ATTR_Y = "VPOS";
 	

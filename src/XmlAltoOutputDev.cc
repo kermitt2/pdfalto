@@ -177,6 +177,28 @@ ImageInline::~ImageInline() {
 }
 
 //------------------------------------------------------------------------
+// Image
+//------------------------------------------------------------------------
+
+Image::Image(double xPosition, double yPosition, double width,
+                         double height, GString* id, GString* sid, GString* href, GString* clipzone, GBool isinline) {
+    xPositionImage = xPosition;
+    yPositionImage = yPosition;
+    widthImage = width;
+    heightImage = height;
+    imageId = id;
+    imageSid = sid;
+    hrefImage = href;
+    clipZone = clipzone;
+    isInline = isinline;
+}
+
+Image::~Image() {
+
+}
+
+
+//------------------------------------------------------------------------
 // TextWord
 //------------------------------------------------------------------------
 
@@ -993,6 +1015,13 @@ void TextPage::clear() {
         delete listeImageInline[i];
     }
     listeImageInline.clear();
+
+    // Clear the vector which contain images objects
+    nb = listeImages.size();
+    for (int i=0; i<nb; i++) {
+        delete listeImages[i];
+    }
+    listeImages.clear();
 
 }
 
@@ -2457,6 +2486,44 @@ void TextPage::dump(GBool blocks, GBool fullFontName) {
 
     } // end FOR
 
+
+    int imageCount = listeImages.size();
+    for(int i = 0; i < imageCount; ++i) {
+
+        printSpace = xmlNewNode(NULL, (const xmlChar*)TAG_PRINTSPACE);
+        printSpace->type = XML_ELEMENT_NODE;
+        xmlAddChild(page, printSpace);
+        node = xmlNewNode(NULL, (const xmlChar*)TAG_IMAGE);
+        xmlNewProp(node, (const xmlChar *) ATTR_ID,(const xmlChar*)listeImages[i]->getImageId()->getCString());
+
+
+        //xmlNewProp(node, (const xmlChar *) ATTR_SID,(const xmlChar*)listeImages[i]->getImageSid()->getCString());
+
+
+        sprintf(tmp, ATTR_NUMFORMAT, listeImages[i]->getYPositionImage());
+        xmlNewProp(printSpace, (const xmlChar *) ATTR_X, (const xmlChar *) tmp);
+        sprintf(tmp, ATTR_NUMFORMAT, listeImages[i]->getYPositionImage());
+        xmlNewProp(printSpace, (const xmlChar *) ATTR_Y, (const xmlChar *) tmp);
+        sprintf(tmp, ATTR_NUMFORMAT, listeImages[i]->getWidthImage());
+        xmlNewProp(printSpace, (const xmlChar *) ATTR_WIDTH, (const xmlChar *) tmp);
+        sprintf(tmp, ATTR_NUMFORMAT, listeImages[i]->getHeightImage());
+        xmlNewProp(printSpace, (const xmlChar *) ATTR_HEIGHT, (const xmlChar *) tmp);
+//			if (rotate){
+//				xmlNewProp(node,(const xmlChar*)ATTR_ROTATION,(const xmlChar*)sTRUE);
+//			}
+//			else{
+//				xmlNewProp(node,(const xmlChar*)ATTR_ROTATION,(const xmlChar*)sFALSE);
+//			}
+//        if (listeImages[i]->isImageInline()) {
+//            xmlNewProp(node, (const xmlChar *) ATTR_INLINE, (const xmlChar *) sTRUE);
+//        }
+        xmlNewProp(node, (const xmlChar *) ATTR_HREF,
+                   (const xmlChar *) listeImages[i]->getHrefImage()->getCString());
+
+        xmlNewProp(node, (const xmlChar*) ATTR_CLIPZONE,
+                   (const xmlChar*)listeImages[i]->getClipZone()->getCString());
+        xmlAddChild(printSpace, node);
+    }
     free(tmp);
     delete word;
     uMap->decRefCnt();
@@ -3608,47 +3675,28 @@ const char* TextPage::drawImageOrMask(GfxState *state, Object* ref, Stream *str,
 
     }
     if (!inlineImg || (inlineImg && parameters->getImageInline())) {
-        node = xmlNewNode(NULL, (const xmlChar*)TAG_IMAGE);
-        GString *id;
-        id = new GString("p");
-        xmlNewProp(node, (const xmlChar*)ATTR_ID, (const xmlChar*)buildIdImage(num, numImage, id)->getCString());
-        delete id;
+        GString *id = new GString("p"), *sid = new GString("p"), *clipZone = new GString("p");
+        GBool isInline = false;
+        id = buildIdImage(getPageNumber(), numImage, id);
+        sid = buildSID(getPageNumber(), getIdx(), sid);
+        clipZone = buildIdClipZone(getPageNumber(), idCur, clipZone);
+
         numImage = numImage + 1;
 
-        id = new GString("p");
-        xmlNewProp(node, (const xmlChar*)ATTR_SID, (const xmlChar*)buildSID(num, getIdx(), id)->getCString());
-        delete id;
-
-        sprintf(tmp, ATTR_NUMFORMAT, x0);
-        xmlNewProp(node, (const xmlChar*)ATTR_X, (const xmlChar*)tmp);
-        sprintf(tmp, ATTR_NUMFORMAT, y0);
-        xmlNewProp(node, (const xmlChar*)ATTR_Y, (const xmlChar*)tmp);
-        sprintf(tmp, ATTR_NUMFORMAT, w0);
-        xmlNewProp(node, (const xmlChar*)ATTR_WIDTH, (const xmlChar*)tmp);
-        sprintf(tmp, ATTR_NUMFORMAT, h0);
-        xmlNewProp(node, (const xmlChar*)ATTR_HEIGHT, (const xmlChar*)tmp);
-//			if (rotate){
-//				xmlNewProp(node,(const xmlChar*)ATTR_ROTATION,(const xmlChar*)sTRUE);
-//			}
-//			else{
-//				xmlNewProp(node,(const xmlChar*)ATTR_ROTATION,(const xmlChar*)sFALSE);
-//			}
         if (inlineImg) {
-            xmlNewProp(node, (const xmlChar*)ATTR_INLINE, (const xmlChar*)sTRUE);
+            isInline = true;
         }
-        xmlNewProp(node, (const xmlChar*)ATTR_HREF,
-                   (const xmlChar*)refname->getCString());
-        xmlAddChild(printSpace, node);
+
+        listeImages.push_back(new Image(x0, y0, w0, h0, id, sid, refname, clipZone, isInline));
+//        delete sid;
+//        delete id;
+//        delete clipZone;
     }
 
     if (inlineImg && !parameters->getImageInline()) {
         listeImageInline.push_back(new ImageInline(x0, y0, w0, h0, getIdWORD(), imageIndex, refname, getIdx()));
     }
 
-    id = new GString("p");
-    xmlNewProp(node, (const xmlChar*)ATTR_CLIPZONE,
-               (const xmlChar*)buildIdClipZone(num, idCur, id)->getCString());
-    delete id;
 
     return extension;
 //	append_image_block(round(x1), round(y1), round(x2-x1), round(y2-y1), pic_file);
