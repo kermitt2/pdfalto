@@ -1904,8 +1904,8 @@ void TextPage::dump(GBool blocks, GBool fullFontName) {
             uncdFontName[size] = (Unicode)0;
             GString* gsFontName = new GString();
             dumpFragment(uncdFontName, size, uMap, gsFontName);
-            xmlNewProp(node, (const xmlChar*)ATTR_FONT_NAME,
-                       (const xmlChar*)gsFontName->getCString());
+//            xmlNewProp(node, (const xmlChar*)ATTR_FONT_NAME,
+//                       (const xmlChar*)gsFontName->getCString());
             fontStyleInfo->setFontName(gsFontName);
             //delete gsFontName;
 
