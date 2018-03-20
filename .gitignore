@@ -16,5 +16,7 @@ CMakeCache.txt
 *.cmake
 pdfalto
 Makefile
-.xml
-.pdf
+*.xml
+*.pdf
+.DS_Store
+*.xml_data/
