@@ -1426,43 +1426,43 @@ void TextPage::addAttributsNode(xmlNodePtr node, TextWord *word, double &xMaxi,
     tmp=(char*)malloc(10*sizeof(char));
 
     if (word->font != NULL) {
-        if (word->font->isSymbolic()) {
-            xmlNewProp(node, (const xmlChar*)ATTR_SYMBOLIC, (const xmlChar*)YES);
-        } else
-            xmlNewProp(node, (const xmlChar*)ATTR_SYMBOLIC, (const xmlChar*)NO);
+//        if (word->font->isSymbolic()) {
+//            xmlNewProp(node, (const xmlChar*)ATTR_SYMBOLIC, (const xmlChar*)YES);
+//        } else
+//            xmlNewProp(node, (const xmlChar*)ATTR_SYMBOLIC, (const xmlChar*)NO);
 
-        if (word->font->isSerif()) {
-            xmlNewProp(node, (const xmlChar*)ATTR_SERIF, (const xmlChar*)YES);
-        } else
-            xmlNewProp(node, (const xmlChar*)ATTR_SERIF, (const xmlChar*)NO);
+//        if (word->font->isSerif()) {
+//            xmlNewProp(node, (const xmlChar*)ATTR_SERIF, (const xmlChar*)YES);
+//        } else
+//            xmlNewProp(node, (const xmlChar*)ATTR_SERIF, (const xmlChar*)NO);
         fontStyleInfo->setFontType(word->font->isSerif());
 
-        if (word->font->isFixedWidth()) {
-            xmlNewProp(node, (const xmlChar*)ATTR_FIXED_WIDTH,
-                       (const xmlChar*)YES);
-        } else
-            xmlNewProp(node, (const xmlChar*)ATTR_FIXED_WIDTH, (const xmlChar*)NO);
+//        if (word->font->isFixedWidth()) {
+//            xmlNewProp(node, (const xmlChar*)ATTR_FIXED_WIDTH,
+//                       (const xmlChar*)YES);
+//        } else
+//            xmlNewProp(node, (const xmlChar*)ATTR_FIXED_WIDTH, (const xmlChar*)NO);
         fontStyleInfo->setFontWidth(word->font->isFixedWidth());
     }
 
-    if (word->isBold())
-        xmlNewProp(node, (const xmlChar*)ATTR_BOLD, (const xmlChar*)YES);
-    else
-        xmlNewProp(node, (const xmlChar*)ATTR_BOLD, (const xmlChar*)NO);
+//    if (word->isBold())
+//        xmlNewProp(node, (const xmlChar*)ATTR_BOLD, (const xmlChar*)YES);
+//    else
+//        xmlNewProp(node, (const xmlChar*)ATTR_BOLD, (const xmlChar*)NO);
     fontStyleInfo->setIsBold(word->isBold());
 
-    if (word->isItalic())
-        xmlNewProp(node, (const xmlChar*)ATTR_ITALIC, (const xmlChar*)YES);
-    else
-        xmlNewProp(node, (const xmlChar*)ATTR_ITALIC, (const xmlChar*)NO);
+//    if (word->isItalic())
+//        xmlNewProp(node, (const xmlChar*)ATTR_ITALIC, (const xmlChar*)YES);
+//    else
+//        xmlNewProp(node, (const xmlChar*)ATTR_ITALIC, (const xmlChar*)NO);
     fontStyleInfo->setIsItalic(word->isItalic());
 
-    sprintf(tmp, "%g", word->fontSize);
-    xmlNewProp(node, (const xmlChar*)ATTR_FONT_SIZE, (const xmlChar*)tmp);
+//    sprintf(tmp, "%g", word->fontSize);
+//    xmlNewProp(node, (const xmlChar*)ATTR_FONT_SIZE, (const xmlChar*)tmp);
     fontStyleInfo->setFontSize(word->fontSize);
 
-    xmlNewProp(node, (const xmlChar*)ATTR_FONT_COLOR,
-               (const xmlChar*)word->colortoString()->getCString());
+//    xmlNewProp(node, (const xmlChar*)ATTR_FONT_COLOR,
+//               (const xmlChar*)word->colortoString()->getCString());
     fontStyleInfo->setFontColor(word->colortoString());
 
     sprintf(tmp, "%d", word->rot);
