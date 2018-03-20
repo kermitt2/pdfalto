@@ -702,7 +702,7 @@ public:
      * @param inlineImg To know if the image is inline or not
      * @param dumpJPEG To know if the image is a JPEG format
      * @param imageIndex The numero of image */
-    void drawImageMask(GfxState *state, Object *ref, Stream *str,
+    const char* drawImageMask(GfxState *state, Object *ref, Stream *str,
                        int width, int height, GBool invert,
                        GBool inlineImg, GBool dumpJPEG, int imageIndex);
 
@@ -1058,9 +1058,54 @@ public:
      * @param invert To know if the current image is invert
      * @param inlineImg To know if the current image is inline or not */
     virtual void drawImageMask(GfxState *state, Object *ref, Stream *str,
-                               int width, int height, GBool invert, GBool inlineImg);
+                               int width, int height, GBool invert, GBool inlineImg,
+                               GBool interpolate);
 
 
+//    virtual void drawImageMask(GfxState *state, Object *ref, Stream *str,
+//    int width, int height, GBool invert,
+//    GBool inlineImg, GBool interpolate);
+//
+//
+//    virtual void drawImage(GfxState *state, Object *ref, Stream *str,
+//    int width, int height,
+//            GfxImageColorMap *colorMap,
+//    int *maskColors, GBool inlineImg,
+//    GBool interpolate);
+//
+//    virtual void drawMaskedImage(GfxState *state, Object *ref, Stream *str,
+//    int width, int height,
+//            GfxImageColorMap *colorMap,
+//    Stream *maskStr,
+//    int maskWidth, int maskHeight,
+//            GBool maskInvert, GBool interpolate);
+//
+//    virtual void drawSoftMaskedImage(GfxState *state, Object *ref,
+//            Stream *str,
+//    int width, int height,
+//            GfxImageColorMap *colorMap,
+//    Stream *maskStr,
+//    int maskWidth, int maskHeight,
+//            GfxImageColorMap *maskColorMap,
+//    double *matte, GBool interpolate);
+//
+//    Stream *getRawStream(Stream *str);
+//
+//    const char *getRawFileExtension(Stream *str);
+//
+//    void writeImageInfo(int width, int height, GfxState *state,
+//                                          GfxImageColorMap *colorMap);
+
+
+
+    virtual void drawSoftMaskedImage(GfxState *state, Object *ref,
+                                               Stream *str,
+                                               int width, int height,
+                                               GfxImageColorMap *colorMap,
+                                               Stream *maskStr,
+                                               int maskWidth, int maskHeight,
+                                               GfxImageColorMap *maskColorMap,
+                                               double *matte, GBool interpolate);
 
     /** Draw the image
      * @param state The state description
@@ -1073,7 +1118,8 @@ public:
      * @param inlineImg To know if the current image is inline or not */
     virtual void drawImage(GfxState *state, Object *ref, Stream *str,
                            int width, int height, GfxImageColorMap *colorMap,
-                           int *maskColors, GBool inlineImg);
+                           int *maskColors, GBool inlineImg,
+                           GBool interpolate);
 
     /** Initialize for the outline creation */
     virtual void initOutline(int nbPage);

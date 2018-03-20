@@ -1489,8 +1489,8 @@ void TextPage::addAttributsNode(xmlNodePtr node, TextWord *word, double &xMaxi,
         fontStyleInfo->setId(fontStyles.size());
         fontStyles.push_back(fontStyleInfo);
 
-        cout << "size :"
-             << fontStyles.size()  << std::endl;
+//        cout << "size :"
+//             << fontStyles.size()  << std::endl;
     }
 
 
@@ -3141,339 +3141,154 @@ void TextPage::clipToStrokePath(GfxState *state) {
 
 }
 
-// Draw the image mask
-void TextPage::drawImageMask(GfxState *state, Object *ref, Stream *str,
-                             int width, int height, GBool invert, GBool inlineImg, GBool dumpJPEG,
-                             int imageIndex) {
-
-
-    // ugly code / to be simplified
-
-    int i;
-    FILE *f;
-    int c;
-    int size;
-    GString *id;
-
-    double x0, y0; // top left corner of image
-    double w0, h0, w1, h1; // size of image
-    double xt, yt, wt, ht;
-    GBool rotate, xFlip, yFlip;
-    char tmp[10];
-
-    xmlNodePtr node = NULL;
-
-    // Increment the absolute object index
-    idx++;
-
-    // get image position and size
-    state->transform(0, 0, &xt, &yt);
-    state->transformDelta(1, 1, &wt, &ht);
-    if (wt > 0) {
-        x0 = xt;
-        w0 = wt;
-    } else {
-        x0 = xt + wt;
-        w0 = -wt;
-    }
-    if (ht > 0) {
-        y0 = yt;
-        h0 = ht;
-    } else {
-        y0 = yt + ht;
-        h0 = -ht;
-    }
-    state->transformDelta(1, 0, &xt, &yt);
-    rotate = fabs(xt) < fabs(yt);
-    if (rotate) {
-        w1 = h0;
-        h1 = w0;
-        xFlip = ht < 0;
-        yFlip = wt > 0;
-    } else {
-        w1 = w0;
-        h1 = h0;
-        xFlip = wt < 0;
-        yFlip = ht > 0;
-    }
-
-
-
-    // HREF
-    GString *relname = new GString(RelfileName);
-    relname->append("-");
-    relname->append(GString::fromInt(imageIndex));
-    GString *refname = new GString(ImgfileName);
-    refname->append("-");
-    refname->append(GString::fromInt(imageIndex));
-    if(dumpJPEG && str->getKind() == strDCT && !inlineImg) {
-        relname->append(".jpg");
-        refname->append(".jpg");
-        // initialize stream
-        str = ((DCTStream *)str)->getRawStream();
-        str->reset();
-
-        // copy the stream
-        while ((c = str->getChar()) != EOF)
-            fputc(c, f);
-
-        str->close();
-        fclose(f);
-    } else {
-        // open the image file and write the PBM header
-        relname->append(".pbm");
-        refname->append(".pbm");
-
-        if (!(f = fopen(relname->getCString(), "wb"))) {
-            //error(-1, "Couldn't open image file '%s'", relname->getCString());
-            return;
-        }
-        fprintf(f, "P4\n");
-        fprintf(f, "%d %d\n", width, height);
-
-        // initialize stream
-        str->reset();
-
-        // copy the stream
-        size = height * ((width + 7) / 8);
-        for (i = 0; i < size; ++i) {
-            fputc(str->getChar(), f);
-        }
-
-        str->close();
-        fclose(f);
-    }
-
-    if (!inlineImg || (inlineImg && parameters->getImageInline())) {
-        node = xmlNewNode(NULL, (const xmlChar*)TAG_IMAGE);
-        GString *id;
-        id = new GString("p");
-        xmlNewProp(node, (const xmlChar*)ATTR_ID, (const xmlChar*)buildIdImage(num, numImage, id)->getCString());
-        delete id;
-        numImage = numImage + 1;
-
-        id = new GString("p");
-        xmlNewProp(node, (const xmlChar*)ATTR_SID, (const xmlChar*)buildSID(num, getIdx(), id)->getCString());
-        delete id;
-
-        sprintf(tmp, ATTR_NUMFORMAT, x0);
-        xmlNewProp(node, (const xmlChar*)ATTR_X, (const xmlChar*)tmp);
-        sprintf(tmp, ATTR_NUMFORMAT, y0);
-
-        xmlNewProp(node, (const xmlChar*)ATTR_Y, (const xmlChar*)tmp);
-        sprintf(tmp, ATTR_NUMFORMAT, w0);
-        xmlNewProp(node, (const xmlChar*)ATTR_WIDTH, (const xmlChar*)tmp);
-        sprintf(tmp, ATTR_NUMFORMAT, h0);
-        xmlNewProp(node, (const xmlChar*)ATTR_HEIGHT, (const xmlChar*)tmp);
-        if (inlineImg) {
-            xmlNewProp(node, (const xmlChar*)ATTR_INLINE, (const xmlChar*)sTRUE);
-        }
-        xmlNewProp(node, (const xmlChar*)ATTR_MASK, (const xmlChar*)sTRUE);
-        xmlNewProp(node, (const xmlChar*)ATTR_HREF,
-                   (const xmlChar*)refname->getCString());
-        xmlAddChild(printSpace, node);
-    }
-
-    if (inlineImg && !parameters->getImageInline()) {
-        listeImageInline.push_back(new ImageInline(x0, y0, w0, h0, getIdWORD(), imageIndex, refname, getIdx()));
-    }
-
-    id = new GString("p");
-    xmlNewProp(node, (const xmlChar*)ATTR_CLIPZONE,
-               (const xmlChar*)buildIdClipZone(num, idCur, id)->getCString());
-    delete id;
-    //  free(tmp);
-    return;
-}
-// Draw the image
-void TextPage::drawImage(GfxState *state, Object *ref, Stream *str, int width,
-                         int height, GfxImageColorMap *colorMap, int *maskColors,
-                         GBool inlineImg, GBool dumpJPEG, int imageIndex) {
-
-    // ugly code / to be simplified
-
-
-    int i;
-    FILE *f;
-    int size;
-    Guchar *p;
-    GfxRGB rgb;
-    ImageStream *imgStr;
-    int c;
-    double x0, y0; // top left corner of image
-    double w0, h0, w1, h1; // size of image
-    double xt, yt, wt, ht;
-    GBool rotate, xFlip, yFlip;
-    int x, y;
-    GString *id;
-
-    xmlNodePtr node = NULL;
-
-    char tmp[10];
-
-    // Increment the absolute object index
-    idx++;
-
-    // get image position and size
-    state->transform(0, 0, &xt, &yt);
-    state->transformDelta(1, 1, &wt, &ht);
-    if (wt > 0) {
-        x0 = (xt);
-        w0 = (wt);
-    } else {
-        x0 = (xt + wt);
-        w0 = (-wt);
-    }
-    if (ht > 0) {
-        y0 = (yt);
-        h0 = (ht);
-    } else {
-        y0 = (yt + ht);
-        h0 = (-ht);
-    }
-    state->transformDelta(1, 0, &xt, &yt);
-    rotate = fabs(xt) < fabs(yt);
-    if (rotate) {
-        w1 = h0;
-        h1 = w0;
-        xFlip = ht < 0;
-        yFlip = wt > 0;
-    } else {
-        w1 = w0;
-        h1 = h0;
-        xFlip = wt < 0;
-        yFlip = ht > 0;
-    }
-
-    GString *relname = new GString(RelfileName);
-    relname->append("-");
-    relname->append(GString::fromInt(imageIndex));
-
-    GString *refname = new GString(ImgfileName);
-    refname->append("-");
-    refname->append(GString::fromInt(imageIndex));
-
-    // HREF
-    if (dumpJPEG && str->getKind() == strDCT && colorMap->getNumPixelComps()
-                                                == 3 && !inlineImg) {
-        refname->append(".jpg");
-        relname->append(".jpg");
-        if (!(f = fopen(relname->getCString(), "wb"))) {
-            //error(-1, "Couldn't open image file '%s'", relname->getCString());
-            return;
-        }
-
-        // initialize stream
-        str = ((DCTStream *)str)->getRawStream();
-        str->reset();
-
-        // copy the stream
-        while ((c = str->getChar()) != EOF)
-            fputc(c, f);
-
-        str->close();
-        fclose(f);
-    } else if (colorMap->getNumPixelComps() == 1 && colorMap->getBits() == 1) {
-        refname->append(".pbm");
-        relname->append(".pbm");
-
-        // open the image file and write the PBM header
-        if (!(f = fopen(relname->getCString(), "wb"))) {
-            //error(-1, "Couldn't open image file '%s'", relname->getCString());
-            return;
-        }
-        fprintf(f, "P4\n");
-        fprintf(f, "%d %d\n", width, height);
-
-        // initialize stream
-        str->reset();
-
-        // copy the stream
-        size = height * ((width + 7) / 8);
-        for (i = 0; i < size; ++i) {
-            fputc(str->getChar() ^ 0xff, f);
-        }
-
-        str->close();
-        fclose(f);
-    } else {
-        refname->append(".ppm");
-        relname->append(".ppm");
-        if (!(f = fopen(relname->getCString(), "wb"))) {
-            //error(-1, (char*)"Couldn't open image file '%s'", relname->getCString());
-            return;
-        }
-        fprintf(f, "P6\n");
-        fprintf(f, "%d %d\n", width, height);
-        fprintf(f, "255\n");
-
-        // initialize stream
-        imgStr = new ImageStream(str, width, colorMap->getNumPixelComps(), colorMap->getBits());
-        imgStr->reset();
-
-        // for each lin21e...
-        for (y = 0; y < height; ++y) {
-
-            // write the line
-            p = imgStr->getLine();
-            for (x = 0; x < width; ++x) {
-                GfxRenderingIntent ri;
-                colorMap->getRGB(p, &rgb, ri);
-                fputc(colToByte(rgb.r), f);
-                fputc(colToByte(rgb.g), f);
-                fputc(colToByte(rgb.b), f);
-                p += colorMap->getNumPixelComps();
-            }
-        }
-        delete imgStr;
-        fclose(f);
-    }
-
-    if (!inlineImg || (inlineImg && parameters->getImageInline())) {
-        node = xmlNewNode(NULL, (const xmlChar*)TAG_IMAGE);
-        GString *id;
-        id = new GString("p");
-        xmlNewProp(node, (const xmlChar*)ATTR_ID, (const xmlChar*)buildIdImage(num, numImage, id)->getCString());
-        delete id;
-        numImage = numImage + 1;
-
-        id = new GString("p");
-        xmlNewProp(node, (const xmlChar*)ATTR_SID, (const xmlChar*)buildSID(num, getIdx(), id)->getCString());
-        delete id;
-
-        sprintf(tmp, ATTR_NUMFORMAT, x0);
-        xmlNewProp(node, (const xmlChar*)ATTR_X, (const xmlChar*)tmp);
-        sprintf(tmp, ATTR_NUMFORMAT, y0);
-        xmlNewProp(node, (const xmlChar*)ATTR_Y, (const xmlChar*)tmp);
-        sprintf(tmp, ATTR_NUMFORMAT, w0);
-        xmlNewProp(node, (const xmlChar*)ATTR_WIDTH, (const xmlChar*)tmp);
-        sprintf(tmp, ATTR_NUMFORMAT, h0);
-        xmlNewProp(node, (const xmlChar*)ATTR_HEIGHT, (const xmlChar*)tmp);
-        //	if (rotate){
-        //		xmlNewProp(node,(const xmlChar*)ATTR_ROTATION,(const xmlChar*)sTRUE);
-        //	}
-        //	else{
-        //		xmlNewProp(node,(const xmlChar*)ATTR_ROTATION,(const xmlChar*)sFALSE);
-        //	}
-        if (inlineImg) {
-            xmlNewProp(node, (const xmlChar*)ATTR_INLINE, (const xmlChar*)sTRUE);
-        }
-        xmlNewProp(node, (const xmlChar*)ATTR_HREF,
-                   (const xmlChar*)refname->getCString());
-        xmlAddChild(printSpace, node);
-    }
-
-    if (inlineImg && !parameters->getImageInline()) {
-        listeImageInline.push_back(new ImageInline(x0, y0, w0, h0, getIdWORD(), imageIndex, refname, getIdx()));
-    }
-
-    id = new GString("p");
-    xmlNewProp(node, (const xmlChar*)ATTR_CLIPZONE,
-               (const xmlChar*)buildIdClipZone(num, idCur, id)->getCString());
-    delete id;
-
-    return;
-}
+//// Draw the image mask
+//const char* TextPage::drawImageMask(GfxState *state, Object *ref, Stream *str,
+//                             int width, int height, GBool invert, GBool inlineImg, GBool dumpJPEG,
+//                             int imageIndex) {
+//
+//
+//    // ugly code / to be simplified
+//
+//    int i;
+//    FILE *f;
+//    int c;
+//    int size;
+//    GString *id;
+//
+//    double x0, y0; // top left corner of image
+//    double w0, h0, w1, h1; // size of image
+//    double xt, yt, wt, ht;
+//    GBool rotate, xFlip, yFlip;
+//    char tmp[10];
+//
+//    const char* extension = NULL;
+//
+//    xmlNodePtr node = NULL;
+//
+//    // Increment the absolute object index
+//    idx++;
+//
+//    // get image position and size
+//    state->transform(0, 0, &xt, &yt);
+//    state->transformDelta(1, 1, &wt, &ht);
+//    if (wt > 0) {
+//        x0 = xt;
+//        w0 = wt;
+//    } else {
+//        x0 = xt + wt;
+//        w0 = -wt;
+//    }
+//    if (ht > 0) {
+//        y0 = yt;
+//        h0 = ht;
+//    } else {
+//        y0 = yt + ht;
+//        h0 = -ht;
+//    }
+//    state->transformDelta(1, 0, &xt, &yt);
+//    rotate = fabs(xt) < fabs(yt);
+//    if (rotate) {
+//        w1 = h0;
+//        h1 = w0;
+//        xFlip = ht < 0;
+//        yFlip = wt > 0;
+//    } else {
+//        w1 = w0;
+//        h1 = h0;
+//        xFlip = wt < 0;
+//        yFlip = ht > 0;
+//    }
+//
+//
+//
+//    // HREF
+//    GString *relname = new GString(RelfileName);
+//    relname->append("-");
+//    relname->append(GString::fromInt(imageIndex));
+//    GString *refname = new GString(ImgfileName);
+//    refname->append("-");
+//    refname->append(GString::fromInt(imageIndex));
+//    if(dumpJPEG && str->getKind() == strDCT && !inlineImg) {
+//        extension = ".jpg";
+//        relname->append(".jpg");
+//        refname->append(".jpg");
+//        // initialize stream
+//        str = ((DCTStream *)str)->getRawStream();
+//        str->reset();
+//
+//        // copy the stream
+//        while ((c = str->getChar()) != EOF)
+//            fputc(c, f);
+//
+//        str->close();
+//        fclose(f);
+//    } else {
+//        // open the image file and write the PBM header
+//        extension = ".pbm";
+//        relname->append(".pbm");
+//        refname->append(".pbm");
+//
+//        if (!(f = fopen(relname->getCString(), "wb"))) {
+//            //error(-1, "Couldn't open image file '%s'", relname->getCString());
+//            return extension;
+//        }
+//        fprintf(f, "P4\n");
+//        fprintf(f, "%d %d\n", width, height);
+//
+//        // initialize stream
+//        str->reset();
+//
+//        // copy the stream
+//        size = height * ((width + 7) / 8);
+//        for (i = 0; i < size; ++i) {
+//            fputc(str->getChar(), f);
+//        }
+//
+//        str->close();
+//        fclose(f);
+//    }
+//
+//    if (!inlineImg || (inlineImg && parameters->getImageInline())) {
+//        node = xmlNewNode(NULL, (const xmlChar*)TAG_IMAGE);
+//        GString *id;
+//        id = new GString("p");
+//        xmlNewProp(node, (const xmlChar*)ATTR_ID, (const xmlChar*)buildIdImage(num, numImage, id)->getCString());
+//        delete id;
+//        numImage = numImage + 1;
+//
+//        id = new GString("p");
+//        xmlNewProp(node, (const xmlChar*)ATTR_SID, (const xmlChar*)buildSID(num, getIdx(), id)->getCString());
+//        delete id;
+//
+//        sprintf(tmp, ATTR_NUMFORMAT, x0);
+//        xmlNewProp(node, (const xmlChar*)ATTR_X, (const xmlChar*)tmp);
+//        sprintf(tmp, ATTR_NUMFORMAT, y0);
+//
+//        xmlNewProp(node, (const xmlChar*)ATTR_Y, (const xmlChar*)tmp);
+//        sprintf(tmp, ATTR_NUMFORMAT, w0);
+//        xmlNewProp(node, (const xmlChar*)ATTR_WIDTH, (const xmlChar*)tmp);
+//        sprintf(tmp, ATTR_NUMFORMAT, h0);
+//        xmlNewProp(node, (const xmlChar*)ATTR_HEIGHT, (const xmlChar*)tmp);
+//        if (inlineImg) {
+//            xmlNewProp(node, (const xmlChar*)ATTR_INLINE, (const xmlChar*)sTRUE);
+//        }
+//        xmlNewProp(node, (const xmlChar*)ATTR_MASK, (const xmlChar*)sTRUE);
+//        xmlNewProp(node, (const xmlChar*)ATTR_HREF,
+//                   (const xmlChar*)refname->getCString());
+//        xmlAddChild(printSpace, node);
+//    }
+//
+//    if (inlineImg && !parameters->getImageInline()) {
+//        listeImageInline.push_back(new ImageInline(x0, y0, w0, h0, getIdWORD(), imageIndex, refname, getIdx()));
+//    }
+//
+//    id = new GString("p");
+//    xmlNewProp(node, (const xmlChar*)ATTR_CLIPZONE,
+//               (const xmlChar*)buildIdClipZone(num, idCur, id)->getCString());
+//    delete id;
+//    //  free(tmp);
+//    return extension;
+//}
 
 const char* TextPage::drawImageOrMask(GfxState *state, Object* ref, Stream *str,
                                       int width, int height,
@@ -3496,7 +3311,6 @@ const char* TextPage::drawImageOrMask(GfxState *state, Object* ref, Stream *str,
 
     // Increment the absolute object index
     idx++;
-
     // get image position and size
     state->transform(0, 0, &xt, &yt);
     state->transformDelta(1, 1, &wt, &ht);
@@ -3565,9 +3379,9 @@ const char* TextPage::drawImageOrMask(GfxState *state, Object* ref, Stream *str,
             // TODO, do we need to flip Jpegs too?
 
             // open image file
-            extension = ".jpg";
-            relname->append(".jpg");
-            refname->append(".jpg");
+            extension = EXTENSION_JPG;
+            relname->append(EXTENSION_JPG);
+            refname->append(EXTENSION_JPG);
 //			compose_image_filename(dev_picture_base, ++dev_picture_number, extension, pic_file);
 
             FILE* img_file = fopen(relname->getCString(), "wb");
@@ -3599,9 +3413,9 @@ const char* TextPage::drawImageOrMask(GfxState *state, Object* ref, Stream *str,
 
         else if (mask || (colorMap->getNumPixelComps() == 1 && colorMap->getBits() == 1))
         {
-            extension = ".png";
-            relname->append(".png");
-            refname->append(".png");
+            extension = EXTENSION_PNG;
+            relname->append(EXTENSION_PNG);
+            refname->append(EXTENSION_PNG);
 //			compose_image_filename(dev_picture_base, ++dev_picture_number, extension, pic_file);
 
             int stride = (width + 7) >> 3;
@@ -3716,9 +3530,9 @@ const char* TextPage::drawImageOrMask(GfxState *state, Object* ref, Stream *str,
 
         else
         {
-            extension = ".png";
-            refname->append(".png");
-            relname->append(".png");
+            extension = EXTENSION_PNG;
+            refname->append(EXTENSION_PNG);
+            relname->append(EXTENSION_PNG);
 
             unsigned char* data = new unsigned char[width * height * 3];
 
@@ -4696,12 +4510,25 @@ GString *XmlAltoOutputDev::convtoX(unsigned int xcol) const {
     return xret;
 }
 
-
+void XmlAltoOutputDev::drawSoftMaskedImage(GfxState *state, Object *ref,
+                                         Stream *str,
+                                         int width, int height,
+                                         GfxImageColorMap *colorMap,
+                                         Stream *maskStr,
+                                         int maskWidth, int maskHeight,
+                                         GfxImageColorMap *maskColorMap,
+                                         double *matte, GBool interpolate) {
+    drawImage(state, ref, str, width, height, colorMap,
+              NULL, gFalse, interpolate);
+    drawImage(state, ref, maskStr, maskWidth, maskHeight, maskColorMap,
+              NULL, gFalse, interpolate);
+}
 
 
 void XmlAltoOutputDev::drawImage(GfxState *state, Object *ref, Stream *str,
                              int width, int height, GfxImageColorMap *colorMap, int *maskColors,
-                             GBool inlineImg) {
+                             GBool inlineImg,
+                                 GBool interpolate) {
 
     const char* ext;
 
@@ -4778,8 +4605,10 @@ void XmlAltoOutputDev::drawImage(GfxState *state, Object *ref, Stream *str,
         else{
             //HD : in order to avoid millions of small (pixel) images
             if (height > 8 && width > 8 && imageIndex <1000){
+                imageIndex+=1;
                 //			text->drawImage(state, ref, str, width, height, colorMap, maskColors,inlineImg, dumpJPEG, imageIndex);
-                ext= text->drawImageOrMask(state, ref, str, width, height, colorMap, maskColors, inlineImg, false,index); // not a mask
+                ext= text->drawImageOrMask(state, ref, str, width, height, colorMap, maskColors, inlineImg, false, imageIndex); // not a mask
+                lPictureReferences->append(new PictureReference(reference, flip, imageIndex, ext));
 
             }
         }
@@ -4787,7 +4616,8 @@ void XmlAltoOutputDev::drawImage(GfxState *state, Object *ref, Stream *str,
 }
 
 void XmlAltoOutputDev::drawImageMask(GfxState *state, Object *ref, Stream *str,
-                                 int width, int height, GBool invert, GBool inlineImg) {
+                                 int width, int height, GBool invert, GBool inlineImg,
+                                     GBool interpolate) {
 
 
     const char* ext;
@@ -4850,9 +4680,10 @@ void XmlAltoOutputDev::drawImageMask(GfxState *state, Object *ref, Stream *str,
                 imageIndex +=1;
                 // Save this in the references
                 ext= text->drawImageOrMask(state, ref, str, width, height, NULL, NULL, inlineImg, true,imageIndex); // mask
+//                ext= text->drawImageMask(state, ref, str, width, height, invert, inlineImg,
+//                                         dumpJPEG, imageIndex);
                 lPictureReferences->append(new PictureReference(reference, flip, imageIndex, ext));
-                //			text->drawImageMask(state, ref, str, width, height, invert, inlineImg,
-                //				dumpJPEG, imageIndex);
+
             }
         }
     }
@@ -4860,10 +4691,12 @@ void XmlAltoOutputDev::drawImageMask(GfxState *state, Object *ref, Stream *str,
         if (parameters->getDisplayImage()) {
             //HD : in order to avoid millions of small (pixel) images
             if (height>8 && width > 8  && imageIndex<1000){
+                imageIndex+=1;
                 //use reference instead
-                ext= text->drawImageOrMask(state, ref, str, width, height, NULL, NULL, inlineImg, true,index); // mask
+                ext= text->drawImageOrMask(state, ref, str, width, height, NULL, NULL, inlineImg, true,imageIndex); // mask
                 //			text->drawImageMask(state, ref, str, width, height, invert, inlineImg,
                 //				dumpJPEG, imageIndex);
+                lPictureReferences->append(new PictureReference(reference, flip, imageIndex, ext));
             }
         }
     }
@@ -5160,7 +4993,6 @@ GBool XmlAltoOutputDev::dumpOutline(xmlNodePtr parentNode,GList *itemsA, PDFDoc 
 
     return atLeastOne;
 }
-
 
 void XmlAltoOutputDev::closeOutline(GString *shortFileName) {
     shortFileName->append("_");
