@@ -2500,7 +2500,7 @@ void TextPage::dump(GBool blocks, GBool fullFontName) {
         //xmlNewProp(node, (const xmlChar *) ATTR_SID,(const xmlChar*)listeImages[i]->getImageSid()->getCString());
 
 
-        sprintf(tmp, ATTR_NUMFORMAT, listeImages[i]->getYPositionImage());
+        sprintf(tmp, ATTR_NUMFORMAT, listeImages[i]->getXPositionImage());
         xmlNewProp(printSpace, (const xmlChar *) ATTR_X, (const xmlChar *) tmp);
         sprintf(tmp, ATTR_NUMFORMAT, listeImages[i]->getYPositionImage());
         xmlNewProp(printSpace, (const xmlChar *) ATTR_Y, (const xmlChar *) tmp);
