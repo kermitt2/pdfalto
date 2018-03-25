@@ -1251,9 +1251,13 @@ public:
      * @param levelA The hierarchic level of the current items list */
     void generateOutline(GList *itemsA, PDFDoc *docA, int levelA);
 
+    /** Initialize metadata info document */
+    void initMetadataInfoDoc();
     /** Add the pdf metadata informations
      * @param doc The PDF document object */
-    void addInfo(PDFDocXrce *doc);
+    void addMetadataInfo(PDFDocXrce *doc);
+
+    void closeMetadataInfoDoc(GString *shortFileName);
 
     /** Appends the styles metadata informations */
     void addStyles();
@@ -1303,6 +1307,11 @@ private:
     xmlDocPtr  docOutline;
     /** The root outline node */
     xmlNodePtr docOutlineRoot;
+
+    /** The XML document metadata information */
+    xmlDocPtr  docMetadata;
+    /** The root metadata node */
+    xmlNodePtr docMetadataRoot;
 
     Catalog *myCatalog;
 

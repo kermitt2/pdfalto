@@ -10,6 +10,7 @@ namespace ConstantsUtils {
 	const char *EXTENSION_PDF = ".pdf";
 	const char *EXTENSION_PDF_MAJ = ".PDF";
 	const char *NAME_OUTLINE = "outline";
+	const char *NAME_METADATA = "metadata";
 	const char *NAME_ANNOT = "annot";
 	const char *NAME_DATA_DIR = "_data";
 

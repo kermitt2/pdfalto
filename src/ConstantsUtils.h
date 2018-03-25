@@ -13,6 +13,7 @@ namespace ConstantsUtils {
 	extern const char *EXTENSION_PDF;
 	extern const char *EXTENSION_PDF_MAJ;
 	extern const char *NAME_OUTLINE;
+	extern const char *NAME_METADATA;
 	extern const char *NAME_ANNOT;
 	extern const char *NAME_DATA_DIR;
 

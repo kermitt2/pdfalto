@@ -4037,16 +4037,21 @@ XmlAltoOutputDev::~XmlAltoOutputDev() {
     }
 }
 
+void XmlAltoOutputDev::initMetadataInfoDoc(){
+    char* tmp = (char*)malloc(10*sizeof(char));
+    docMetadata = xmlNewDoc((const xmlChar*)VERSION);
+    globalParams->setTextEncoding((char*)ENCODING_UTF8);
+    docMetadataRoot = xmlNewNode(NULL, (const xmlChar*)TAG_METADATA);
+    xmlDocSetRootElement(docMetadata, docMetadataRoot);
+}
 
 
-
-
-void XmlAltoOutputDev::addInfo(PDFDocXrce *pdfdocxrce){
+void XmlAltoOutputDev::addMetadataInfo(PDFDocXrce *pdfdocxrce){
     Object info;
 
     GString *content;
 
-    xmlNodePtr nodeSourceImageInfo = findNodeByName(docroot, (const xmlChar*)TAG_SOURCE_IMAGE_INFO);
+    //xmlNodePtr nodeSourceImageInfo = findNodeByName(docroot, (const xmlChar*)TAG_SOURCE_IMAGE_INFO);
 
     xmlNodePtr titleNode = xmlNewNode(NULL, (const xmlChar*)"TITLE");
     xmlNodePtr subjectNode = xmlNewNode(NULL, (const xmlChar*)"SUBJECT");
@@ -4067,14 +4072,14 @@ void XmlAltoOutputDev::addInfo(PDFDocXrce *pdfdocxrce){
     creationDateNode->type = XML_ELEMENT_NODE;
     modDateNode->type = XML_ELEMENT_NODE;
 
-    xmlAddChild(nodeSourceImageInfo, titleNode);
-    xmlAddChild(nodeSourceImageInfo, subjectNode);
-    xmlAddChild(nodeSourceImageInfo, keywordsNode);
-    xmlAddChild(nodeSourceImageInfo, authorNode);
-    xmlAddChild(nodeSourceImageInfo, creatorNode);
-    xmlAddChild(nodeSourceImageInfo, producerNode);
-    xmlAddChild(nodeSourceImageInfo, creationDateNode);
-    xmlAddChild(nodeSourceImageInfo, modDateNode);
+    xmlAddChild(docMetadataRoot, titleNode);
+    xmlAddChild(docMetadataRoot, subjectNode);
+    xmlAddChild(docMetadataRoot, keywordsNode);
+    xmlAddChild(docMetadataRoot, authorNode);
+    xmlAddChild(docMetadataRoot, creatorNode);
+    xmlAddChild(docMetadataRoot, producerNode);
+    xmlAddChild(docMetadataRoot, creationDateNode);
+    xmlAddChild(docMetadataRoot, modDateNode);
 
 //	xmlNewProp(nodeVersion, (const xmlChar*)ATTR_VALUE,(const xmlChar*)PDFTOXML_VERSION);
 //
@@ -4117,6 +4122,15 @@ void XmlAltoOutputDev::addInfo(PDFDocXrce *pdfdocxrce){
     info.free();
 }
 
+void XmlAltoOutputDev::closeMetadataInfoDoc(GString *shortFileName){
+    GString *metadataFilename = new GString(shortFileName);
+    metadataFilename->append("_");
+    metadataFilename->append(NAME_METADATA);
+    metadataFilename->append(EXTENSION_XML);
+    xmlSaveFile(metadataFilename->getCString(), docMetadata);
+    xmlFreeDoc(docMetadata);
+
+}
 
 void XmlAltoOutputDev::addStyles(){
 

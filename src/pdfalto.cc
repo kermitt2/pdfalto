@@ -374,8 +374,9 @@ int main(int argc, char *argv[]) {
 //    printf("crop width: %g\n",doc->getPageCropWidth(1));
     xmlAltoOut = new XmlAltoOutputDev(textFileName, fileName, doc->getCatalog(), physLayout, verbose, nsURI, cmd);
 
-
-    xmlAltoOut->addInfo(doc);
+    xmlAltoOut->initMetadataInfoDoc();
+    xmlAltoOut->addMetadataInfo(doc);
+    xmlAltoOut->closeMetadataInfoDoc(shortFileName);
 
 
     if (xmlAltoOut->isOk()) {
