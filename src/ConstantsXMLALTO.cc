@@ -45,7 +45,7 @@ namespace ConstantsXMLALTO {
 
 	const char *TAG_PAGE = "Page";
 	const char *TAG_IMAGE = "Illustration";
-	const char *TAG_VECTORIALIMAGES = "VECTORIALIMAGES";
+	const char *TAG_VECTORIALIMAGES = "svg";
 	const char *TAG_BLOCK = "TextBlock";
 	const char *TAG_TEXT = "TextLine";
 
@@ -66,12 +66,15 @@ namespace ConstantsXMLALTO {
     const char *ATTR_FONTCOLOR = "FONTCOLOR";
     const char *ATTR_FONTSTYLE = "FONTSTYLE";
 
-	const char *TAG_VECTORIALINSTRUCTIONS = "VECTORIALINSTRUCTIONS";
-	const char *TAG_GROUP = "GROUP";
-	const char *TAG_CLIP = "CLIP";
-	const char *TAG_M = "M";
-	const char *TAG_L = "L";
-	const char *TAG_C = "C";
+	const char *TAG_VECTORIALINSTRUCTIONS = "svg";
+	const char *TAG_GROUP = "g";
+	const char *TAG_CLIP = "clipPath";
+	const char *TAG_PATH = "path";
+	const char *TAG_PATH_DEF = "d";
+	const char *TAG_PATH_M = "M";
+	const char *TAG_PATH_L = "L";
+	const char *TAG_PATH_C = "C";
+	const char *TAG_PATH_CLOSE = "Z";
 	
 	const char *TAG_PAR_CONF = "CONFIGURATION";
 	const char *TAG_PAR_TOOL = "TOOL";
@@ -134,7 +137,7 @@ namespace ConstantsXMLALTO {
 	const char *ATTR_STYLE = "style";
 	const char *ATTR_CLOSED = "closed";
 	const char *ATTR_EVENODD = "evenodd";
-	const char *ATTR_CLIPZONE = "clipZone";
+	const char *ATTR_CLIPZONE = "clip-path";
 	const char *ATTR_IDCLIPZONE = "idClipZone";
 	
 	const char *ATTR_INLINE = "inline";
@@ -201,7 +204,7 @@ namespace ConstantsXMLALTO {
 
 	// Attributs for number format
 	const char *ATTR_NUMFORMAT = "%g";
-	const char *ATTR_SID = "sid";
+	const char *ATTR_SID = "id";
 	
 	//PAGE BOXES
 	const char *TAG_MEDIABOX = "MEDIABOX";

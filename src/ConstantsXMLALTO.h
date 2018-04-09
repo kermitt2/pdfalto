@@ -66,10 +66,12 @@ namespace ConstantsXMLALTO {
 	extern const char *TAG_VECTORIALINSTRUCTIONS;
 	extern const char *TAG_GROUP;
 	extern const char *TAG_CLIP;
-	extern const char *TAG_M;
-	extern const char *TAG_L;
-	extern const char *TAG_C;
-	
+	extern const char *TAG_PATH;
+	extern const char *TAG_PATH_DEF;
+	extern const char *TAG_PATH_M;
+	extern const char *TAG_PATH_L;
+	extern const char *TAG_PATH_C;
+	extern const char *TAG_PATH_CLOSE;
 	
 	extern const char *TAG_PAR_CONF ;
 	extern const char *TAG_PAR_TOOL ;

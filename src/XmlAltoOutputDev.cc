@@ -824,12 +824,12 @@ void TextPage::endPage(GString *dataDir) {
         GString *relname = new GString(RelfileName);
         relname->append("-");
         relname->append(GString::fromInt(num));
-        relname->append(EXTENSION_VEC);
+        relname->append(EXTENSION_SVG);
 
         GString *refname = new GString(ImgfileName);
         refname->append("-");
         refname->append(GString::fromInt(num));
-        refname->append(EXTENSION_VEC);
+        refname->append(EXTENSION_SVG);
 
         xiNs=xmlNewNs(NULL, (const xmlChar*)XI_URI, (const xmlChar*)XI_PREFIX);
         if (xiNs) {
@@ -842,7 +842,7 @@ void TextPage::endPage(GString *dataDir) {
                 GString *imageName = new GString("image");
                 imageName->append("-");
                 imageName->append(GString::fromInt(num));
-                imageName->append(EXTENSION_VEC);
+                imageName->append(EXTENSION_SVG);
                 // ID: 1850760
                 GString *cp;
                 cp = refname->copy();
@@ -2976,7 +2976,9 @@ void TextPage::createPath(GfxPath *path, GfxState *state, xmlNodePtr groupNode) 
     int n, m, i, j;
     double a, b;
     char *tmp;
-    tmp = (char*)malloc(500*sizeof(char));
+    int buffLen = 500;
+    tmp = (char*)malloc(buffLen*sizeof(char));
+    int tmpLen;
 
     xmlNodePtr pathnode = NULL;
 
@@ -2990,13 +2992,12 @@ void TextPage::createPath(GfxPath *path, GfxState *state, xmlNodePtr groupNode) 
         x0 = a;
         y0 = b;
 
+        tmp[0] = '\0';
+        tmpLen = 0;
+
         // M tag : moveto
-        pathnode = xmlNewNode(NULL, (const xmlChar*)TAG_M);
-        sprintf(tmp, "%g", x0);
-        xmlNewProp(pathnode, (const xmlChar*)ATTR_X, (const xmlChar*)tmp);
-        sprintf(tmp, "%g", y0);
-        xmlNewProp(pathnode, (const xmlChar*)ATTR_Y, (const xmlChar*)tmp);
-        xmlAddChild(groupNode, pathnode);
+        tmpLen += sprintf(tmp+tmpLen, "%s %g,%g", TAG_PATH_M, x0, y0);
+        tmp = (char*)realloc(tmp, (tmpLen+buffLen)*sizeof(char));
 
         j = 1;
         while (j < m) {
@@ -3018,26 +3019,8 @@ void TextPage::createPath(GfxPath *path, GfxState *state, xmlNodePtr groupNode) 
                 y3=b;
 
                 // C tag  : curveto
-                pathnode=xmlNewNode(NULL, (const xmlChar*)TAG_C);
-                sprintf(tmp, "%g", x1);
-                xmlNewProp(pathnode, (const xmlChar*)ATTR_X1,
-                           (const xmlChar*)tmp);
-                sprintf(tmp, "%g", y1);
-                xmlNewProp(pathnode, (const xmlChar*)ATTR_Y1,
-                           (const xmlChar*)tmp);
-                sprintf(tmp, "%g", x2);
-                xmlNewProp(pathnode, (const xmlChar*)ATTR_X2,
-                           (const xmlChar*)tmp);
-                sprintf(tmp, "%g", y2);
-                xmlNewProp(pathnode, (const xmlChar*)ATTR_Y2,
-                           (const xmlChar*)tmp);
-                sprintf(tmp, "%g", x3);
-                xmlNewProp(pathnode, (const xmlChar*)ATTR_X3,
-                           (const xmlChar*)tmp);
-                sprintf(tmp, "%g", y3);
-                xmlNewProp(pathnode, (const xmlChar*)ATTR_Y3,
-                           (const xmlChar*)tmp);
-                xmlAddChild(groupNode, pathnode);
+                tmpLen += sprintf(tmp+tmpLen, " %s %g,%g %g,%g %g,%g", TAG_PATH_C, x1, y1, x2, y2, x3, y3);
+                tmp = (char*)realloc(tmp, (tmpLen+buffLen)*sizeof(char));
 
                 j += 3;
             } else {
@@ -3048,25 +3031,21 @@ void TextPage::createPath(GfxPath *path, GfxState *state, xmlNodePtr groupNode) 
                 y1=b;
 
                 // L tag : lineto
-                pathnode=xmlNewNode(NULL, (const xmlChar*)TAG_L);
-                sprintf(tmp, "%g", x1);
-                xmlNewProp(pathnode, (const xmlChar*)ATTR_X,
-                           (const xmlChar*)tmp);
-                sprintf(tmp, "%g", y1);
-                xmlNewProp(pathnode, (const xmlChar*)ATTR_Y,
-                           (const xmlChar*)tmp);
-                xmlAddChild(groupNode, pathnode);
+                tmpLen += sprintf(tmp+tmpLen, " %s %g,%g", TAG_PATH_L, x1, y1);
+                tmp = (char*)realloc(tmp, (tmpLen+buffLen)*sizeof(char));
 
                 ++j;
             }
         }
 
         if (subpath->isClosed()) {
-            if (!xmlHasProp(groupNode, (const xmlChar*)ATTR_CLOSED)) {
-                xmlNewProp(groupNode, (const xmlChar*)ATTR_CLOSED,
-                           (const xmlChar*)sTRUE);
-            }
+        	tmpLen += sprintf(tmp+tmpLen, " %s", TAG_PATH_CLOSE);
+        	tmp = (char*)realloc(tmp, (tmpLen+buffLen)*sizeof(char));
         }
+
+        pathnode = xmlNewNode(NULL, (const xmlChar*)TAG_PATH);
+        xmlNewProp(pathnode, (const xmlChar*)TAG_PATH_DEF, (const xmlChar*)tmp);
+        xmlAddChild(groupNode, pathnode);
     }
     free(tmp);
 }
