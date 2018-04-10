@@ -33,7 +33,7 @@ namespace ConstantsXMLALTO {
     const char *TAG_SOFTWARE_NAME = "softwareName";
     const char *TAG_SOFTWARE_VERSION = "softwareVersion";
 
-	const char *TAG_STYLES = "Styles";
+	const char *TAG_STYLES = "style";
 	const char *TAG_LAYOUT = "Layout";
 
 	const char *TAG_METADATA = "METADATA";
@@ -47,12 +47,12 @@ namespace ConstantsXMLALTO {
 	const char *TAG_IMAGE = "Illustration";
 	const char *TAG_VECTORIALIMAGES = "svg";
 	const char *TAG_BLOCK = "TextBlock";
-	const char *TAG_TEXT = "TextLine";
+	const char *TAG_TEXT = "text";
 
     const char *TAG_PRINTSPACE = "PrintSpace";
 
 	const char *TAG_TOKEN = "String";
-	const char *ATTR_STYLEREFS = "STYLEREFS";
+	const char *ATTR_STYLEREFS = "class";
 
     const char *ATTR_TOKEN_CONTENT = "CONTENT";
 
@@ -75,7 +75,7 @@ namespace ConstantsXMLALTO {
 	const char *TAG_PATH_L = "L";
 	const char *TAG_PATH_C = "C";
 	const char *TAG_PATH_CLOSE = "Z";
-	
+
 	const char *TAG_PAR_CONF = "CONFIGURATION";
 	const char *TAG_PAR_TOOL = "TOOL";
 	const char *TAG_PAR_NAME = "NAME";
@@ -105,8 +105,8 @@ namespace ConstantsXMLALTO {
 	const char *ATTR_HEIGHT = "HEIGHT";
 	const char *ATTR_PHYSICAL_IMG_NR = "PHYSICAL_IMG_NR";
 	const char *ATTR_HREF = "FILEID";
-	const char *ATTR_X = "HPOS";
-	const char *ATTR_Y = "VPOS";
+	const char *ATTR_X = "x";
+	const char *ATTR_Y = "y";
 	
 	const char *ATTR_ROTATION = "rotation";
 	const char *ATTR_ANGLE = "angle";

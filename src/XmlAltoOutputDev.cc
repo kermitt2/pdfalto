@@ -816,6 +816,8 @@ void TextPage::endPage(GString *dataDir) {
         endWord();
     }
 
+    addStyles();
+
     if (parameters->getDisplayImage()) {
 
         xmlNodePtr xiinclude=NULL;
@@ -1375,6 +1377,101 @@ void TextPage::addWord(TextWord *word) {
         }
         rawLastWord = word;
     }
+
+    // fill svg page
+    xmlNodePtr textNode = xmlNewNode(NULL, (const xmlChar*)TAG_TEXT);
+
+    GString *stringTemp = new GString();
+    UnicodeMap *uMap;
+    if (!(uMap = globalParams->getTextEncoding()))
+    	return;
+	dumpFragment(word->text, word->len, uMap, stringTemp);
+	xmlNodePtr contentNode = xmlNewText((const xmlChar*)stringTemp->getCString());
+	delete stringTemp;
+	xmlAddChild(textNode, contentNode);
+
+	char *tmp;
+	tmp=(char*)malloc(10*sizeof(char));
+	sprintf(tmp, ATTR_NUMFORMAT, word->xMin);
+	xmlNewProp(textNode, (const xmlChar*)ATTR_X, (const xmlChar*)tmp);
+	sprintf(tmp, ATTR_NUMFORMAT, word->yMin);
+	xmlNewProp(textNode, (const xmlChar*)ATTR_Y, (const xmlChar*)tmp);
+
+	if (word->getFontName()) {
+		TextFontStyleInfo *fontStyleInfo = new TextFontStyleInfo();
+
+		// set font attributes
+		//fontStyleInfo->setFontSize(word->fontSize);
+		fontStyleInfo->setFontSize((word->xMax - word->xMin)/word->charLen);
+		fontStyleInfo->setFontColor(word->colortoString());
+		fontStyleInfo->setIsBold(word->isBold());
+		fontStyleInfo->setIsItalic(word->isItalic());
+
+		// set font name
+		xmlChar* xcFontName = (xmlChar*)word->normalizeFontName(word->getFontName());
+		//xmlChar* xcFontName = (xmlChar*)word->getFontName();
+		int size = xmlStrlen(xcFontName);
+		Unicode* uncdFontName = (Unicode *)malloc((size+1) * sizeof(Unicode));
+		for (int i=0; i < size; i++) {
+			uncdFontName[i] = (Unicode) xcFontName[i];
+		}
+		uncdFontName[size] = (Unicode)0;
+		GString* gsFontName = new GString();
+		dumpFragment(uncdFontName, size, uMap, gsFontName);
+		fontStyleInfo->setFontName(gsFontName);
+
+		GBool contains = gFalse;
+		for (int x = 0; x<fontStyles.size(); x++) {
+			if (fontStyleInfo->cmp(fontStyles[x])) {
+				contains = gTrue;
+				fontStyleInfo->setId(x);
+				break;
+			}
+		}
+		if (!contains) {
+			fontStyleInfo->setId(fontStyles.size());
+			//fontStyles.push_back(fontStyleInfo);
+		}
+
+		sprintf(tmp, "font%d", fontStyleInfo->getId());
+		xmlNewProp(textNode, (const xmlChar*)ATTR_STYLEREFS, (const xmlChar*)tmp);
+	}
+
+	xmlAddChild(vecroot, textNode);
+
+	free(tmp);
+}
+
+void TextPage::addStyles(){
+
+    char *tmp;
+    tmp=(char*)malloc(500*sizeof(char));
+
+    xmlNodePtr stylesNode = xmlNewNode(NULL, (const xmlChar*)TAG_STYLES);
+
+    for (int j = 0; j < fontStyles.size(); ++j) {
+
+    	TextFontStyleInfo *fontStyleInfo = fontStyles[j];
+
+    	sprintf(tmp, "\n.font%d {\n", fontStyleInfo->getId());
+    	sprintf(tmp+strlen(tmp), "font-size: %.3f;\n", fontStyleInfo->getFontSize());
+    	sprintf(tmp+strlen(tmp), "font-family: %s;\n", fontStyleInfo->getFontNameCS()->getCString());
+    	sprintf(tmp+strlen(tmp), "color: %s;\n", fontStyleInfo->getFontColor()->getCString());
+    	if (fontStyleInfo->isItalic())
+    		sprintf(tmp+strlen(tmp), "font-style: italic;\n");
+    	if (fontStyleInfo->isBold())
+    		sprintf(tmp+strlen(tmp), "font-weight: bold;\n");
+    	sprintf(tmp+strlen(tmp), "}", fontStyleInfo->getFontSize());
+
+    	xmlNodePtr stylesContentNode = xmlNewText((const xmlChar*)tmp);
+    	xmlAddChild(stylesNode, stylesContentNode);
+
+    }
+
+    xmlAddPrevSibling(vecroot->xmlChildrenNode, stylesNode);
+    //xmlAddChild(vecroot, stylesNode);
+
+    free(tmp);
 }
 
 void TextPage::addAttributTypeReadingOrder(xmlNodePtr node, char* tmp,

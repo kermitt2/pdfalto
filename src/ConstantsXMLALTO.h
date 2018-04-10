@@ -72,7 +72,7 @@ namespace ConstantsXMLALTO {
 	extern const char *TAG_PATH_L;
 	extern const char *TAG_PATH_C;
 	extern const char *TAG_PATH_CLOSE;
-	
+
 	extern const char *TAG_PAR_CONF ;
 	extern const char *TAG_PAR_TOOL ;
 	extern const char *TAG_PAR_NAME ;

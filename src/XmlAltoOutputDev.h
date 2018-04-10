@@ -683,6 +683,8 @@ public:
      *  @param word The current word */
     void addWord(TextWord *word);
 
+    void addStyles();
+
     /** Dump contents of the current page
      * @param blocks To know if the blocks option is selected
      * @param fullFontName To know if the fullFontName option is selected */
