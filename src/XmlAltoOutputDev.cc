@@ -3437,6 +3437,9 @@ const char* TextPage::drawImageOrMask(GfxState *state, Object* ref, Stream *str,
 //	if (pic_file.getLength() == 0)
     if (1)
     {
+        extension = EXTENSION_PNG;
+        relname->append(EXTENSION_PNG);
+        refname->append(EXTENSION_PNG);
         // ------------------------------------------------------------
         // dump JPEG file
         // ------------------------------------------------------------
@@ -3446,9 +3449,6 @@ const char* TextPage::drawImageOrMask(GfxState *state, Object* ref, Stream *str,
             // TODO, do we need to flip Jpegs too?
 
             // open image file
-            extension = EXTENSION_JPG;
-            relname->append(EXTENSION_JPG);
-            refname->append(EXTENSION_JPG);
 //			compose_image_filename(dev_picture_base, ++dev_picture_number, extension, pic_file);
 
             FILE* img_file = fopen(relname->getCString(), "wb");
@@ -3480,9 +3480,6 @@ const char* TextPage::drawImageOrMask(GfxState *state, Object* ref, Stream *str,
 
         else if (mask || (colorMap->getNumPixelComps() == 1 && colorMap->getBits() == 1))
         {
-            extension = EXTENSION_PNG;
-            relname->append(EXTENSION_PNG);
-            refname->append(EXTENSION_PNG);
 //			compose_image_filename(dev_picture_base, ++dev_picture_number, extension, pic_file);
 
             int stride = (width + 7) >> 3;
@@ -3597,10 +3594,6 @@ const char* TextPage::drawImageOrMask(GfxState *state, Object* ref, Stream *str,
 
         else
         {
-            extension = EXTENSION_PNG;
-            refname->append(EXTENSION_PNG);
-            relname->append(EXTENSION_PNG);
-
             unsigned char* data = new unsigned char[width * height * 3];
 
             if (data != NULL)
