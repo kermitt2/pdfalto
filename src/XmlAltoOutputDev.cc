@@ -4368,7 +4368,7 @@ void XmlAltoOutputDev::drawChar(GfxState *state, double x, double y, double dx,
     if (uLen ==0) {
         uLen=1;
     }
-    if((nBytes > 1 || u == 0 )) {//}&& globalParams->getApplyOCR())
+    if((nBytes > 1 || (u[0] == (Unicode)0 && uLen == 1 ) )) {//}&& globalParams->getApplyOCR())
         // as a first iteration for dictionnaries, placing a placeholder, which means creating a map based on the font-code mapping to unicode from : https://unicode.org/charts/PDF/U2B00.pdf
         printf("ToBeOCRISEChar: x=%.2f y=%.2f c=%3d=0x%02x='%c' u=%3d \n",
                    (double)x, (double)y, c, c, c, u);
