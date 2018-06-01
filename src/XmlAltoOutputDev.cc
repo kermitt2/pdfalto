@@ -3829,6 +3829,12 @@ XmlAltoOutputDev::XmlAltoOutputDev(GString *fileName, GString *fileNamePdf,
     GString *imgDirName;
     Catalog *myCatalog;
 
+    //initialise some special unicodes 9 to begin with as placeholders, from https://unicode.org/charts/PDF/U2B00.pdf
+    placeholders.push_back((Unicode)9724); placeholders.push_back((Unicode)9650); placeholders.push_back((Unicode)9658);
+    placeholders.push_back((Unicode)9670); placeholders.push_back((Unicode)9675); placeholders.push_back((Unicode)9671);
+    placeholders.push_back((Unicode)9679); placeholders.push_back((Unicode)9678); placeholders.push_back((Unicode)9725);
+    placeholders.push_back((Unicode)9720); placeholders.push_back((Unicode)9721); placeholders.push_back((Unicode)9722);
+
     //curstate=(double*)malloc(10000*sizeof(6*double));
 
     myCatalog = catalog;
@@ -4368,11 +4374,25 @@ void XmlAltoOutputDev::drawChar(GfxState *state, double x, double y, double dx,
     if (uLen ==0) {
         uLen=1;
     }
+    // How could be managed for first case
     if((nBytes > 1 || (u[0] == (Unicode)0 && uLen == 1 ) )) {//}&& globalParams->getApplyOCR())
         // as a first iteration for dictionnaries, placing a placeholder, which means creating a map based on the font-code mapping to unicode from : https://unicode.org/charts/PDF/U2B00.pdf
-        printf("ToBeOCRISEChar: x=%.2f y=%.2f c=%3d=0x%02x='%c' u=%3d \n",
-                   (double)x, (double)y, c, c, c, u);
-        u[0] = (Unicode)9724;
+        GString *fontName = state->getFont()->getName()->copy();
+        fontName = fontName->lowerCase();
+        GString *fontName_charcode = fontName->append(to_string(c).c_str());// for performance and simplicity only appending is done
+        printf("ToBeOCRISEChar: x=%.2f y=%.2f c=%3d=0x%02x='%c' u=%3d fontName=%s \n",
+                   (double)x, (double)y, c, c, c, u, fontName->getCString());
+        // do map every char to a unicode, depending on charcode and font name
+        Unicode mapped_unicode = 0;
+        if( unicode_map.find(fontName_charcode->getCString()) != unicode_map.end()) {
+            mapped_unicode = unicode_map.at(fontName_charcode->getCString());
+        }
+        if(!mapped_unicode){
+            mapped_unicode = placeholders[0];//no special need for random
+            placeholders.erase(placeholders.begin());
+            unicode_map.insert(my_unordered_map::value_type(fontName_charcode->getCString(), mapped_unicode));
+        }
+        u[0] = mapped_unicode;
     }
     text->addChar(state, x, y, dx, dy, c, nBytes, u, uLen);
 }
