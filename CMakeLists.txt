@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.5+)
 project(pdfalto)
 
-set(CMAKE_CXX_STANDARD 98)
+set(CMAKE_CXX_STANDARD 11)
 
 #build xpdf
 set ( XPDF_SUBDIR ${CMAKE_CURRENT_SOURCE_DIR}/xpdf-4.00)
