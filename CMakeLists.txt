@@ -6,6 +6,12 @@ set(CMAKE_CXX_STANDARD 98)
 #build xpdf
 set ( XPDF_SUBDIR ${CMAKE_CURRENT_SOURCE_DIR}/xpdf-4.00)
 
+set ( IMAGE_SUBDIR ${CMAKE_CURRENT_SOURCE_DIR}/image)
+
+set ( PNG_SUBDIR ${CMAKE_CURRENT_SOURCE_DIR}/image/png)
+
+set ( ZLIB_SUBDIR ${CMAKE_CURRENT_SOURCE_DIR}/image/zlib)
+
 set(XPDF_BUILD_DIR ${XPDF_SUBDIR}/build)
 
 add_subdirectory(image/png)
@@ -30,7 +36,7 @@ set(SOURCE_FILES
 
 add_executable(pdfalto ${SOURCE_FILES})
 
-target_link_libraries(pdfalto png zlib xml2 xpdf goo fofi ${XPDF_BUILD_DIR}/xpdf/lib/libxpdf.a)
+target_link_libraries(pdfalto png ${PNG_SUBDIR}/libpng.a zlib ${ZLIB_SUBDIR}/libzlib.a xml2 xpdf ${XPDF_BUILD_DIR}/xpdf/lib/libxpdf.a goo fofi )
 target_include_directories(pdfalto
         PUBLIC /usr/include/libxml2
         PUBLIC image/png

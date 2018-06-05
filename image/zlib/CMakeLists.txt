@@ -29,4 +29,4 @@ set(ZLIB_SOURCE_FILES
         zutil.h
         )
 
-add_library(${PROJECT_NAME} SHARED ${ZLIB_SOURCE_FILES})
+add_library(${PROJECT_NAME} STATIC ${ZLIB_SOURCE_FILES})
