@@ -40,7 +40,7 @@ using namespace ConstantsUtils;
 
 using namespace ConstantsXMLALTO;
 
-#include "TextString.h";
+#include "TextString.h"
 
 void removeAlreadyExistingData(GString *dir);
 
@@ -177,9 +177,9 @@ int main(int argc, char *argv[]) {
     if (XMLcfgFileName[0]){}
     else{
         if (!ok || argc < 2 || argc > 3 || printVersion || printHelp) {
-            fprintf(stderr, PDFALTO_NAME);
+            fprintf(stderr, "%s", PDFALTO_NAME);
             fprintf(stderr, " version ");
-            fprintf(stderr, PDFALTO_VERSION);
+            fprintf(stderr, "%s", PDFALTO_VERSION);
             fprintf(stderr, "\n");
             fprintf(stderr, "(Based on Xpdf version %s, %s)\n", xpdfVersion, xpdfCopyright);
             if (!printVersion) {
@@ -286,7 +286,7 @@ int main(int argc, char *argv[]) {
     }
 
     //store paramneters in a given XML file
-    if (XMLcfgFileName && XMLcfgFileName[0]){
+    if (XMLcfgFileName[0]){
         parameters->saveToXML(XMLcfgFileName,firstPage,lastPage);
 //   	goto err0;
     }

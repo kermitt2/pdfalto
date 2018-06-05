@@ -22,7 +22,7 @@
 #include "Parameters.h"
 #include "Catalog.h"
 #include "AnnotsXrce.h"
-#include <unordered_map>;
+#include <unordered_map>
 // PNG lib
 #include "png.h"
 

@@ -490,14 +490,14 @@ GString *TextWord::convtoX(double xcol) const {
     unsigned int k;
     k = static_cast<int>(xcol);
     k= k/16;
-    if ((k>=0)&&(k<10))
+    if ((k>0)&&(k<10))
         tmp=(char) ('0'+k);
     else
         tmp=(char)('a'+k-10);
     xret->append(tmp);
     k = static_cast<int>(xcol);
     k= k%16;
-    if ((k>=0)&&(k<10))
+    if ((k>0)&&(k<10))
         tmp=(char) ('0'+k);
     else
         tmp=(char)('a'+k-10);
@@ -1644,6 +1644,22 @@ void TextPage::testLinkedText(xmlNodePtr node,double xMin,double yMin,double xMa
 //							//zone x1,x1,h,w
 //							//sprintf()
 //							xmlNewProp(node, (const xmlChar*)ATTR_LINKREF,(const xmlChar*)tmp);
+                        } case actionGoToR:{
+                            break;
+                        } case actionLaunch:{
+                            break;
+                        } case actionNamed:{
+                            break;
+                        } case actionMovie:{
+                            break;
+                        } case actionJavaScript:{
+                            break;
+                        } case actionSubmitForm:{
+                            break;
+                        } case actionHide:{
+                            break;
+                        } case actionUnknown:{
+                            break;
                         }
                     }//switch
                 }
@@ -4381,7 +4397,7 @@ void XmlAltoOutputDev::drawChar(GfxState *state, double x, double y, double dx,
         fontName = fontName->lowerCase();
         GString *fontName_charcode = fontName->append(to_string(c).c_str());// for performance and simplicity only appending is done
         printf("ToBeOCRISEChar: x=%.2f y=%.2f c=%3d=0x%02x='%c' u=%3d fontName=%s \n",
-                   (double)x, (double)y, c, c, c, u, fontName->getCString());
+                   (double)x, (double)y, c, c, c, u[0], fontName->getCString());
         // do map every char to a unicode, depending on charcode and font name
         Unicode mapped_unicode = 0;
         if( unicode_map.find(fontName_charcode->getCString()) != unicode_map.end()) {
@@ -4577,13 +4593,13 @@ GString *XmlAltoOutputDev::convtoX(unsigned int xcol) const {
     char tmp;
     unsigned int k;
     k = (xcol/16);
-    if ((k>=0)&&(k<10))
+    if ((k>0)&&(k<10))
         tmp=(char) ('0'+k);
     else
         tmp=(char)('a'+k-10);
     xret->append(tmp);
     k = (xcol%16);
-    if ((k>=0)&&(k<10))
+    if ((k>0)&&(k<10))
         tmp=(char) ('0'+k);
     else
         tmp=(char)('a'+k-10);
@@ -5023,6 +5039,23 @@ GBool XmlAltoOutputDev::dumpOutline(xmlNodePtr parentNode,GList *itemsA, PDFDoc 
                     // UNKNOWN action
                 case actionUnknown:
                     break;
+
+                    // GoToR action
+                case actionGoToR:
+                    break;
+
+                    // Hide action
+                case actionHide:
+                    break;
+
+                    // SubmitForm action
+                case actionSubmitForm:
+                    break;
+
+                    // JavaScript action
+                case actionJavaScript:
+                    break;
+
             } // end SWITCH
         } // end IF
 
