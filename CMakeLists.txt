@@ -36,7 +36,12 @@ set(SOURCE_FILES
 
 add_executable(pdfalto ${SOURCE_FILES})
 
-target_link_libraries(pdfalto png ${PNG_SUBDIR}/libpng.a zlib ${ZLIB_SUBDIR}/libzlib.a xml2 xpdf ${XPDF_BUILD_DIR}/xpdf/lib/libxpdf.a goo fofi )
+if(${HAVE_PAPER_H})
+    target_link_libraries(pdfalto zlib ${ZLIB_SUBDIR}/libzlib.a png ${PNG_SUBDIR}/libpng.a xml2 xpdf ${XPDF_BUILD_DIR}/xpdf/lib/libxpdf.a goo fofi  ${HAVE_PAPER_H})
+else()
+    target_link_libraries(pdfalto png ${PNG_SUBDIR}/libpng.a zlib ${ZLIB_SUBDIR}/libzlib.a xml2 xpdf ${XPDF_BUILD_DIR}/xpdf/lib/libxpdf.a goo fofi )
+endif()
+
 target_include_directories(pdfalto
         PUBLIC /usr/include/libxml2
         PUBLIC image/png
