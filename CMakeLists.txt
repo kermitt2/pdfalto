@@ -3,6 +3,11 @@ project(pdfalto)
 
 set(CMAKE_CXX_STANDARD 11)
 
+if(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
+set(GCC_COVERAGE_COMPILE_FLAGS "-I/usr/local/opt/qt/include")
+add_definitions(${GCC_COVERAGE_COMPILE_FLAGS})
+endif()
+
 #build xpdf
 set ( XPDF_SUBDIR ${CMAKE_CURRENT_SOURCE_DIR}/xpdf-4.00)
 
