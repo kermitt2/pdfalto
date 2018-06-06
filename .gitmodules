@@ -1,3 +1,4 @@
 [submodule "xpdf-4.00"]
 	path = xpdf-4.00
 	url = https://github.com/kermitt2/xpdf-4.00
+	branch = master
