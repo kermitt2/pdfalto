@@ -31,8 +31,8 @@ install:
      brew install cmake;
      brew install openmotif;
      brew install libxml2;
-     brew install qt5 && ln -s /usr/local/Cellar/qt5/5.11.0/mkspecs /usr/local/mkspecs && ln -s /usr/local/Cellar/qt5/5.11.0/plugins /usr/local/plugins;
-     brew link --force qt5;
+     brew install qt5;
+     brew link --force qt5 && ln -s /usr/local/Cellar/qt5/5.11.0/mkspecs /usr/local/mkspecs && ln -s /usr/local/Cellar/qt5/5.11.0/plugins /usr/local/plugins;
     fi
 
 script:
