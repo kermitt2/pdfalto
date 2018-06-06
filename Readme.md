@@ -1,6 +1,6 @@
 # pdfalto
 
-[![Build Status](https://travis-ci.org/kermitt2/pdflato.svg?branch=master)](https://travis-ci.org/kermitt2/pdflato)
+[![Build Status](https://travis-ci.org/kermitt2/pdfalto.svg?branch=master)](https://travis-ci.org/kermitt2/pdfalto)
 
 **pdfalto** is a command line executable for parsing PDF files and producing structured XML representations of the PDF content in [ALTO](https://github.com/altoxml/documentation/wiki) format. 
 
