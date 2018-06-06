@@ -1,6 +1,7 @@
 os:
   - linux
   - osx
+osx_image: xcode8.3
 
 sudo: true
 
@@ -28,11 +29,11 @@ install:
       source /opt/qt57/bin/qt57-env.sh;
     fi
   - if [ "$TRAVIS_OS_NAME" = "osx" ]; then
-     brew install cmake;
      brew install openmotif;
      brew install libxml2;
      brew install qt5;
      brew link --force qt5 && sudo ln -s /usr/local/Cellar/qt5/5.11.0/mkspecs /usr/local/mkspecs && sudo ln -s /usr/local/Cellar/qt5/5.11.0/plugins /usr/local/plugins;
+     echo 'export PATH="/usr/local/opt/qt/bin:$PATH"' >> ~/.bash_profile;
     fi
 
 script:
