@@ -3,9 +3,8 @@ project(pdfalto)
 
 set(CMAKE_CXX_STANDARD 11)
 
-if(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
-set(GCC_COVERAGE_COMPILE_FLAGS "-I/usr/local/opt/qt/include")
-add_definitions(${GCC_COVERAGE_COMPILE_FLAGS})
+if(${CMAKE_SYSTEM_NAME} MATCHES "Darwin"  AND EXISTS /usr/local/opt/qt5)
+    list(APPEND CMAKE_PREFIX_PATH "/usr/local/opt/qt5")
 endif()
 
 #build xpdf
