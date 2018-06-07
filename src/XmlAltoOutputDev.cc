@@ -4399,8 +4399,10 @@ void XmlAltoOutputDev::drawChar(GfxState *state, double x, double y, double dx,
         GString *fontName = state->getFont()->getName()->copy();
         fontName = fontName->lowerCase();
         GString *fontName_charcode = fontName->append(to_string(c).c_str());// for performance and simplicity only appending is done
-        printf("ToBeOCRISEChar: x=%.2f y=%.2f c=%3d=0x%02x='%c' u=%3d fontName=%s \n",
-                   (double)x, (double)y, c, c, c, u[0], fontName->getCString());
+        if (globalParams->getPrintCommands()) {
+            printf("ToBeOCRISEChar: x=%.2f y=%.2f c=%3d=0x%02x='%c' u=%3d fontName=%s \n",
+                   (double) x, (double) y, c, c, c, u[0], fontName->getCString());
+        }
         // do map every char to a unicode, depending on charcode and font name
         Unicode mapped_unicode = 0;
         if( unicode_map.find(fontName_charcode->getCString()) != unicode_map.end()) {
