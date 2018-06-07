@@ -4149,12 +4149,13 @@ void XmlAltoOutputDev::closeMetadataInfoDoc(GString *shortFileName){
 
 void XmlAltoOutputDev::addStyles(){
 
-    char *tmp;
-    tmp=(char*)malloc(10*sizeof(char));
 
     xmlNodePtr nodeSourceImageInfo = findNodeByName(docroot, (const xmlChar*)TAG_STYLES);
     for (int j = 0; j < getText()->fontStyles.size(); ++j) {
         xmlNodePtr textStyleNode = xmlNewNode(NULL, (const xmlChar *) TAG_TEXTSTYLE);
+
+        char *tmp;
+        tmp=(char*)malloc(50*sizeof(char));
 
         TextFontStyleInfo *fontStyleInfo = getText()->fontStyles[j];
         textStyleNode->type = XML_ELEMENT_NODE;
@@ -4166,6 +4167,7 @@ void XmlAltoOutputDev::addStyles(){
 
         sprintf(tmp, "%s", fontStyleInfo->getFontNameCS()->getCString());
         xmlNewProp(textStyleNode, (const xmlChar*)ATTR_FONTFAMILY, (const xmlChar*)tmp);
+        free(fontStyleInfo->getFontNameCS()->getCString());
 
         sprintf(tmp, "%.3f", fontStyleInfo->getFontSize());
         xmlNewProp(textStyleNode, (const xmlChar*)ATTR_FONTSIZE, (const xmlChar*)tmp);
@@ -4179,6 +4181,7 @@ void XmlAltoOutputDev::addStyles(){
         sprintf(tmp, "%s", fontStyleInfo->getFontColor()->getCString());
         xmlNewProp(textStyleNode, (const xmlChar*)ATTR_FONTCOLOR, (const xmlChar*)tmp);
 
+        free(fontStyleInfo->getFontColor()->getCString());
         GString* fontStyle = new GString("");
         if(fontStyleInfo->isBold())
             fontStyle->append("bold");
@@ -4204,9 +4207,8 @@ void XmlAltoOutputDev::addStyles(){
         sprintf(tmp, "%s", fontStyle->getCString());
         xmlNewProp(textStyleNode, (const xmlChar*)ATTR_FONTSTYLE, (const xmlChar*)tmp);
 
-
+        free(tmp);
     }
-    free(tmp);
 }
 
 
