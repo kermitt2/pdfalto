@@ -4167,7 +4167,7 @@ void XmlAltoOutputDev::addStyles(){
 
         sprintf(tmp, "%s", fontStyleInfo->getFontNameCS()->getCString());
         xmlNewProp(textStyleNode, (const xmlChar*)ATTR_FONTFAMILY, (const xmlChar*)tmp);
-        free(fontStyleInfo->getFontNameCS()->getCString());
+        delete fontStyleInfo->getFontNameCS();
 
         sprintf(tmp, "%.3f", fontStyleInfo->getFontSize());
         xmlNewProp(textStyleNode, (const xmlChar*)ATTR_FONTSIZE, (const xmlChar*)tmp);
@@ -4181,7 +4181,7 @@ void XmlAltoOutputDev::addStyles(){
         sprintf(tmp, "%s", fontStyleInfo->getFontColor()->getCString());
         xmlNewProp(textStyleNode, (const xmlChar*)ATTR_FONTCOLOR, (const xmlChar*)tmp);
 
-        free(fontStyleInfo->getFontColor()->getCString());
+        delete fontStyleInfo->getFontColor();
         GString* fontStyle = new GString("");
         if(fontStyleInfo->isBold())
             fontStyle->append("bold");
@@ -4207,6 +4207,7 @@ void XmlAltoOutputDev::addStyles(){
         sprintf(tmp, "%s", fontStyle->getCString());
         xmlNewProp(textStyleNode, (const xmlChar*)ATTR_FONTSTYLE, (const xmlChar*)tmp);
 
+        delete fontStyle;
         free(tmp);
     }
 }
