@@ -595,6 +595,7 @@ TextPage::TextPage(GBool verboseA, Catalog *catalog, xmlNodePtr node,
         RelfileName = new GString(dir);
         ImgfileName = new GString(base);
     }
+
 }
 
 TextPage::~TextPage() {
@@ -1727,9 +1728,9 @@ GBool TextPage::testAnnotatedText(double xMin,double yMin,double xMax,double yMa
 }
 
 GBool TextFontStyleInfo::cmp(TextFontStyleInfo *tsi) {
-    if( ((fontName->cmp(tsi->getFontName())  == 0 )
+    if( ((fontName && fontName->cmp(tsi->getFontName())  == 0 )
             &&  (fontSize == tsi->getFontSize())
-            && (fontColor->cmp(tsi->getFontColor())  == 0 )
+            && (fontColor && fontColor->cmp(tsi->getFontColor()) == 0 )
             && (fontType == tsi->getFontType())
             && (fontWidth == tsi->getFontWidth())
             && (isbold == tsi->isBold())
@@ -1750,9 +1751,6 @@ void TextPage::dump(GBool blocks, GBool fullFontName) {
     GString *stringTemp;
 
     GString *id;
-    char* tmp;
-
-    tmp=(char*)malloc(10*sizeof(char));
 
     // For TEXT tag attributes
     double xMin = 0;
@@ -1835,6 +1833,9 @@ void TextPage::dump(GBool blocks, GBool fullFontName) {
 
     for (word = rawWords; word; word = word->next) {
 
+        char* tmp;
+
+        tmp=(char*)malloc(10*sizeof(char));
         fontStyleInfo = new TextFontStyleInfo;
 
         lineFinish = gFalse;
@@ -2500,11 +2501,17 @@ void TextPage::dump(GBool blocks, GBool fullFontName) {
 
         }
 
+        free(tmp);
     } // end FOR
 
 
     int imageCount = listeImages.size();
     for(int i = 0; i < imageCount; ++i) {
+
+
+        char* tmp;
+
+        tmp=(char*)malloc(10*sizeof(char));
 
         printSpace = xmlNewNode(NULL, (const xmlChar*)TAG_PRINTSPACE);
         printSpace->type = XML_ELEMENT_NODE;
@@ -2539,8 +2546,8 @@ void TextPage::dump(GBool blocks, GBool fullFontName) {
         xmlNewProp(node, (const xmlChar*) ATTR_CLIPZONE,
                    (const xmlChar*)listeImages[i]->getClipZone()->getCString());
         xmlAddChild(printSpace, node);
+        free(tmp);
     }
-    free(tmp);
     delete word;
     uMap->decRefCnt();
 }
@@ -4172,6 +4179,7 @@ void XmlAltoOutputDev::addStyles(){
         sprintf(tmp, "%.3f", fontStyleInfo->getFontSize());
         xmlNewProp(textStyleNode, (const xmlChar*)ATTR_FONTSIZE, (const xmlChar*)tmp);
 
+        //
         sprintf(tmp, "%s", fontStyleInfo->getFontType() ? "serif":"sans-serif");
         xmlNewProp(textStyleNode, (const xmlChar*)ATTR_FONTTYPE, (const xmlChar*)tmp);
 
@@ -4182,6 +4190,8 @@ void XmlAltoOutputDev::addStyles(){
         xmlNewProp(textStyleNode, (const xmlChar*)ATTR_FONTCOLOR, (const xmlChar*)tmp);
 
         delete fontStyleInfo->getFontColor();
+
+
         GString* fontStyle = new GString("");
         if(fontStyleInfo->isBold())
             fontStyle->append("bold");
@@ -4208,6 +4218,7 @@ void XmlAltoOutputDev::addStyles(){
         xmlNewProp(textStyleNode, (const xmlChar*)ATTR_FONTSTYLE, (const xmlChar*)tmp);
 
         delete fontStyle;
+
         free(tmp);
     }
 }
@@ -4374,7 +4385,6 @@ void XmlAltoOutputDev::startPage(int pageNum, GfxState *state) {
 
 
 void XmlAltoOutputDev::endPage() {
-
     text->configuration();
     if (parameters->getDisplayText()) {
         text->dump(blocks, fullFontName);
@@ -4410,7 +4420,9 @@ void XmlAltoOutputDev::drawChar(GfxState *state, double x, double y, double dx,
         }
         if(!mapped_unicode && !placeholders.empty()){
             mapped_unicode = placeholders[0];//no special need for random
-            placeholders.erase(placeholders.begin());
+            if( placeholders.size() > 1 ) {
+                placeholders.erase(placeholders.begin());
+            }
             unicode_map.insert(my_unordered_map::value_type(fontName_charcode->getCString(), mapped_unicode));
         }
         u[0] = mapped_unicode;
