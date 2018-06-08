@@ -3850,6 +3850,11 @@ XmlAltoOutputDev::XmlAltoOutputDev(GString *fileName, GString *fileNamePdf,
     placeholders.push_back((Unicode)9670); placeholders.push_back((Unicode)9675); placeholders.push_back((Unicode)9671);
     placeholders.push_back((Unicode)9679); placeholders.push_back((Unicode)9678); placeholders.push_back((Unicode)9725);
     placeholders.push_back((Unicode)9720); placeholders.push_back((Unicode)9721); placeholders.push_back((Unicode)9722);
+    placeholders.push_back((Unicode)9632); placeholders.push_back((Unicode)9633); placeholders.push_back((Unicode)9634);
+    placeholders.push_back((Unicode)9635); placeholders.push_back((Unicode)9636); placeholders.push_back((Unicode)9637);
+    placeholders.push_back((Unicode)9638); placeholders.push_back((Unicode)9639); placeholders.push_back((Unicode)9640);
+    placeholders.push_back((Unicode)9641); placeholders.push_back((Unicode)9642); placeholders.push_back((Unicode)9643);
+    placeholders.push_back((Unicode)9644); placeholders.push_back((Unicode)9645); placeholders.push_back((Unicode)9646);
 
     //curstate=(double*)malloc(10000*sizeof(6*double));
 
