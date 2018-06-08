@@ -4404,11 +4404,11 @@ void XmlAltoOutputDev::drawChar(GfxState *state, double x, double y, double dx,
                    (double) x, (double) y, c, c, c, u[0], fontName->getCString());
         }
         // do map every char to a unicode, depending on charcode and font name
-        Unicode mapped_unicode = 0;
+        Unicode mapped_unicode = c;
         if( unicode_map.find(fontName_charcode->getCString()) != unicode_map.end()) {
             mapped_unicode = unicode_map.at(fontName_charcode->getCString());
         }
-        if(!mapped_unicode){
+        if(!mapped_unicode && !placeholders.empty()){
             mapped_unicode = placeholders[0];//no special need for random
             placeholders.erase(placeholders.begin());
             unicode_map.insert(my_unordered_map::value_type(fontName_charcode->getCString(), mapped_unicode));
