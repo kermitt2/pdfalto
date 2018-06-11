@@ -3852,6 +3852,7 @@ XmlAltoOutputDev::XmlAltoOutputDev(GString *fileName, GString *fileNamePdf,
     GString *imgDirName;
     Catalog *myCatalog;
 
+    unicode_map = new GHash(gTrue);
     //initialise some special unicodes 9 to begin with as placeholders, from https://unicode.org/charts/PDF/U2B00.pdf
     placeholders.push_back((Unicode)9724); placeholders.push_back((Unicode)9650); placeholders.push_back((Unicode)9658);
     placeholders.push_back((Unicode)9670); placeholders.push_back((Unicode)9675); placeholders.push_back((Unicode)9671);
@@ -4413,16 +4414,13 @@ void XmlAltoOutputDev::drawChar(GfxState *state, double x, double y, double dx,
                    (double) x, (double) y, c, c, c, u[0], fontName->getCString());
         }
         // do map every char to a unicode, depending on charcode and font name
-        Unicode mapped_unicode = 0;
-        if( unicode_map.find(fontName_charcode->getCString()) != unicode_map.end()) {
-            mapped_unicode = unicode_map.at(fontName_charcode->getCString());
-        }
+        Unicode mapped_unicode = unicode_map->lookupInt(fontName_charcode);
         if(!mapped_unicode){
             mapped_unicode = placeholders[0];//no special need for random
             if( placeholders.size() > 1 ) {
                 placeholders.erase(placeholders.begin());
             }
-            unicode_map.insert(my_unordered_map::value_type(fontName_charcode->getCString(), mapped_unicode));
+            unicode_map->add(fontName_charcode, mapped_unicode);
         }
         u[0] = mapped_unicode;
         uLen=1;

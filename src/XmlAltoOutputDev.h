@@ -22,7 +22,7 @@
 #include "Parameters.h"
 #include "Catalog.h"
 #include "AnnotsXrce.h"
-#include <unordered_map>
+#include "GHash.h"
 // PNG lib
 #include "png.h"
 
@@ -47,6 +47,7 @@ class PDFRectangle;
 struct PSFont16Enc;
 class PSOutCustomColor;
 
+class GHash;
 class GString;
 class GList;
 class GfxState;
@@ -1363,31 +1364,7 @@ private:
     /** The item id for each toc items */
     int idItemToc;
 
-    template <class _Tp>
-    struct my_equal_to : public binary_function<_Tp, _Tp, bool>
-    {
-        bool operator()(const _Tp& __x, const _Tp& __y) const
-        { return strcmp( __x, __y ) == 0; }
-    };
-
-
-    struct Hash_Func{
-        int operator()(char * str)const
-        {
-            int seed = 131;//31  131 1313 13131131313//
-            int hash = 0;
-            while(*str)
-            {
-                hash = (hash * seed) + (*str);
-                str ++;
-            }
-
-            return hash & (0x7FFFFFFF);
-        }
-    };
-    typedef unordered_map<char*, unsigned int, Hash_Func,  my_equal_to<char*> > my_unordered_map;
-
-    my_unordered_map unicode_map;
+    GHash *unicode_map;
 
     vector<Unicode> placeholders;
 
