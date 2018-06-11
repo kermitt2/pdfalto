@@ -4404,7 +4404,7 @@ void XmlAltoOutputDev::drawChar(GfxState *state, double x, double y, double dx,
         uLen=1;
     }
     // How could be managed for first case
-    if((nBytes > 1 || (u[0] == (Unicode)0 && uLen == 1 ) )) {//}&& globalParams->getApplyOCR())
+    if((nBytes > 1 || ((u[0] == (Unicode)0 || u[0] < (Unicode)32) && uLen == 1 ))) {//Invalid unicode char needs could be improved //}&& globalParams->getApplyOCR())
         // as a first iteration for dictionnaries, placing a placeholder, which means creating a map based on the font-code mapping to unicode from : https://unicode.org/charts/PDF/U2B00.pdf
         GString *fontName = state->getFont()->getName()->copy();
         fontName = fontName->lowerCase();
