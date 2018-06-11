@@ -4406,8 +4406,11 @@ void XmlAltoOutputDev::drawChar(GfxState *state, double x, double y, double dx,
     // How could be managed for first case
     if((nBytes > 1 || ((u[0] == (Unicode)0 || u[0] < (Unicode)32) && uLen == 1 ))) {//Invalid unicode char needs could be improved //}&& globalParams->getApplyOCR())
         // as a first iteration for dictionnaries, placing a placeholder, which means creating a map based on the font-code mapping to unicode from : https://unicode.org/charts/PDF/U2B00.pdf
-        GString *fontName = state->getFont()->getName()->copy();
-        fontName = fontName->lowerCase();
+        GString *fontName = new GString();
+        if(state->getFont()->getName()) { //AA : Here if fontName is NULL is problematic
+            fontName = state->getFont()->getName()->copy();
+            fontName = fontName->lowerCase();
+        }
         GString *fontName_charcode = fontName->append(to_string(c).c_str());// for performance and simplicity only appending is done
         if (globalParams->getPrintCommands()) {
             printf("ToBeOCRISEChar: x=%.2f y=%.2f c=%3d=0x%02x='%c' u=%3d fontName=%s \n",
