@@ -1893,6 +1893,8 @@ void TextPage::dump(GBool blocks, GBool fullFontName) {
         if (verbose) {
             addAttributsNodeVerbose(node, tmp, word);
         }
+
+        GString* gsFontName = new GString();
         if (word->getFontName()) {
             xmlChar* xcFontName;
             // If the font name normalization option is selected
@@ -1919,15 +1921,13 @@ void TextPage::dump(GBool blocks, GBool fullFontName) {
                 uncdFontName[i] = (Unicode) xcFontName[i];
             }
             uncdFontName[size] = (Unicode)0;
-            GString* gsFontName = new GString();
             dumpFragment(uncdFontName, size, uMap, gsFontName);
-//            xmlNewProp(node, (const xmlChar*)ATTR_FONT_NAME,
-//                       (const xmlChar*)gsFontName->getCString());
-            fontStyleInfo->setFontName(gsFontName);
-            //delete gsFontName;
-
 
         }
+        //            xmlNewProp(node, (const xmlChar*)ATTR_FONT_NAME,
+//                       (const xmlChar*)gsFontName->getCString());
+        fontStyleInfo->setFontName(gsFontName);
+        //delete gsFontName;
 
         addAttributsNode(node, word, xMax, yMax, yMinRot, yMaxRot, xMinRot,
                          xMaxRot, fontStyleInfo);
