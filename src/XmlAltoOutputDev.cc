@@ -4400,11 +4400,7 @@ void XmlAltoOutputDev::updateFont(GfxState *state) {
 void XmlAltoOutputDev::drawChar(GfxState *state, double x, double y, double dx,
                             double dy, double originX, double originY, CharCode c, int nBytes,
                             Unicode *u, int uLen) {
-    if (uLen ==0) {
-        uLen=1;
-    }
-    // How could be managed for first case
-    if((nBytes > 1 || ((u[0] == (Unicode)0 || u[0] < (Unicode)32) && uLen == 1 ))) {//Invalid unicode char needs could be improved //}&& globalParams->getApplyOCR())
+    if((uLen == 0  || ((u[0] == (Unicode)0 || u[0] < (Unicode)32) && uLen == 1 ))) {//&& globalParams->getApplyOCR())
         // as a first iteration for dictionnaries, placing a placeholder, which means creating a map based on the font-code mapping to unicode from : https://unicode.org/charts/PDF/U2B00.pdf
         GString *fontName = new GString();
         if(state->getFont()->getName()) { //AA : Here if fontName is NULL is problematic
@@ -4429,6 +4425,7 @@ void XmlAltoOutputDev::drawChar(GfxState *state, double x, double y, double dx,
             unicode_map.insert(my_unordered_map::value_type(fontName_charcode->getCString(), mapped_unicode));
         }
         u[0] = mapped_unicode;
+        uLen=1;
     }
     text->addChar(state, x, y, dx, dy, c, nBytes, u, uLen);
 }
