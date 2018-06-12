@@ -43,7 +43,7 @@ namespace ConstantsXMLALTO {
 	extern const char *TAG_COMMENT;
 	extern const char *TAG_PAGE;
 	extern const char *TAG_IMAGE;
-	extern const char *TAG_VECTORIALIMAGES;
+	extern const char *TAG_SVG;
 	extern const char *TAG_BLOCK;
 	extern const char *TAG_TEXT;
 
@@ -65,10 +65,13 @@ namespace ConstantsXMLALTO {
 
 	extern const char *TAG_VECTORIALINSTRUCTIONS;
 	extern const char *TAG_GROUP;
-	extern const char *TAG_CLIP;
+	extern const char *TAG_CLIPPATH;
+    extern const char *TAG_PATH;
 	extern const char *TAG_M;
 	extern const char *TAG_L;
 	extern const char *TAG_C;
+
+    extern const char *ATTR_D;
 	
 	
 	extern const char *TAG_PAR_CONF ;
@@ -194,6 +197,13 @@ namespace ConstantsXMLALTO {
 	// Attributs for number format
 	extern const char *ATTR_NUMFORMAT;
 	extern const char *ATTR_SID;
+    extern const char *ATTR_SVGID;
+
+
+    extern const char *ATTR_SVG_X;
+    extern const char *ATTR_SVG_Y;
+    extern const char *ATTR_SVG_WIDTH;
+    extern const char *ATTR_SVG_HEIGHT;
 	
 	
 	//PAGE BOXES

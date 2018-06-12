@@ -744,7 +744,8 @@ void TextPage::startPage(int pageNum, GfxState *state, GBool cut) {
     vecdoc = xmlNewDoc((const xmlChar*)VERSION);
     globalParams->setTextEncoding((char*)ENCODING_UTF8);
     vecdoc->encoding = xmlStrdup((const xmlChar*)ENCODING_UTF8);
-    vecroot = xmlNewNode(NULL, (const xmlChar*)TAG_VECTORIALIMAGES);
+    vecroot = xmlNewNode(NULL, (const xmlChar*)TAG_SVG);
+    xmlNewNs(vecroot, (const xmlChar*)"http://www.w3.org/2000/svg", NULL);
 
     // Add the namespace DS of the vectorial instructions file
     if (namespaceURI) {
@@ -825,12 +826,12 @@ void TextPage::endPage(GString *dataDir) {
         GString *relname = new GString(RelfileName);
         relname->append("-");
         relname->append(GString::fromInt(num));
-        relname->append(EXTENSION_VEC);
+        relname->append(EXTENSION_SVG);
 
         GString *refname = new GString(ImgfileName);
         refname->append("-");
         refname->append(GString::fromInt(num));
-        refname->append(EXTENSION_VEC);
+        refname->append(EXTENSION_SVG);
 
         xiNs=xmlNewNs(NULL, (const xmlChar*)XI_URI, (const xmlChar*)XI_PREFIX);
         if (xiNs) {
@@ -843,7 +844,7 @@ void TextPage::endPage(GString *dataDir) {
                 GString *imageName = new GString("image");
                 imageName->append("-");
                 imageName->append(GString::fromInt(num));
-                imageName->append(EXTENSION_VEC);
+                imageName->append(EXTENSION_SVG);
                 // ID: 1850760
                 GString *cp;
                 cp = refname->copy();
@@ -2948,12 +2949,29 @@ void TextPage::doPathForClip(GfxPath *path, GfxState *state,
     char * tmp;
     tmp = (char*)malloc(500*sizeof(char));
 
+    double xMin = 0;
+    double yMin = 0;
+    double xMax = 0;
+    double yMax = 0;
+
     // Increment the absolute object index
     idx++;
     xmlNodePtr groupNode = NULL;
 
     // GROUP tag
     groupNode = xmlNewNode(NULL, (const xmlChar*)TAG_GROUP);
+
+    // Get the clipping box
+    state->getClipBBox(&xMin, &yMin, &xMax, &yMax);
+    sprintf(tmp, "%g", xMin);
+    xmlNewProp(groupNode, (const xmlChar*)ATTR_SVG_X, (const xmlChar*)tmp);
+    sprintf(tmp, "%g", yMin);
+    xmlNewProp(groupNode, (const xmlChar*)ATTR_SVG_Y, (const xmlChar*)tmp);
+    sprintf(tmp, "%g", xMax-xMin);
+    xmlNewProp(groupNode, (const xmlChar*)ATTR_SVG_WIDTH, (const xmlChar*)tmp);
+    sprintf(tmp, "%g", yMax-yMin);
+    xmlNewProp(groupNode, (const xmlChar*)ATTR_SVG_HEIGHT, (const xmlChar*)tmp);
+
     xmlAddChild(currentNode, groupNode);
 
     GString *id;
@@ -3001,6 +3019,7 @@ void TextPage::createPath(GfxPath *path, GfxState *state, xmlNodePtr groupNode) 
     char *tmp;
     tmp = (char*)malloc(500*sizeof(char));
 
+    GString *d;
     xmlNodePtr pathnode = NULL;
 
     n = path->getNumSubpaths();
@@ -3014,12 +3033,13 @@ void TextPage::createPath(GfxPath *path, GfxState *state, xmlNodePtr groupNode) 
         y0 = b;
 
         // M tag : moveto
-        pathnode = xmlNewNode(NULL, (const xmlChar*)TAG_M);
-        sprintf(tmp, "%g", x0);
-        xmlNewProp(pathnode, (const xmlChar*)ATTR_X, (const xmlChar*)tmp);
-        sprintf(tmp, "%g", y0);
-        xmlNewProp(pathnode, (const xmlChar*)ATTR_Y, (const xmlChar*)tmp);
-        xmlAddChild(groupNode, pathnode);
+        pathnode = xmlNewNode(NULL, (const xmlChar*)TAG_PATH);
+        sprintf(tmp, "M%g,%g", x0, y0);
+
+        d = new GString(tmp);
+
+//        sprintf(tmp, "%g", y0);
+//        xmlNewProp(pathnode, (const xmlChar*)ATTR_Y, (const xmlChar*)tmp);
 
         j = 1;
         while (j < m) {
@@ -3041,26 +3061,27 @@ void TextPage::createPath(GfxPath *path, GfxState *state, xmlNodePtr groupNode) 
                 y3=b;
 
                 // C tag  : curveto
-                pathnode=xmlNewNode(NULL, (const xmlChar*)TAG_C);
-                sprintf(tmp, "%g", x1);
-                xmlNewProp(pathnode, (const xmlChar*)ATTR_X1,
-                           (const xmlChar*)tmp);
-                sprintf(tmp, "%g", y1);
-                xmlNewProp(pathnode, (const xmlChar*)ATTR_Y1,
-                           (const xmlChar*)tmp);
-                sprintf(tmp, "%g", x2);
-                xmlNewProp(pathnode, (const xmlChar*)ATTR_X2,
-                           (const xmlChar*)tmp);
-                sprintf(tmp, "%g", y2);
-                xmlNewProp(pathnode, (const xmlChar*)ATTR_Y2,
-                           (const xmlChar*)tmp);
-                sprintf(tmp, "%g", x3);
-                xmlNewProp(pathnode, (const xmlChar*)ATTR_X3,
-                           (const xmlChar*)tmp);
-                sprintf(tmp, "%g", y3);
-                xmlNewProp(pathnode, (const xmlChar*)ATTR_Y3,
-                           (const xmlChar*)tmp);
-                xmlAddChild(groupNode, pathnode);
+//                pathnode=xmlNewNode(NULL, (const xmlChar*)TAG_C);
+                sprintf(tmp, " C%g,%g %g,%g %g,%g", x1, y1, x2, y2, x3, y3);
+                d->append(tmp);
+//                xmlNewProp(pathnode, (const xmlChar*)ATTR_X1,
+//                           (const xmlChar*)tmp);
+//                sprintf(tmp, "%g", y1);
+//                xmlNewProp(pathnode, (const xmlChar*)ATTR_Y1,
+//                           (const xmlChar*)tmp);
+//                sprintf(tmp, "%g", x2);
+//                xmlNewProp(pathnode, (const xmlChar*)ATTR_X2,
+//                           (const xmlChar*)tmp);
+//                sprintf(tmp, "%g", y2);
+//                xmlNewProp(pathnode, (const xmlChar*)ATTR_Y2,
+//                           (const xmlChar*)tmp);
+//                sprintf(tmp, "%g", x3);
+//                xmlNewProp(pathnode, (const xmlChar*)ATTR_X3,
+//                           (const xmlChar*)tmp);
+//                sprintf(tmp, "%g", y3);
+//                xmlNewProp(pathnode, (const xmlChar*)ATTR_Y3,
+//                           (const xmlChar*)tmp);
+//                xmlAddChild(groupNode, pathnode);
 
                 j += 3;
             } else {
@@ -3071,26 +3092,33 @@ void TextPage::createPath(GfxPath *path, GfxState *state, xmlNodePtr groupNode) 
                 y1=b;
 
                 // L tag : lineto
-                pathnode=xmlNewNode(NULL, (const xmlChar*)TAG_L);
-                sprintf(tmp, "%g", x1);
-                xmlNewProp(pathnode, (const xmlChar*)ATTR_X,
-                           (const xmlChar*)tmp);
-                sprintf(tmp, "%g", y1);
-                xmlNewProp(pathnode, (const xmlChar*)ATTR_Y,
-                           (const xmlChar*)tmp);
-                xmlAddChild(groupNode, pathnode);
+//                pathnode=xmlNewNode(NULL, (const xmlChar*)TAG_L);
+//                sprintf(tmp, "%g", x1);
+//                xmlNewProp(pathnode, (const xmlChar*)ATTR_X,
+//                           (const xmlChar*)tmp);
+//                sprintf(tmp, "%g", y1);
+//                xmlNewProp(pathnode, (const xmlChar*)ATTR_Y,
+//                           (const xmlChar*)tmp);
+//                xmlAddChild(groupNode, pathnode);
+                sprintf(tmp, " L%g,%g", x1, y1);
+                d->append(tmp);
 
                 ++j;
             }
         }
 
         if (subpath->isClosed()) {
-            if (!xmlHasProp(groupNode, (const xmlChar*)ATTR_CLOSED)) {
-                xmlNewProp(groupNode, (const xmlChar*)ATTR_CLOSED,
-                           (const xmlChar*)sTRUE);
-            }
+//            if (!xmlHasProp(groupNode, (const xmlChar*)ATTR_CLOSED)) {
+//                xmlNewProp(groupNode, (const xmlChar*)ATTR_CLOSED,
+//                           (const xmlChar*)sTRUE);
+//            }
+            d->append(" Z");
         }
+
+        xmlNewProp(pathnode, (const xmlChar*)ATTR_D, (const xmlChar*)d->getCString());
+        xmlAddChild(groupNode, pathnode);
     }
+    delete d;
     free(tmp);
 }
 
@@ -3100,10 +3128,6 @@ void TextPage::clip(GfxState *state) {
 
     xmlNodePtr gnode = NULL;
     char tmp[100];
-    double xMin = 0;
-    double yMin = 0;
-    double xMax = 0;
-    double yMax = 0;
 
     // Increment the absolute object index
     idx++;
@@ -3113,24 +3137,13 @@ void TextPage::clip(GfxState *state) {
 //	}
 
     // CLIP tag
-    gnode = xmlNewNode(NULL, (const xmlChar*)TAG_CLIP);
+    gnode = xmlNewNode(NULL, (const xmlChar*)TAG_CLIPPATH);
     xmlAddChild(vecroot, gnode);
 
     GString *id;
     id = new GString("p");
-    xmlNewProp(gnode, (const xmlChar*)ATTR_SID, (const xmlChar*)buildSID(num, getIdx(), id)->getCString());
+    xmlNewProp(gnode, (const xmlChar*)ATTR_SVGID, (const xmlChar*)buildSID(num, getIdx(), id)->getCString());
     delete id;
-
-    // Get the clipping box
-    state->getClipBBox(&xMin, &yMin, &xMax, &yMax);
-    sprintf(tmp, "%g", xMin);
-    xmlNewProp(gnode, (const xmlChar*)ATTR_X, (const xmlChar*)tmp);
-    sprintf(tmp, "%g", yMin);
-    xmlNewProp(gnode, (const xmlChar*)ATTR_Y, (const xmlChar*)tmp);
-    sprintf(tmp, "%g", xMax-xMin);
-    xmlNewProp(gnode, (const xmlChar*)ATTR_WIDTH, (const xmlChar*)tmp);
-    sprintf(tmp, "%g", yMax-yMin);
-    xmlNewProp(gnode, (const xmlChar*)ATTR_HEIGHT, (const xmlChar*)tmp);
 
     id = new GString("p");
     xmlNewProp(gnode, (const xmlChar*)ATTR_IDCLIPZONE,
@@ -3147,33 +3160,18 @@ void TextPage::eoClip(GfxState *state) {
 
     xmlNodePtr gnode = NULL;
     char tmp[100];
-    double xMin = 0;
-    double yMin = 0;
-    double xMax = 0;
-    double yMax = 0;
 
     // Increment the absolute object index
     idx++;
 
     // CLIP tag
-    gnode=xmlNewNode(NULL, (const xmlChar*)TAG_CLIP);
+    gnode=xmlNewNode(NULL, (const xmlChar*)TAG_CLIPPATH);
     xmlAddChild(vecroot, gnode);
 
     GString *id;
     id = new GString("p");
-    xmlNewProp(gnode, (const xmlChar*)ATTR_SID, (const xmlChar*)buildSID(num, getIdx(), id)->getCString());
+    xmlNewProp(gnode, (const xmlChar*)ATTR_SVGID, (const xmlChar*)buildSID(num, getIdx(), id)->getCString());
     delete id;
-
-    // Get the clipping box
-    state->getClipBBox(&xMin, &yMin, &xMax, &yMax);
-    sprintf(tmp, "%g", xMin);
-    xmlNewProp(gnode, (const xmlChar*)ATTR_X, (const xmlChar*)tmp);
-    sprintf(tmp, "%g", yMin);
-    xmlNewProp(gnode, (const xmlChar*)ATTR_Y, (const xmlChar*)tmp);
-    sprintf(tmp, "%g", xMax-xMin);
-    xmlNewProp(gnode, (const xmlChar*)ATTR_WIDTH, (const xmlChar*)tmp);
-    sprintf(tmp, "%g", yMax-yMin);
-    xmlNewProp(gnode, (const xmlChar*)ATTR_HEIGHT, (const xmlChar*)tmp);
 
     id = new GString("p");
     xmlNewProp(gnode, (const xmlChar*)ATTR_IDCLIPZONE,
@@ -3192,33 +3190,18 @@ void TextPage::clipToStrokePath(GfxState *state) {
 
     xmlNodePtr gnode = NULL;
     char tmp[100];
-    double xMin = 0;
-    double yMin = 0;
-    double xMax = 0;
-    double yMax = 0;
 
     // Increment the absolute object index
     idx++;
 
     // CLIP tag
-    gnode=xmlNewNode(NULL, (const xmlChar*)TAG_CLIP);
+    gnode=xmlNewNode(NULL, (const xmlChar*)TAG_CLIPPATH);
     xmlAddChild(vecroot, gnode);
 
     GString *id;
     id = new GString("p");
-    xmlNewProp(gnode, (const xmlChar*)ATTR_SID, (const xmlChar*)buildSID(num, getIdx(), id)->getCString());
+    xmlNewProp(gnode, (const xmlChar*)ATTR_SVGID, (const xmlChar*)buildSID(num, getIdx(), id)->getCString());
     delete id;
-
-    // Get the clipping box
-    state->getClipBBox(&xMin, &yMin, &xMax, &yMax);
-    sprintf(tmp, "%g", xMin);
-    xmlNewProp(gnode, (const xmlChar*)ATTR_X, (const xmlChar*)tmp);
-    sprintf(tmp, "%g", yMin);
-    xmlNewProp(gnode, (const xmlChar*)ATTR_Y, (const xmlChar*)tmp);
-    sprintf(tmp, "%g", xMax-xMin);
-    xmlNewProp(gnode, (const xmlChar*)ATTR_WIDTH, (const xmlChar*)tmp);
-    sprintf(tmp, "%g", yMax-yMin);
-    xmlNewProp(gnode, (const xmlChar*)ATTR_HEIGHT, (const xmlChar*)tmp);
 
     id = new GString("p");
     xmlNewProp(gnode, (const xmlChar*)ATTR_IDCLIPZONE,

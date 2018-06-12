@@ -45,7 +45,7 @@ namespace ConstantsXMLALTO {
 
 	const char *TAG_PAGE = "Page";
 	const char *TAG_IMAGE = "Illustration";
-	const char *TAG_VECTORIALIMAGES = "VECTORIALIMAGES";
+	const char *TAG_SVG = "svg";
 	const char *TAG_BLOCK = "TextBlock";
 	const char *TAG_TEXT = "TextLine";
 
@@ -67,11 +67,14 @@ namespace ConstantsXMLALTO {
     const char *ATTR_FONTSTYLE = "FONTSTYLE";
 
 	const char *TAG_VECTORIALINSTRUCTIONS = "VECTORIALINSTRUCTIONS";
-	const char *TAG_GROUP = "GROUP";
-	const char *TAG_CLIP = "CLIP";
+	const char *TAG_GROUP = "g";
+	const char *TAG_CLIPPATH = "clipPath";
+	const char *TAG_PATH = "path";
 	const char *TAG_M = "M";
 	const char *TAG_L = "L";
 	const char *TAG_C = "C";
+
+	const char *ATTR_D = "d";
 	
 	const char *TAG_PAR_CONF = "CONFIGURATION";
 	const char *TAG_PAR_TOOL = "TOOL";
@@ -202,6 +205,11 @@ namespace ConstantsXMLALTO {
 	// Attributs for number format
 	const char *ATTR_NUMFORMAT = "%g";
 	const char *ATTR_SID = "sid";
+    const char *ATTR_SVGID = "id";
+    const char *ATTR_SVG_X = "x";
+    const char *ATTR_SVG_Y = "y";
+    const char *ATTR_SVG_WIDTH = "width";
+    const char *ATTR_SVG_HEIGHT = "height";
 	
 	//PAGE BOXES
 	const char *TAG_MEDIABOX = "MEDIABOX";

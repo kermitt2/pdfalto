@@ -8,6 +8,7 @@ namespace ConstantsUtils {
 	extern const char *EXTENSION_XML;
 	extern const char *EXTENSION_XML_MAJ;
 	extern const char *EXTENSION_VEC;
+	extern const char *EXTENSION_SVG;
 	extern const char *EXTENSION_JPG;
 	extern const char *EXTENSION_PNG;
 	extern const char *EXTENSION_PDF;
