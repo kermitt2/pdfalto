@@ -25,15 +25,11 @@ before_install:
 
 install:
   - if [ "$TRAVIS_OS_NAME" = "linux" ]; then
-      sudo apt-get install -qq qt57base cmake libxml2-dev libmotif-dev;
-      source /opt/qt57/bin/qt57-env.sh;
+      sudo apt-get install -qq cmake libxml2-dev libmotif-dev;
     fi
   - if [ "$TRAVIS_OS_NAME" = "osx" ]; then
      brew install openmotif;
      brew install libxml2;
-     brew install qt5;
-     brew link --force qt5 && sudo ln -s /usr/local/Cellar/qt5/5.11.0/mkspecs /usr/local/mkspecs && sudo ln -s /usr/local/Cellar/qt5/5.11.0/plugins /usr/local/plugins;
-     echo 'export PATH="/usr/local/opt/qt/bin:$PATH"' >> ~/.bash_profile;
     fi
 
 script:
