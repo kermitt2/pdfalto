@@ -1785,6 +1785,9 @@ void TextPage::dump(GBool blocks, GBool fullFontName) {
     double lineHeight = 0;
     double lineFontSize = 0;
 
+    double previousWordBaseLine = 0;
+    double previousWordYmin = 0;
+    double previousWordYmax = 0;
     // Informations about the previous line
     double linePreviousX = 0;
     double linePreviousYmin = 0;
@@ -1838,6 +1841,13 @@ void TextPage::dump(GBool blocks, GBool fullFontName) {
 
         tmp=(char*)malloc(10*sizeof(char));
         fontStyleInfo = new TextFontStyleInfo;
+
+        //AA : this is a naive heuristic ( regarding general typography cases ) super/sub script, wikipedia description is good
+        // first is clear, second check is in case of firstword in line and superscript which is recurrent for declaring affiliations or even refs.
+        if((word->base < previousWordBaseLine && word->yMax > previousWordYmin) || (firstword && word->next && word->base < word->next->base && word->yMax > word->next->yMin))
+            fontStyleInfo->setIsSuperscript(gTrue);
+        else if((!firstword && word->base > previousWordBaseLine && word->yMin > previousWordYmax ))
+            fontStyleInfo->setIsSubscript(gTrue);
 
         lineFinish = gFalse;
         if (firstword) { // test useful?
@@ -2080,7 +2090,7 @@ void TextPage::dump(GBool blocks, GBool fullFontName) {
             if (( (rotation==-1) ? ((word->base < word->next->yMin)
                                     && (word->yMin < word->next->yMin)) : (word->rot==0
                                                                            ||word->rot==1) ? ((word->base < yyMinNext) && (yyMin
-                                                                                                                           < yyMinNext)) : ((word->base > yyMinNext) && (yyMin
+                                                                                                                              < yyMinNext)) : ((word->base > yyMinNext) && (yyMin
                                                                                                                                                                          > yyMinNext)) ) || ( (rotation==-1) ? (word->next->xMin
                                                                                                                                                                                                                 < word->xMin) : (word->rot==0) ? (xxMinNext < xxMin)
                                                                                                                                                                                                                                                : (word->rot==1 ? xxMinNext > xxMin
@@ -2101,8 +2111,7 @@ void TextPage::dump(GBool blocks, GBool fullFontName) {
                                                                                               ||word->rot==3) ? (xxMinNext > xxMax
                                                                                                                              + maxWordSpacing * lineFontSize) : (xxMinNext
                                                                                                                                                                  < xxMax - maxWordSpacing * lineFontSize))) {
-
-                xmlAddChild(nodeline, node);
+                xmlAddChild(nodeline, node);// here we first add this last word to line then create new line
                 double arr;
                 if (word->rot==2) {
                     arr = fabs(xMaxRot-xMinRot);
@@ -2501,6 +2510,10 @@ void TextPage::dump(GBool blocks, GBool fullFontName) {
             xmlAddChild(nodeline, spacingNode);
 
         }
+
+        previousWordBaseLine = word->base;
+        previousWordYmin = word->yMin;
+        previousWordYmax = word->yMax;
 
         free(tmp);
     } // end FOR
