@@ -53,6 +53,9 @@ class GList;
 class GfxState;
 class UnicodeMap;
 
+class TextBlock;
+class TextChar;
+
 class XmlAltoOutputDev;
 
 //------------------------------------------------------------------------
@@ -93,12 +96,16 @@ public:
 
 private:
 
+    Ref fontID;
     GfxFont *gfxFont;
 //#if TEXTOUT_WORD_LIST
     GString *fontName;
     int flags;
+    double mWidth;
+    double ascent, descent;
 //#endif
 
+    friend class TextLine;
     friend class TextWord;
     friend class TextPage;
 };
@@ -429,8 +436,8 @@ public:
      * @param fontSize The font size about the current word
      * @param idWord The id of the word (used to include and localize the image inline in the stream)
      * @param idx The absolute object index in the stream */
-    TextWord(GfxState *state, int rotA, int angleDegre, int angleSkewingY, int angleSkewingX, double x0, double y0,
-             int charPosA, TextFontInfo *fontA, double fontSize, int idWord, int index);
+    TextWord(GList *chars, GfxState *state, double start, double end, double x0, double y0,
+             int idWord, int index, int rotA, int dirA, GBool spaceAfterA);
 
     /** Destructor */
     ~TextWord();
@@ -448,7 +455,7 @@ public:
      *  @param u The unicode char to add
      */
     void addChar(GfxState *state, double x, double y,
-                 double dx, double dy, Unicode u);
+                 double dx, double dy, Unicode u, int charPosA);
 
     /** Merge <code>word</code> onto the end of <code>this</code>
      *  @param word The current word */
@@ -467,6 +474,10 @@ public:
      * return True if overlap with w2
      */
     GBool overlap(TextWord *w2);
+
+    static int cmpX(const void *p1, const void *p2);
+
+    static int cmpY(const void *p1, const void *p2);
 
     static int cmpYX(const void *p1, const void *p2);
 
@@ -509,9 +520,11 @@ public:
      * @return The new font name which is normalized */
     const char* normalizeFontName(char* fontName);
 
-#if TEXTOUT_WORD_LIST
     int getLength() { return len; }
-  Unicode getChar(int idx) { return text[idx]; }
+
+    Unicode getChar(int idx) { return text[idx]; }
+
+#if TEXTOUT_WORD_LIST
 
   GString *getFontName() { return font->fontName; }
   void getBBox(double *xMinA, double *yMinA, double *xMaxA, double *yMaxA)
@@ -520,7 +533,7 @@ public:
   int getCharLen() { return charLen; }
 #endif
 
-private:
+//private:
 
     /** The value of the character spacing */
     float charSpace;
@@ -576,7 +589,11 @@ private:
     /** The size of text and edge arrays */
     int size;
     /** The character position (within content stream) */
-    int charPos;
+    int *charPos;			// character position (within content stream)
+    //   of each char (plus one extra entry for
+    //   the last char)
+    int dir;			// character direction (+1 = left-to-right;
+    //   -1 = right-to-left; 0 = neither)
     /** The number of content stream characters in this word */
     int charLen;
 
@@ -598,6 +615,7 @@ private:
 
     /** To set if there is a space between this word and the next word on the line */
     GBool spaceAfter;
+
     /** The next word in line */
     TextWord *next;
 
@@ -610,6 +628,124 @@ private:
 
     friend class TextPage;
 };
+
+
+//------------------------------------------------------------------------
+// TextLine
+//------------------------------------------------------------------------
+
+class TextLine {
+public:
+
+    TextLine(GList *wordsA, double xMinA, double yMinA,
+             double xMaxA, double yMaxA, double fontSizeA);
+    ~TextLine();
+
+    double getXMin() { return xMin; }
+    double getYMin() { return yMin; }
+    double getXMax() { return xMax; }
+    double getYMax() { return yMax; }
+    double getBaseline();
+    int getRotation() { return rot; }
+    GList *getWords() { return words; }
+    int getLength() { return len; }
+    double getEdge(int idx) { return edge[idx]; }
+
+private:
+
+    static int cmpX(const void *p1, const void *p2);
+
+    GList *words;			// [TextWord]
+    int rot;			// rotation, multiple of 90 degrees
+    //   (0, 1, 2, or 3)
+    double xMin, xMax;		// bounding box x coordinates
+    double yMin, yMax;		// bounding box y coordinates
+    double fontSize;		// main (max) font size for this line
+    Unicode *text;		// Unicode text of the line, including
+    //   spaces between words
+    double *edge;			// "near" edge x or y coord of each char
+    //   (plus one extra entry for the last char)
+    int len;			// number of Unicode chars
+    GBool hyphenated;		// set if last char is a hyphen
+    int px;			// x offset (in characters, relative to
+    //   containing column) in physical layout mode
+    int pw;			// line width (in characters) in physical
+    //   layout mode
+
+    friend class TextSuperLine;
+    friend class TextPage;
+    friend class TextParagraph;
+};
+
+//------------------------------------------------------------------------
+// TextParagraph
+//------------------------------------------------------------------------
+
+class TextParagraph {
+public:
+
+    TextParagraph(GList *linesA, GBool dropCapA);
+    ~TextParagraph();
+
+    // Get the list of TextLine objects.
+    GList *getLines() { return lines; }
+
+    GBool hasDropCap() { return dropCap; }
+
+    double getXMin() { return xMin; }
+    double getYMin() { return yMin; }
+    double getXMax() { return xMax; }
+    double getYMax() { return yMax; }
+
+private:
+
+    GList *lines;			// [TextLine]
+    GBool dropCap;		// paragraph starts with a drop capital
+    double xMin, xMax;		// bounding box x coordinates
+    double yMin, yMax;		// bounding box y coordinates
+
+    friend class TextPage;
+};
+
+//------------------------------------------------------------------------
+// TextColumn
+//------------------------------------------------------------------------
+
+class TextColumn {
+public:
+
+    TextColumn(GList *paragraphsA, double xMinA, double yMinA,
+               double xMaxA, double yMaxA);
+    ~TextColumn();
+
+    // Get the list of TextParagraph objects.
+    GList *getParagraphs() { return paragraphs; }
+
+    double getXMin() { return xMin; }
+    double getYMin() { return yMin; }
+    double getXMax() { return xMax; }
+    double getYMax() { return yMax; }
+
+    int getRotation();
+
+private:
+
+    static int cmpX(const void *p1, const void *p2);
+    static int cmpY(const void *p1, const void *p2);
+    static int cmpPX(const void *p1, const void *p2);
+
+    GList *paragraphs;		// [TextParagraph]
+    double xMin, xMax;		// bounding box x coordinates
+    double yMin, yMax;		// bounding box y coordinates
+    int px, py;			// x, y position (in characters) in physical
+    //   layout mode
+    int pw, ph;			// column width, height (in characters) in
+    //   physical layout mode
+
+    friend class TextPage;
+};
+
+
 
 //------------------------------------------------------------------------
 // TextPage
@@ -688,6 +824,89 @@ public:
      * @param blocks To know if the blocks option is selected
      * @param fullFontName To know if the fullFontName option is selected */
     void dump(GBool blocks, GBool fullFontName);
+
+    /** Dump contents of the current page following the reading order.
+     * @param blocks To know if the blocks option is selected
+     * @param fullFontName To know if the fullFontName option is selected */
+    void dumpInReadingOrder(GBool blocks, GBool fullFontName);
+
+    int rotateChars(GList *charsA);
+
+    void unrotateChars(GList *wordsA, int rot);
+
+    GBool checkPrimaryLR(GList *charsA);
+
+    TextBlock *splitChars(GList *charsA);
+
+    void insertClippedChars(GList *clippedChars, TextBlock *tree);
+
+    TextBlock *findClippedCharLeaf(TextChar *ch, TextBlock *tree);
+
+    TextBlock *split(GList *charsA, int rot);
+
+    void insertLargeChars(GList *largeChars, TextBlock *blk);
+
+    void insertLargeCharsInFirstLeaf(GList *largeChars, TextBlock *blk);
+
+    void insertLargeCharInLeaf(TextChar *ch, TextBlock *blk);
+
+    GList *getWords(GList *wordsA, double xMin, double yMin,
+                              double xMax, double yMax);
+
+    void findGaps(GList *charsA, int rot,
+                            double *xMinOut, double *yMinOut,
+                            double *xMaxOut, double *yMaxOut,
+                            double *avgFontSizeOut,
+                            GList *horizGaps, GList *vertGaps);
+
+    void tagBlock(TextBlock *blk);
+
+    GList *buildColumns(TextBlock *tree, GBool primaryLR);
+
+    void buildColumns2(TextBlock *blk, GList *columns, GBool primaryLR);
+
+    TextColumn *buildColumn(TextBlock *blk);
+
+    double getLineIndent(TextLine *line, TextBlock *blk);
+
+    double getAverageLineSpacing(GList *lines);
+
+    double getLineSpacing(TextLine *line0, TextLine *line1);
+
+    void buildLines(TextBlock *blk, GList *lines);
+
+    TextLine *buildLine(TextBlock *blk);
+
+    void getLineChars(TextBlock *blk, GList *charsA);
+
+    double computeWordSpacingThreshold(GList *charsA, int rot);
+
+    int getCharDirection(TextChar *ch);
+
+    int assignPhysLayoutPositions(GList *columns);
+
+    void assignLinePhysPositions(GList *columns);
+
+    void computeLinePhysWidth(TextLine *line, UnicodeMap *uMap);
+
+    int assignColumnPhysPositions(GList *columns);
+
+    void buildSuperLines(TextBlock *blk, GList *superLines);
+
+    void assignSimpleLayoutPositions(GList *superLines,
+                                               UnicodeMap *uMap);
+
+    void generateUnderlinesAndLinks(GList *columns);
+
+    void insertIntoTree(TextBlock *blk, TextBlock *primaryTree);
+
+    void insertColumnIntoTree(TextBlock *column, TextBlock *tree);
+
+    void insertLargeWords(GList *largeWords, TextBlock *blk);
+
+    void insertLargeWordsInFirstLeaf(GList *largeWords, TextBlock *blk);
+
+    void insertLargeWordInLeaf(TextWord *ch, TextBlock *blk);
 
     /** PL: insert a block in the page's list of block nodes according to the reading order
      * @param nodeblock the block node to be inserted
@@ -821,6 +1040,10 @@ public:
     /** Get the absolute object index in the stream
      * @return The absolute object index in the stream */
     int getIdx(){return idx;};
+
+    void endActualText(GfxState *state);
+
+    void beginActualText(GfxState *state, Unicode *u, int uLen);
 
     vector<ImageInline*> listeImageInline;
 
@@ -958,8 +1181,6 @@ private:
 
     void *vecOutputStream;
 
-    /** To keep text in content stream order */
-    GBool rawOrder;
     /** PL: To modify the blocks in reading order */
     GBool readingOrder;
     /** To know if the verbose option is selected */
@@ -977,6 +1198,10 @@ private:
     int charPos;
     /** The current font */
     TextFontInfo *curFont;
+
+    int curRot;			// current rotation
+    GBool diagonal;		// set if rotation is not close to
+    //   0/90/180/270 degrees
     /** The current font size */
     double curFontSize;
     /** The current nesting level (for Type 3 fonts) */
@@ -990,6 +1215,9 @@ private:
     int primaryRot;
     /** The primary direction (<code>true</code> means L-to-R, <code>false</code> means R-to-L) */
     GBool primaryLR;
+    GList *chars;			// [TextChar]
+    /** The list of words */
+    GList *words;
     /** The list of words, in raw order (only if rawOrder is set) */
     TextWord *rawWords;
     /** The last word on rawWords list */
@@ -1017,6 +1245,17 @@ private:
     vector<Dict*>highlightedObject;
     Links *pageLinks;
 
+
+    Unicode *actualText;		// current "ActualText" span
+    int actualTextLen;
+    double actualTextX0,
+            actualTextY0,
+            actualTextX1,
+            actualTextY1;
+    int actualTextNBytes;
+
+
+    GList *getChars(GList *charsA, double xMin, double yMin, double xMax, double yMax);
 };
 
 
@@ -1331,7 +1570,9 @@ private:
     /** To keep text in content stream order */
     GBool verbose;
     /** To keep text in content stream order */
-    GBool rawOrder;
+    //GBool rawOrder;
+/** To make text in reading order */
+    GBool readingOrder;
     /** To know if the blocks option is selected */
     GBool blocks;
     /** To know if the fullFontName option is selected */
@@ -1368,6 +1609,9 @@ private:
 
     vector<Unicode> placeholders;
 
+    void beginActualText(GfxState *state, Unicode *u, int uLen);
+
+    void endActualText(GfxState *state);
 };
 
 #endif
