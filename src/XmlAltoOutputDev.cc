@@ -2610,7 +2610,7 @@ void TextPage::addAttributsNode(xmlNodePtr node, IWord *word, double &xMaxi,
     }
     //            xmlNewProp(node, (const xmlChar*)ATTR_FONT_NAME,
 //                       (const xmlChar*)gsFontName->getCString());
-    fontStyleInfo->setFontName(gsFontName);
+    fontStyleInfo->setFontName(gsFontName->lowerCase());
     //delete gsFontName;
 
     if (word->font != NULL) {
