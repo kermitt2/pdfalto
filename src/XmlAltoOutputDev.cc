@@ -560,7 +560,8 @@ int rotA, int dirA, GBool spaceAfterA, GfxState *state,
         if (rot == 0) {
             angle = 0;
         }
-    }
+    } else
+        angleSkewing_Y = 0;
 
     if (m[1]!=0 && m[2]==0) {
         double angSkew = atan(m[1]);
@@ -569,8 +570,10 @@ int rotA, int dirA, GBool spaceAfterA, GfxState *state,
         if (rot == 0) {
             angle = 0;
         }
-    }
-    //base = 0;
+    } else
+        angleSkewing_X = 0;
+
+        //base = 0;
     //baseYmin = 0;
     fontName = NULL;
 
@@ -4346,7 +4349,7 @@ void TextPage::dumpInReadingOrder(GBool blocks, GBool fullFontName) {
     TextParagraph *par;
     TextLine *line;
     TextWord *word;
-    TextWord *word1;
+    TextWord *nextWord;
     GList *columns;
     GBool primaryLR;
 
@@ -4438,7 +4441,8 @@ void TextPage::dumpInReadingOrder(GBool blocks, GBool fullFontName) {
                 for (wordI = 0; wordI < line->words->getLength(); ++wordI) {
 
                     word = (TextWord *)line->words->get(wordI);
-                    //word1 = (TextWord *)line->words->get(wordI+1);
+                    if(wordI < line->words->getLength() - 1)
+                        nextWord = (TextWord *)line->words->get(wordI+1);
 
                     char* tmp;
 
@@ -4452,7 +4456,7 @@ void TextPage::dumpInReadingOrder(GBool blocks, GBool fullFontName) {
 
                     //AA : this is a naive heuristic ( regarding general typography cases ) super/sub script, wikipedia description is good
                     // first is clear, second check is in case of firstword in line and superscript which is recurrent for declaring affiliations or even refs.
-                    if((word->base < previousWordBaseLine && word->yMax > previousWordYmin))
+                    if((word->base < previousWordBaseLine && word->yMax > previousWordYmin)|| (wordI == 0 && wordI < line->words->getLength() - 1 && word->base < nextWord->base && word->yMax > nextWord->yMin))
                         fontStyleInfo->setIsSuperscript(gTrue);
                     else if(((wordI > 0) && word->base > previousWordBaseLine && word->yMin > previousWordYmax ))
                         fontStyleInfo->setIsSubscript(gTrue);
@@ -4528,7 +4532,7 @@ void TextPage::dumpInReadingOrder(GBool blocks, GBool fullFontName) {
                     if(wordI < line->words->getLength() - 1) {
                         xmlNodePtr spacingNode = xmlNewNode(NULL, (const xmlChar *) TAG_SPACING);
                         spacingNode->type = XML_ELEMENT_NODE;
-                        sprintf(tmp, ATTR_NUMFORMAT, (((TextWord *)line->words->get(wordI+1))->xMin - word->xMax));
+                        sprintf(tmp, ATTR_NUMFORMAT, (nextWord->xMin - word->xMax));
                         xmlNewProp(spacingNode, (const xmlChar *) ATTR_WIDTH,
                                    (const xmlChar *) tmp);
                         sprintf(tmp, ATTR_NUMFORMAT, (word->yMin));
@@ -4541,9 +4545,11 @@ void TextPage::dumpInReadingOrder(GBool blocks, GBool fullFontName) {
                         xmlAddChild(nodeline, spacingNode);
                     }
 
+                    previousWordBaseLine = word->base;
+                    previousWordYmin = word->yMin;
+                    previousWordYmax = word->yMax;
+
                     free(tmp);
-
-
                 }
 
                 if(blocks)
