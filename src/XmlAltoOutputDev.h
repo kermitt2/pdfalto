@@ -455,6 +455,9 @@ public:
     /** The number of content stream characters in this word */
     int charLen;
 
+    GBool spaceAfter;		// set if there is a space between this
+    //   word and the next word on the line
+
     /** <code>true</code> if the current <code>TextRawWord</code> is <b>bold</b>, <code>false</code> else */
     GBool  bold;
     /** <code>true</code> if the current <code>TextRawWord</code> is <b>italic</b>, <code>false</code> else */
@@ -553,6 +556,10 @@ public:
     void getCharBBox(int charIdx, double *xMinA, double *yMinA,
                      double *xMaxA, double *yMaxA);
 
+    GBool getSpaceAfter() { return spaceAfter; }
+
+    GBool setSpaceAfter(GBool spaceAfterA) { return spaceAfter = spaceAfterA; }
+
     int getCharPos() { return charPos[0]; }
     int getCharLen() { return charPos[len] - charPos[0]; }
 };
@@ -579,7 +586,6 @@ public:
     GBool isInvisible() { return invisible; }
 
     int getDirection() { return dir; }
-    GBool getSpaceAfter() { return spaceAfter; }
     double getBaseline();
     GBool isUnderlined() { return underlined; }
     GString *getLinkURI();
@@ -592,8 +598,6 @@ private:
 
     int dir;			// character direction (+1 = left-to-right;
     //   -1 = right-to-left; 0 = neither)
-    GBool spaceAfter;		// set if there is a space between this
-    //   word and the next word on the line
 
     GBool underlined;
     //TextLink *link;

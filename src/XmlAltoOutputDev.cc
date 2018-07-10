@@ -2350,9 +2350,12 @@ void TextPage::addCharToRawWord(GfxState *state, double x, double y, double dx,
     }
 
     // break words at space character
-    if (uLen == 1 && u[0] == (Unicode) 0x20) {
+    if (uLen == 1 && (u[0] == (Unicode)0x20 ||
+                       u[0] == (Unicode)0x09 ||
+                       u[0] == (Unicode)0xa0)) {
         if (curWord) {
             ++curWord->charLen;
+            curWord->setSpaceAfter(gTrue);
         }
         charPos += nBytes;
         endWord();
@@ -5297,9 +5300,8 @@ void TextPage::dump(GBool blocks, GBool fullFontName) {
             nodeline->type = XML_ELEMENT_NODE;
         }
 
-        if(xmlChildElementCount(nodeline) > 0 && word->next)
+        if(xmlChildElementCount(nodeline) > 0 && word->next && word->spaceAfter)
         {
-
             xmlNodePtr spacingNode = xmlNewNode(NULL, (const xmlChar*)TAG_SPACING);
             spacingNode->type = XML_ELEMENT_NODE;
             sprintf(tmp, ATTR_NUMFORMAT, (word->next->xMin - word->xMax));
