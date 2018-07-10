@@ -462,23 +462,21 @@ int TextChar::cmpY(const void *p1, const void *p2) {
     }
 }
 
-
-
 //------------------------------------------------------------------------
 // TextWord
 //------------------------------------------------------------------------
 
-TextWord::TextWord(GList *chars, GfxState *state, double start, double end, double x0, double y0,
-                   int idCurrentWord,
-                   int index, int rotA, int dirA, GBool spaceAfterA) {
+TextWord::TextWord(GList *chars, int start, int lenA,
+int rotA, int dirA, GBool spaceAfterA, GfxState *state,
+                   TextFontInfo *fontA, double fontSizeA, int idCurrentWord,
+                   int index) {
     GfxFont *gfxFont;
-    double x, y, ascent, descent;
+    double ascent, descent;
 
     TextChar *ch;
     int i;
 
-    charLen = 0;
-    font = new TextFontInfo(state);
+    font = fontA;
     italic = gFalse;
     bold = gFalse;
     serif = gFalse;
@@ -487,12 +485,255 @@ TextWord::TextWord(GList *chars, GfxState *state, double start, double end, doub
     spaceAfter = spaceAfterA;
     dir = dirA;
 
+    idWord = idCurrentWord;
+    idx = index;
+
     double *fontm;
     double m[4];
     double m2[4];
     double tan;
 
 
+    // Compute the rotation
+    state->getFontTransMat(&m[0], &m[1], &m[2], &m[3]);
+
+    if (state->getFont()->getType() == fontType3) {
+        fontm = state->getFont()->getFontMatrix();
+        m2[0] = fontm[0] * m[0] + fontm[1] * m[2];
+        m2[1] = fontm[0] * m[1] + fontm[1] * m[3];
+        m2[2] = fontm[2] * m[0] + fontm[3] * m[2];
+        m2[3] = fontm[2] * m[1] + fontm[3] * m[3];
+        m[0] = m2[0];
+        m[1] = m2[1];
+        m[2] = m2[2];
+        m[3] = m2[3];
+    }
+
+    if (fabs(m[0] * m[3]) > fabs(m[1] * m[2])) {
+        rot = (m[3] < 0) ? 0 : 2;
+    } else {
+        rot = (m[2] > 0) ? 3 : 1;
+    }
+
+    // Get the tangent
+    tan = m[2]/m[0];
+    // Get the angle value in radian
+    tan = atan(tan);
+    // To convert radian angle to degree angle
+    tan = 180 * tan / M_PI;
+
+    angle = static_cast<int>(tan);
+
+    // Adjust the angle value
+    switch (rot) {
+        case 0:
+            if (angle>0)
+                angle = 360 - angle;
+            else
+                angle = static_cast<int>(fabs(static_cast<double>(angle)));
+            break;
+        case 1:
+            if (angle>0)
+                angle = 180 - angle;
+            else
+                angle = static_cast<int>(fabs(static_cast<double>(angle)));
+            break;
+        case 2:
+            if (angle>0)
+                angle = 180 - angle;
+            else
+                angle = static_cast<int>(fabs(static_cast<double>(angle))) + 180;
+            break;
+        case 3:
+            if (angle>0)
+                angle = 360 - angle;
+            else
+                angle = static_cast<int>(fabs(static_cast<double>(angle))) + 180;
+            break;
+    }
+
+    // Recover the skewing angle value
+    if (m[1]==0 && m[2]!=0) {
+        double angSkew = atan(m[2]);
+        angSkew = (180 * angSkew / M_PI) - 90;
+        angleSkewing_Y = static_cast<int>(angSkew);
+        if (rot == 0) {
+            angle = 0;
+        }
+    }
+
+    if (m[1]!=0 && m[2]==0) {
+        double angSkew = atan(m[1]);
+        angSkew = 180 * angSkew / M_PI;
+        angleSkewing_X = static_cast<int>(angSkew);
+        if (rot == 0) {
+            angle = 0;
+        }
+    }
+    //base = 0;
+    //baseYmin = 0;
+    fontName = NULL;
+
+    if (state->getFont()) {
+        if (state->getFont()->getName()) {
+            // PDF reference guide 5.5.3 For a font subset, the PostScript name of the font�the value of the font�s
+            //BaseFont entry and the font descriptor�s FontName entry�begins with a tag
+            //followed by a plus sign (+). The tag consists of exactly six uppercase letters; the
+            //choice of letters is arbitrary, but different subsets in the same PDF file must have
+            //different tags. For example, EOODIA+Poetica is the name of a subset of Poetica�, a
+            //Type 1 font. (See implementation note 62 in Appendix H.)
+            fontName = strdup(state->getFont()->getName()->getCString());
+            if (strstr(state->getFont()->getName()->lowerCase()->getCString(), "bold"))
+                bold=gTrue;
+            if (strstr(state->getFont()->getName()->lowerCase()->getCString(), "italic")|| strstr(state->getFont()->getName()->lowerCase()->getCString(), "oblique"))
+                italic=gTrue;
+        } else {
+            fontName = NULL;
+        }
+        if (bold == gFalse) {
+            bold = state->getFont()->isBold();
+        }
+        if (italic == gFalse) {
+            italic = state->getFont()->isItalic();
+        }
+        symbolic = state->getFont()->isSymbolic();
+        serif = state->getFont()->isSerif();
+    }
+
+    horizScaling = state->getHorizScaling();
+    wordSpace = state->getWordSpace();
+    charSpace = state->getCharSpace();
+    rise = state->getRise();
+    render = state->getRender();
+    leading = state->getLeading();
+
+    fontSize = fontSizeA;
+
+    if ((gfxFont = font->gfxFont)) {
+        ascent = gfxFont->getAscent() * fontSize;
+        descent = gfxFont->getDescent() * fontSize;
+    } else {
+        // this means that the PDF file draws text without a current font,
+        // which should never happen
+        ascent = 0.95 * fontSize;
+        descent = -0.35 * fontSize;
+        gfxFont = NULL;
+    }
+
+    spaceAfter = gFalse;
+
+    len = lenA;
+    text = (Unicode *)gmallocn(len, sizeof(Unicode));
+    edge = (double *)gmallocn(len + 1, sizeof(double));
+    charPos = (int *)gmallocn(len + 1, sizeof(int));
+    rot = rotA;
+    if (rot & 1) {
+        ch = (TextChar *)chars->get(start);
+        xMin = ch->xMin;
+        xMax = ch->xMax;
+        yMin = ch->yMin;
+        ch = (TextChar *)chars->get(start + len - 1);
+        yMax = ch->yMax;
+        base = xMin - descent;
+        baseYmin = xMin;
+    } else {
+        ch = (TextChar *)chars->get(start);
+        xMin = ch->xMin;
+        yMin = ch->yMin;
+        yMax = ch->yMax;
+        ch = (TextChar *)chars->get(start + len - 1);
+        xMax = ch->xMax;
+        base = yMin + ascent;
+        baseYmin = yMin;
+    }
+
+    for (i = 0; i < len; ++i) {
+        ch = (TextChar *)chars->get(rot >= 2 ? start + len - 1 - i : start + i);
+        text[i] = ch->c;
+        charPos[i] = ch->charPos;
+        if (i == len - 1) {
+            charPos[len] = ch->charPos + ch->charLen;
+        }
+        switch (rot) {
+            case 0:
+            default:
+                edge[i] = ch->xMin;
+                if (i == len - 1) {
+                    edge[len] = ch->xMax;
+                }
+                break;
+            case 1:
+                edge[i] = ch->yMin;
+                if (i == len - 1) {
+                    edge[len] = ch->yMax;
+                }
+                break;
+            case 2:
+                edge[i] = ch->xMax;
+                if (i == len - 1) {
+                    edge[len] = ch->xMin;
+                }
+                break;
+            case 3:
+                edge[i] = ch->yMax;
+                if (i == len - 1) {
+                    edge[len] = ch->yMin;
+                }
+                break;
+        }
+    }
+
+    GfxRGB rgb;
+
+    if ((state->getRender() & 3) == 1) {
+        state->getStrokeRGB(&rgb);
+    } else {
+        state->getFillRGB(&rgb);
+    }
+
+    colorR = colToDbl(rgb.r);
+    colorG = colToDbl(rgb.g);
+    colorB = colToDbl(rgb.b);
+}
+
+TextWord::TextWord(TextWord *word) {
+    *this = *word;
+    text = (Unicode *)gmallocn(len, sizeof(Unicode));
+    memcpy(text, word->text, len * sizeof(Unicode));
+    edge = (double *)gmallocn(len + 1, sizeof(double));
+    memcpy(edge, word->edge, (len + 1) * sizeof(double));
+    charPos = (int *)gmallocn(len + 1, sizeof(int));
+    memcpy(charPos, word->charPos, (len + 1) * sizeof(int));
+}
+
+TextWord::~TextWord() {
+    gfree(text);
+    gfree(edge);
+    gfree(charPos);
+}
+
+//------------------------------------------------------------------------
+// TextRawWord
+//------------------------------------------------------------------------
+
+TextRawWord::TextRawWord(GfxState *state, double x0, double y0,
+                         TextFontInfo *fontA, double fontSizeA, int idCurrentWord,
+                         int index) {
+    GfxFont *gfxFont;
+    double x, y, ascent, descent;
+
+    charLen = 0;
+    font = fontA;
+    italic = gFalse;
+    bold = gFalse;
+    serif = gFalse;
+    symbolic = gFalse;
+
+
+    double *fontm;
+    double m[4];
+    double m2[4];
+    double tan;
     // Compute the rotation
     state->getFontTransMat(&m[0], &m[1], &m[2], &m[3]);
 
@@ -610,7 +851,7 @@ TextWord::TextWord(GList *chars, GfxState *state, double start, double end, doub
     render = state->getRender();
     leading = state->getLeading();
 
-    fontSize = state->getTransformedFontSize();
+    fontSize = fontSizeA;
 
     state->transform(x0, y0, &x, &y);
     if ((gfxFont = font->gfxFont)) {
@@ -680,72 +921,10 @@ TextWord::TextWord(GList *chars, GfxState *state, double start, double end, doub
     }
 
     text = NULL;
+    charPos = NULL;
     edge = NULL;
     len = size = 0;
-    spaceAfter = gFalse;
     next = NULL;
-
-
-
-    if(parameters->getReadingOrder()){
-        len = size = end - start;
-
-        text = (Unicode *)gmallocn(len, sizeof(Unicode));
-        edge = (double *)gmallocn(len + 1, sizeof(double));
-        charPos = (int *)gmallocn(len + 1, sizeof(int));
-        rot = rotA;
-        if (rot & 1) {
-            ch = (TextChar *)chars->get(start);
-            xMin = ch->xMin;
-            xMax = ch->xMax;
-            yMin = ch->yMin;
-            ch = (TextChar *)chars->get(start + len - 1);
-            yMax = ch->yMax;
-        } else {
-            ch = (TextChar *)chars->get(start);
-            xMin = ch->xMin;
-            yMin = ch->yMin;
-            yMax = ch->yMax;
-            ch = (TextChar *)chars->get(start + len - 1);
-            xMax = ch->xMax;
-        }
-        for (i = 0; i < len; ++i) {
-            ch = (TextChar *)chars->get(rot >= 2 ? start + len - 1 - i : start + i);
-            text[i] = ch->c;
-            charPos[i] = ch->charPos;
-            if (i == len - 1) {
-                charPos[len] = ch->charPos + ch->charLen;
-            }
-            switch (rot) {
-                case 0:
-                default:
-                    edge[i] = ch->xMin;
-                    if (i == len - 1) {
-                        edge[len] = ch->xMax;
-                    }
-                    break;
-                case 1:
-                    edge[i] = ch->yMin;
-                    if (i == len - 1) {
-                        edge[len] = ch->yMax;
-                    }
-                    break;
-                case 2:
-                    edge[i] = ch->xMax;
-                    if (i == len - 1) {
-                        edge[len] = ch->xMin;
-                    }
-                    break;
-                case 3:
-                    edge[i] = ch->yMax;
-                    if (i == len - 1) {
-                        edge[len] = ch->yMin;
-                    }
-                    break;
-            }
-        }
-
-    }
 
     GfxRGB rgb;
 
@@ -760,20 +939,22 @@ TextWord::TextWord(GList *chars, GfxState *state, double start, double end, doub
     colorB = colToDbl(rgb.b);
 }
 
-TextWord::~TextWord() {
+TextRawWord::~TextRawWord() {
     gfree(text);
     gfree(edge);
 }
 
-void TextWord::addChar(GfxState *state, double x, double y, double dx,
+void TextRawWord::addChar(GfxState *state, double x, double y, double dx,
                        double dy, Unicode u, int charPosA) {
 
     if (len == size) {
         size += 16;
         text = (Unicode *)grealloc(text, size * sizeof(Unicode));
         edge = (double *)grealloc(edge, (size + 1) * sizeof(double));
+        //charPos = (int *)grealloc(charPos, size + 1 * sizeof(int));
     }
-    charPos[len] = charPosA;
+
+    //charPos[len] = charPosA;
     text[len] = u;
     switch (rot) {
         case 0:
@@ -808,7 +989,7 @@ void TextWord::addChar(GfxState *state, double x, double y, double dx,
     ++len;
 }
 
-void TextWord::merge(TextWord *word) {
+void TextRawWord::merge(TextRawWord *word) {
     int i;
 
     if (word->xMin < xMin) {
@@ -837,7 +1018,7 @@ void TextWord::merge(TextWord *word) {
     charLen += word->charLen;
 }
 
-inline int TextWord::primaryCmp(TextWord *word) {
+inline int TextRawWord::primaryCmp(TextRawWord *word) {
     double cmp;
 
     cmp = 0; // make gcc happy
@@ -858,7 +1039,7 @@ inline int TextWord::primaryCmp(TextWord *word) {
     return cmp< 0 ? -1 : cmp> 0 ?1 : 0;
 }
 
-double TextWord::primaryDelta(TextWord *word) {
+double TextRawWord::primaryDelta(TextRawWord *word) {
     double delta;
 
     delta = 0; // make gcc happy
@@ -879,14 +1060,18 @@ double TextWord::primaryDelta(TextWord *word) {
     return delta;
 }
 
-GBool TextWord::overlap(TextWord *w2){
+GBool TextRawWord::overlap(TextRawWord *w2){
 
     return gFalse;
 }
 
-int TextWord::cmpX(const void *p1, const void *p2) {
-    const TextWord *word1 = *(const TextWord **)p1;
-    const TextWord *word2 = *(const TextWord **)p2;
+//------------------------------------------------------------------------
+// TextRawWord
+//------------------------------------------------------------------------
+
+int IWord::cmpX(const void *p1, const void *p2) {
+    const TextRawWord *word1 = *(const TextRawWord **)p1;
+    const TextRawWord *word2 = *(const TextRawWord **)p2;
 
     if (word1->xMin < word2->xMin) {
         return -1;
@@ -897,9 +1082,9 @@ int TextWord::cmpX(const void *p1, const void *p2) {
     }
 }
 
-int TextWord::cmpY(const void *p1, const void *p2) {
-    const TextWord *word1 = *(const TextWord **)p1;
-    const TextWord *word2 = *(const TextWord **)p2;
+int IWord::cmpY(const void *p1, const void *p2) {
+    const TextRawWord *word1 = *(const TextRawWord **)p1;
+    const TextRawWord *word2 = *(const TextRawWord **)p2;
 
     if (word1->yMin < word2->yMin) {
         return -1;
@@ -910,9 +1095,9 @@ int TextWord::cmpY(const void *p1, const void *p2) {
     }
 }
 
-int TextWord::cmpYX(const void *p1, const void *p2) {
-    TextWord *word1 = *(TextWord **)p1;
-    TextWord *word2 = *(TextWord **)p2;
+int IWord::cmpYX(const void *p1, const void *p2) {
+    TextRawWord *word1 = *(TextRawWord **)p1;
+    TextRawWord *word2 = *(TextRawWord **)p2;
     double cmp;
 
     cmp = word1->yMin - word2->yMin;
@@ -922,7 +1107,7 @@ int TextWord::cmpYX(const void *p1, const void *p2) {
     return cmp< 0 ? -1 : cmp> 0 ?1 : 0;
 }
 
-GString *TextWord::convtoX(double xcol) const {
+GString *IWord::convtoX(double xcol) const {
     GString *xret=new GString();
     char tmp;
     unsigned int k;
@@ -944,7 +1129,7 @@ GString *TextWord::convtoX(double xcol) const {
     return xret;
 }
 
-GString *TextWord::colortoString() const {
+GString *IWord::colortoString() const {
     GString *tmp=new GString("#");
     GString *tmpr=convtoX(static_cast<int>(255*colorR));
     GString *tmpg=convtoX(static_cast<int>(255*colorG));
@@ -959,7 +1144,7 @@ GString *TextWord::colortoString() const {
     return tmp;
 }
 
-const char* TextWord::normalizeFontName(char* fontName) {
+const char* IWord::normalizeFontName(char* fontName) {
     string name (fontName);
     string name2;
     string name3;
@@ -1315,7 +1500,7 @@ TextPage::TextPage(GBool verboseA, Catalog *catalog, xmlNodePtr node,
     //rawOrder = 1;
 
     // PL: to modify block order according to reading order
-    if (parameters->getReadingOrder()) {
+    if (parameters->getReadingOrder() == gTrue) {
         chars = new GList();
         readingOrder = 1;
     } else {
@@ -1756,7 +1941,7 @@ void TextPage::endPage(GString *dataDir) {
 }
 
 void TextPage::clear() {
-    TextWord *word;
+    TextRawWord *word;
 
     if (curWord) {
         delete curWord;
@@ -1951,143 +2136,139 @@ void TextPage::beginWord(GfxState *state, double x0, double y0) {
         return;
     }
 
-
-
     // Increment the absolute object index
     idx++;
 
     curWord
-            = new TextWord(NULL, state, 0, 0, x0, y0, getIdWORD(), getIdx(), 0, 0, gFalse);
+            = new TextRawWord(state, x0, y0, curFont, curFontSize, getIdWORD(), getIdx());
 }
 
-void TextPage::addChar(GfxState *state, double x, double y, double dx,
-                       double dy, CharCode c, int nBytes, Unicode *u, int uLen) {
+void TextPage::addCharToPageChars(GfxState *state, double x, double y, double dx,
+                       double dy, CharCode c, int nBytes, Unicode *u, int uLen){
+    double x1, y1, x2, y2, w1, h1, dx2, dy2, ascent, descent, sp;
+    double xMin, yMin, xMax, yMax, xMid, yMid;
+    double clipXMin, clipYMin, clipXMax, clipYMax;
+    GfxRGB rgb;
+    double alpha;
+    GBool clipped, rtl;
+    int i, j;
 
-    if(parameters->getReadingOrder()){
-        double x1, y1, x2, y2, w1, h1, dx2, dy2, ascent, descent, sp;
-        double xMin, yMin, xMax, yMax, xMid, yMid;
-        double clipXMin, clipYMin, clipXMax, clipYMax;
-        GfxRGB rgb;
-        double alpha;
-        GBool clipped, rtl;
-        int i, j;
-
-        // if we're in an ActualText span, save the position info (the
-        // ActualText chars will be added by TextPage::endActualText()).
-        if (actualText) {
-            if (!actualTextNBytes) {
-                actualTextX0 = x;
-                actualTextY0 = y;
-            }
-            actualTextX1 = x + dx;
-            actualTextY1 = y + dy;
-            actualTextNBytes += nBytes;
-            return;
+    // if we're in an ActualText span, save the position info (the
+    // ActualText chars will be added by TextPage::endActualText()).
+    if (actualText) {
+        if (!actualTextNBytes) {
+            actualTextX0 = x;
+            actualTextY0 = y;
         }
+        actualTextX1 = x + dx;
+        actualTextY1 = y + dy;
+        actualTextNBytes += nBytes;
+        return;
+    }
 
-        // throw away diagonal chars
+    // throw away diagonal chars
 //        if (control.discardDiagonalText && diagonal) {
 //            charPos += nBytes;
 //            return;
 //        }
 
-        // subtract char and word spacing from the dx,dy values
-        sp = state->getCharSpace();
-        if (c == (CharCode)0x20) {
-            sp += state->getWordSpace();
-        }
-        state->textTransformDelta(sp * state->getHorizScaling(), 0, &dx2, &dy2);
-        dx -= dx2;
-        dy -= dy2;
-        state->transformDelta(dx, dy, &w1, &h1);
+    // subtract char and word spacing from the dx,dy values
+    sp = state->getCharSpace();
+    if (c == (CharCode)0x20) {
+        sp += state->getWordSpace();
+    }
+    state->textTransformDelta(sp * state->getHorizScaling(), 0, &dx2, &dy2);
+    dx -= dx2;
+    dy -= dy2;
+    state->transformDelta(dx, dy, &w1, &h1);
 
-        // throw away chars that aren't inside the page bounds
-        // (and also do a sanity check on the character size)
-        state->transform(x, y, &x1, &y1);
-        if (x1 + w1 < 0 || x1 > pageWidth ||
-            y1 + h1 < 0 || y1 > pageHeight ||
-            w1 > pageWidth || h1 > pageHeight) {
+    // throw away chars that aren't inside the page bounds
+    // (and also do a sanity check on the character size)
+    state->transform(x, y, &x1, &y1);
+    if (x1 + w1 < 0 || x1 > pageWidth ||
+        y1 + h1 < 0 || y1 > pageHeight ||
+        w1 > pageWidth || h1 > pageHeight) {
+        charPos += nBytes;
+        return;
+    }
+
+    // check the tiny chars limit
+    if (!globalParams->getTextKeepTinyChars() &&
+        fabs(w1) < 3 && fabs(h1) < 3) {
+        if (++nTinyChars > 50000) {
             charPos += nBytes;
             return;
         }
+    }
 
-        // check the tiny chars limit
-        if (!globalParams->getTextKeepTinyChars() &&
-            fabs(w1) < 3 && fabs(h1) < 3) {
-            if (++nTinyChars > 50000) {
-                charPos += nBytes;
-                return;
-            }
+    // skip space, tab, and non-breaking space characters
+    if (uLen == 1 && (u[0] == (Unicode)0x20 ||
+                      u[0] == (Unicode)0x09 ||
+                      u[0] == (Unicode)0xa0)) {
+        charPos += nBytes;
+        if (chars->getLength() > 0) {
+            ((TextChar *)chars->get(chars->getLength() - 1))->spaceAfter =
+                    (char)gTrue;
         }
+        return;
+    }
 
-        // skip space, tab, and non-breaking space characters
-        if (uLen == 1 && (u[0] == (Unicode)0x20 ||
-                          u[0] == (Unicode)0x09 ||
-                          u[0] == (Unicode)0xa0)) {
-            charPos += nBytes;
-            if (chars->getLength() > 0) {
-                ((TextChar *)chars->get(chars->getLength() - 1))->spaceAfter =
-                        (char)gTrue;
-            }
-            return;
-        }
+    // add the characters
+    if (uLen > 0) {
 
-        // add the characters
-        if (uLen > 0) {
-
-            // handle right-to-left ligatures: if there are multiple Unicode
-            // characters, and they're all right-to-left, insert them in
-            // right-to-left order
-            if (uLen > 1) {
-                rtl = gTrue;
-                for (i = 0; i < uLen; ++i) {
-                    if (!unicodeTypeR(u[i])) {
-                        rtl = gFalse;
-                        break;
-                    }
-                }
-            } else {
-                rtl = gFalse;
-            }
-
-            // compute the bounding box
-            w1 /= uLen;
-            h1 /= uLen;
-            ascent = curFont->ascent * curFontSize;
-            descent = curFont->descent * curFontSize;
+        // handle right-to-left ligatures: if there are multiple Unicode
+        // characters, and they're all right-to-left, insert them in
+        // right-to-left order
+        if (uLen > 1) {
+            rtl = gTrue;
             for (i = 0; i < uLen; ++i) {
-                x2 = x1 + i * w1;
-                y2 = y1 + i * h1;
-                switch (curRot) {
-                    case 0:
-                    default:
-                        xMin = x2;
-                        xMax = x2 + w1;
-                        yMin = y2 - ascent;
-                        yMax = y2 - descent;
-                        break;
-                    case 1:
-                        xMin = x2 + descent;
-                        xMax = x2 + ascent;
-                        yMin = y2;
-                        yMax = y2 + h1;
-                        break;
-                    case 2:
-                        xMin = x2 + w1;
-                        xMax = x2;
-                        yMin = y2 + descent;
-                        yMax = y2 + ascent;
-                        break;
-                    case 3:
-                        xMin = x2 - ascent;
-                        xMax = x2 - descent;
-                        yMin = y2 + h1;
-                        yMax = y2;
-                        break;
+                if (!unicodeTypeR(u[i])) {
+                    rtl = gFalse;
+                    break;
                 }
+            }
+        } else {
+            rtl = gFalse;
+        }
 
-                // check for clipping
-                clipped = gFalse;
+        // compute the bounding box
+        w1 /= uLen;
+        h1 /= uLen;
+        ascent = curFont->ascent * curFontSize;
+        descent = curFont->descent * curFontSize;
+        for (i = 0; i < uLen; ++i) {
+            x2 = x1 + i * w1;
+            y2 = y1 + i * h1;
+            switch (curRot) {
+                case 0:
+                default:
+                    xMin = x2;
+                    xMax = x2 + w1;
+                    yMin = y2 - ascent;
+                    yMax = y2 - descent;
+                    break;
+                case 1:
+                    xMin = x2 + descent;
+                    xMax = x2 + ascent;
+                    yMin = y2;
+                    yMax = y2 + h1;
+                    break;
+                case 2:
+                    xMin = x2 + w1;
+                    xMax = x2;
+                    yMin = y2 + descent;
+                    yMax = y2 + ascent;
+                    break;
+                case 3:
+                    xMin = x2 - ascent;
+                    xMax = x2 - descent;
+                    yMin = y2 + h1;
+                    yMax = y2;
+                    break;
+            }
+
+            // check for clipping
+            clipped = gFalse;
 //                if (control.clipText || control.discardClippedText) {
 //                    state->getClipBBox(&clipXMin, &clipYMin, &clipXMax, &clipYMax);
 //                    xMid = 0.5 * (xMin + xMax);
@@ -2098,171 +2279,181 @@ void TextPage::addChar(GfxState *state, double x, double y, double dx,
 //                    }
 //                }
 
-                if ((state->getRender() & 3) == 1) {
-                    state->getStrokeRGB(&rgb);
-                    alpha = state->getStrokeOpacity();
-                } else {
-                    state->getFillRGB(&rgb);
-                    alpha = state->getFillOpacity();
-                }
-                if (rtl) {
-                    j = uLen - 1 - i;
-                } else {
-                    j = i;
-                }
-                chars->append(new TextChar(state->copy(), u[j], charPos, nBytes, xMin, yMin, xMax, yMax,
-                                           curRot, clipped,
-                                           state->getRender() == 3 || alpha < 0.001,
-                                           curFont, curFontSize,
-                                           colToDbl(rgb.r), colToDbl(rgb.g),
-                                           colToDbl(rgb.b)));
+            if ((state->getRender() & 3) == 1) {
+                state->getStrokeRGB(&rgb);
+                alpha = state->getStrokeOpacity();
+            } else {
+                state->getFillRGB(&rgb);
+                alpha = state->getFillOpacity();
             }
-        }
-
-        charPos += nBytes;
-
-    }else {
-        double x1, y1, w1, h1, dx2, dy2, base, sp, delta;
-        GBool overlap;
-        int i;
-
-        if (uLen == 0) {
-            endWord();
-            return;
-        }
-
-        // if the previous char was a space, addChar will have called
-        // endWord, so we need to start a new word
-        if (!curWord) {
-            beginWord(state, x, y);
-        }
-
-        // throw away chars that aren't inside the page bounds
-        state->transform(x, y, &x1, &y1);
-        if (x1 < 0 || x1 > pageWidth ||
-            y1 < 0 || y1 > pageHeight) {
-            charPos += nBytes;
-            endWord();
-            return;
-        }
-
-        // subtract char and word spacing from the dx,dy values // HD why ??
-        sp = state->getCharSpace();
-        if (c == (CharCode) 0x20) {
-            sp += state->getWordSpace();
-        }
-        state->textTransformDelta(sp * state->getHorizScaling(), 0, &dx2, &dy2);
-        dx -= dx2; //HD
-        dy -= dy2; //HD
-        state->transformDelta(dx, dy, &w1, &h1);
-
-        // check the tiny chars limit
-        if (!globalParams->getTextKeepTinyChars() && fabs(w1) < 3 && fabs(h1) < 3) {
-            if (++nTinyChars > 50000) {
-                charPos += nBytes;
-                return;
+            if (rtl) {
+                j = uLen - 1 - i;
+            } else {
+                j = i;
             }
+            chars->append(new TextChar(state->copy(), u[j], charPos, nBytes, xMin, yMin, xMax, yMax,
+                                       curRot, clipped,
+                                       state->getRender() == 3 || alpha < 0.001,
+                                       curFont, curFontSize,
+                                       colToDbl(rgb.r), colToDbl(rgb.g),
+                                       colToDbl(rgb.b)));
         }
-
-        // break words at space character
-        if (uLen == 1 && u[0] == (Unicode) 0x20) {
-            if (curWord) {
-                ++curWord->charLen;
-            }
-            charPos += nBytes;
-            endWord();
-            return;
-        }
-
-
-        if (!curWord) {
-            beginWord(state, x, y);
-        }
-
-        // start a new word if:
-        // (1) this character doesn't fall in the right place relative to
-        //     the end of the previous word (this places upper and lower
-        //     constraints on the position deltas along both the primary
-        //     and secondary axes), or
-        // (2) this character overlaps the previous one (duplicated text), or
-        // (3) the previous character was an overlap (we want each duplicated
-        //     character to be in a word by itself at this stage)
-        //     characters to be in a word by itself) // HD deleted
-        if (curWord && curWord->len > 0) {
-            base = sp = delta = 0; // make gcc happy
-            switch (curWord->rot) {
-                case 0:
-                    base = y1;
-                    sp = x1 - curWord->xMax;
-                    delta = x1 - curWord->edge[curWord->len - 1];
-                    break;
-                case 3:
-                    base = x1;
-                    sp = y1 - curWord->yMax;
-                    delta = y1 - curWord->edge[curWord->len - 1];
-                    break;
-                case 2:
-                    base = y1;
-                    sp = curWord->xMin - x1;
-                    delta = curWord->edge[curWord->len - 1] - x1;
-                    break;
-                case 1:
-                    base = x1;
-                    sp = curWord->yMin - y1;
-                    delta = curWord->edge[curWord->len - 1] - y1;
-                    break;
-            }
-            sp -= curWord->charSpace;
-            curWord->charSpace = state->getCharSpace();
-            overlap = fabs(delta) < dupMaxPriDelta * curWord->fontSize && fabs(base
-                                                                               - curWord->base) <
-                                                                          dupMaxSecDelta * curWord->fontSize;
-
-            // take into account rotation angle ??
-            if ((overlap || fabs(base - curWord->base) > 1 ||
-                 sp > minWordBreakSpace * curWord->fontSize ||
-                 sp < -minDupBreakOverlap * curWord->fontSize)) {
-                endWord();
-                beginWord(state, x, y);
-            }
-            lastCharOverlap = overlap;
-        } else {
-            lastCharOverlap = gFalse;
-        }
-
-        if (uLen != 0) {
-            if (!curWord) {
-                beginWord(state, x, y);
-            }
-            // page rotation and/or transform matrices can cause text to be
-            // drawn in reverse order -- in this case, swap the begin/end
-            // coordinates and break text into individual chars
-            if ((curWord->rot == 0 && w1 < 0) || (curWord->rot == 3 && h1 < 0)
-                || (curWord->rot == 2 && w1 > 0) || (curWord->rot == 1 && h1
-                                                                          > 0)) {
-                endWord();
-                beginWord(state, x + dx, y + dy);
-                x1 += w1;
-                y1 += h1;
-                w1 = -w1;
-                h1 = -h1;
-            }
-
-            // add the characters to the current word
-            w1 /= uLen;
-            h1 /= uLen;
-
-            for (i = 0; i < uLen; ++i) {
-                curWord->addChar(state, x1 + i * w1, y1 + i * h1, w1, h1, u[i], charPos);
-            }
-        }
-
-        if (curWord) {
-            curWord->charLen += nBytes;
-        }
-        charPos += nBytes;
     }
 
+    charPos += nBytes;
+}
+
+void TextPage::addCharToRawWord(GfxState *state, double x, double y, double dx,
+                       double dy, CharCode c, int nBytes, Unicode *u, int uLen){
+
+    double x1, y1, w1, h1, dx2, dy2, base, sp, delta;
+    GBool overlap;
+    int i;
+
+    if (uLen == 0) {
+        endWord();
+        return;
+    }
+
+    // if the previous char was a space, addChar will have called
+    // endWord, so we need to start a new word
+    if (!curWord) {
+        beginWord(state, x, y);
+    }
+
+    // throw away chars that aren't inside the page bounds
+    state->transform(x, y, &x1, &y1);
+    if (x1 < 0 || x1 > pageWidth ||
+        y1 < 0 || y1 > pageHeight) {
+        charPos += nBytes;
+        endWord();
+        return;
+    }
+
+    // subtract char and word spacing from the dx,dy values // HD why ??
+    sp = state->getCharSpace();
+    if (c == (CharCode) 0x20) {
+        sp += state->getWordSpace();
+    }
+    state->textTransformDelta(sp * state->getHorizScaling(), 0, &dx2, &dy2);
+    dx -= dx2; //HD
+    dy -= dy2; //HD
+    state->transformDelta(dx, dy, &w1, &h1);
+
+    // check the tiny chars limit
+    if (!globalParams->getTextKeepTinyChars() && fabs(w1) < 3 && fabs(h1) < 3) {
+        if (++nTinyChars > 50000) {
+            charPos += nBytes;
+            return;
+        }
+    }
+
+    // break words at space character
+    if (uLen == 1 && u[0] == (Unicode) 0x20) {
+        if (curWord) {
+            ++curWord->charLen;
+        }
+        charPos += nBytes;
+        endWord();
+        return;
+    }
+
+
+    if (!curWord) {
+        beginWord(state, x, y);
+    }
+
+    // start a new word if:
+    // (1) this character doesn't fall in the right place relative to
+    //     the end of the previous word (this places upper and lower
+    //     constraints on the position deltas along both the primary
+    //     and secondary axes), or
+    // (2) this character overlaps the previous one (duplicated text), or
+    // (3) the previous character was an overlap (we want each duplicated
+    //     character to be in a word by itself at this stage)
+    //     characters to be in a word by itself) // HD deleted
+    if (curWord && curWord->len > 0) {
+        base = sp = delta = 0; // make gcc happy
+        switch (curWord->rot) {
+            case 0:
+                base = y1;
+                sp = x1 - curWord->xMax;
+                delta = x1 - curWord->edge[curWord->len - 1];
+                break;
+            case 3:
+                base = x1;
+                sp = y1 - curWord->yMax;
+                delta = y1 - curWord->edge[curWord->len - 1];
+                break;
+            case 2:
+                base = y1;
+                sp = curWord->xMin - x1;
+                delta = curWord->edge[curWord->len - 1] - x1;
+                break;
+            case 1:
+                base = x1;
+                sp = curWord->yMin - y1;
+                delta = curWord->edge[curWord->len - 1] - y1;
+                break;
+        }
+        sp -= curWord->charSpace;
+        curWord->charSpace = state->getCharSpace();
+        overlap = fabs(delta) < dupMaxPriDelta * curWord->fontSize && fabs(base
+                                                                           - curWord->base) <
+                                                                      dupMaxSecDelta * curWord->fontSize;
+
+        // take into account rotation angle ??
+        if ((overlap || fabs(base - curWord->base) > 1 ||
+             sp > minWordBreakSpace * curWord->fontSize ||
+             sp < -minDupBreakOverlap * curWord->fontSize)) {
+            endWord();
+            beginWord(state, x, y);
+        }
+        lastCharOverlap = overlap;
+    } else {
+        lastCharOverlap = gFalse;
+    }
+
+    if (uLen != 0) {
+        if (!curWord) {
+            beginWord(state, x, y);
+        }
+        // page rotation and/or transform matrices can cause text to be
+        // drawn in reverse order -- in this case, swap the begin/end
+        // coordinates and break text into individual chars
+        if ((curWord->rot == 0 && w1 < 0) || (curWord->rot == 3 && h1 < 0)
+            || (curWord->rot == 2 && w1 > 0) || (curWord->rot == 1 && h1
+                                                                      > 0)) {
+            endWord();
+            beginWord(state, x + dx, y + dy);
+            x1 += w1;
+            y1 += h1;
+            w1 = -w1;
+            h1 = -h1;
+        }
+
+        // add the characters to the current word
+        w1 /= uLen;
+        h1 /= uLen;
+
+        for (i = 0; i < uLen; ++i) {
+            curWord->addChar(state, x1 + i * w1, y1 + i * h1, w1, h1, u[i], charPos);
+        }
+    }
+
+    if (curWord) {
+        curWord->charLen += nBytes;
+    }
+    charPos += nBytes;
+}
+
+void TextPage::addChar(GfxState *state, double x, double y, double dx,
+                       double dy, CharCode c, int nBytes, Unicode *u, int uLen) {
+
+    if(parameters->getReadingOrder() == gTrue)
+        addCharToPageChars(state, x, y, dx, dy, c, nBytes, u, uLen);
+    else
+        addCharToRawWord(state, x, y, dx, dy, c, nBytes, u, uLen);
 }
 
 void TextPage::endWord() {
@@ -2282,7 +2473,7 @@ void TextPage::endWord() {
 
 }
 
-void TextPage::addWord(TextWord *word) {
+void TextPage::addWord(TextRawWord *word) {
     // throw away zero-length words -- they don't have valid xMin/xMax
     // values, and they're useless anyway
     if (word->len == 0) {
@@ -2290,20 +2481,20 @@ void TextPage::addWord(TextWord *word) {
         return;
     }
 
-    if(readingOrder) {
-        words->append(word);
-    } else {
+//    if(readingOrder) {
+//        words->append(word);
+//    } else {
         if (rawLastWord) {
             rawLastWord->next = word;
         } else {
             rawWords = word;
         }
         rawLastWord = word;
-    }
+//    }
 }
 
 void TextPage::addAttributTypeReadingOrder(xmlNodePtr node, char* tmp,
-                                           TextWord *word) {
+                                           IWord *word) {
     int nbLeft = 0;
     int nbRight = 0;
 
@@ -2324,7 +2515,12 @@ void TextPage::addAttributTypeReadingOrder(xmlNodePtr node, char* tmp,
 }
 
 void TextPage::addAttributsNodeVerbose(xmlNodePtr node, char* tmp,
-                                       TextWord *word) {
+                                       IWord *word) {
+
+    sprintf(tmp, "%d", word->rot);
+    xmlNewProp(node, (const xmlChar*)ATTR_ROTATION, (const xmlChar*)tmp);
+    sprintf(tmp, "%d", word->angle);
+    xmlNewProp(node, (const xmlChar*)ATTR_ANGLE, (const xmlChar*)tmp);
     sprintf(tmp, "%d", word->angleSkewing_Y);
     xmlNewProp(node, (const xmlChar*)ATTR_ANGLE_SKEWING_Y, (const xmlChar*)tmp);
     sprintf(tmp, "%d", word->angleSkewing_X);
@@ -2343,12 +2539,76 @@ void TextPage::addAttributsNodeVerbose(xmlNodePtr node, char* tmp,
     xmlNewProp(node, (const xmlChar*)ATTR_CHAR_SPACE, (const xmlChar*)tmp);
 }
 
-void TextPage::addAttributsNode(xmlNodePtr node, TextWord *word, double &xMaxi,
+void TextPage::addAttributsNode(xmlNodePtr node, IWord *word, double &xMaxi,
                                 double &yMaxi, double &yMinRot, double &yMaxRot, double &xMinRot,
-                                double &xMaxRot, TextFontStyleInfo *fontStyleInfo) {
+                                double &xMaxRot, TextFontStyleInfo *fontStyleInfo, UnicodeMap *uMap, GBool fullFontName) {
 
     char *tmp;
     tmp=(char*)malloc(10*sizeof(char));
+
+    GString *id;
+    GString *stringTemp;
+
+    id = new GString("p");
+    xmlNewProp(node, (const xmlChar*)ATTR_SID, (const xmlChar*)buildSID(num, word->getIdx(), id)->getCString());
+    delete id;
+
+    id = new GString("p");
+    xmlNewProp(node, (const xmlChar*)ATTR_ID, (const xmlChar*)buildIdToken(num, numToken, id)->getCString());
+    delete id;
+    numToken = numToken + 1;
+
+    stringTemp = new GString();
+
+    testLinkedText(node,word->xMin,word->yMin,word->xMax,word->yMax);
+    if (testAnnotatedText(word->xMin,word->yMin,word->xMax,word->yMax)){
+        xmlNewProp(node, (const xmlChar*)ATTR_HIGHLIGHT,(const xmlChar*)"yes");
+    }
+    dumpFragment(word->text, word->len, uMap, stringTemp);
+    //printf("%s\n",stringTemp->getCString());
+
+    xmlNewProp(node, (const xmlChar*)ATTR_TOKEN_CONTENT,
+               (const xmlChar*)stringTemp->getCString());
+    delete stringTemp;
+
+//                    if (word->fontSize > lineFontSize) {
+//                        lineFontSize = word->fontSize;
+//                    }
+
+    GString* gsFontName = new GString();
+    if (word->getFontName()) {
+        xmlChar* xcFontName;
+        // If the font name normalization option is selected
+        if (fullFontName) {
+            //xmlNewProp(node, (const xmlChar*)ATTR_FONT_NAME,
+            //(const xmlChar*)word->getFontName());
+            //(const xmlChar*)"none1");
+            xcFontName = (xmlChar*)word->getFontName();
+        } else {
+            xcFontName
+                    = (xmlChar*)word->normalizeFontName(word->getFontName());
+            //xmlNewProp(
+            //		node,
+            //			(const xmlChar*)ATTR_FONT_NAME,
+            //(const xmlChar*)word->normalizeFontName(word->getFontName()));
+            //OK (const xmlChar*)"none2");
+        }
+        //ugly code because I don't know how all these types...
+        //convert to a Unicode*
+        int size = xmlStrlen(xcFontName);
+        Unicode* uncdFontName = (Unicode *)malloc((size+1)
+                                                  * sizeof(Unicode));
+        for (int i=0; i < size; i++) {
+            uncdFontName[i] = (Unicode) xcFontName[i];
+        }
+        uncdFontName[size] = (Unicode)0;
+        dumpFragment(uncdFontName, size, uMap, gsFontName);
+
+    }
+    //            xmlNewProp(node, (const xmlChar*)ATTR_FONT_NAME,
+//                       (const xmlChar*)gsFontName->getCString());
+    fontStyleInfo->setFontName(gsFontName);
+    //delete gsFontName;
 
     if (word->font != NULL) {
 //        if (word->font->isSymbolic()) {
@@ -2389,12 +2649,6 @@ void TextPage::addAttributsNode(xmlNodePtr node, TextWord *word, double &xMaxi,
 //    xmlNewProp(node, (const xmlChar*)ATTR_FONT_COLOR,
 //               (const xmlChar*)word->colortoString()->getCString());
     fontStyleInfo->setFontColor(word->colortoString());
-
-    sprintf(tmp, "%d", word->rot);
-    xmlNewProp(node, (const xmlChar*)ATTR_ROTATION, (const xmlChar*)tmp);
-
-    sprintf(tmp, "%d", word->angle);
-    xmlNewProp(node, (const xmlChar*)ATTR_ANGLE, (const xmlChar*)tmp);
 
     sprintf(tmp, ATTR_NUMFORMAT, word->xMin);
     xmlNewProp(node, (const xmlChar*)ATTR_X, (const xmlChar*)tmp);
@@ -3858,8 +4112,8 @@ TextLine *TextPage::buildLine(TextBlock *blk) {
         // Increment the absolute object index
         idx++;
         idWORD++;
-        word = new TextWord(charsA, ((TextChar *)charsA->get(i))->state, i, j, 0, 0, getIdWORD(), getIdx(), blk->rot, dir,
-                            (blk->rot >= 2) ? spaceBefore : spaceAfter);
+        word = new TextWord(charsA, i, j - i, blk->rot, dir,
+                            (blk->rot >= 2) ? spaceBefore : spaceAfter, ((TextChar *)charsA->get(i))->state, ((TextChar *)charsA->get(i))->font, ((TextChar *)charsA->get(i))->fontSize, getIdWORD(), getIdx());
 
         spaceBefore = spaceAfter;
         i = j;
@@ -4095,29 +4349,16 @@ void TextPage::dumpInReadingOrder(GBool blocks, GBool fullFontName) {
     TextWord *word1;
     GList *columns;
     GBool primaryLR;
-    GString *s;
 
     int colIdx, parIdx, lineIdx, wordI, rot, n;
 
     UnicodeMap *uMap;
     TextFontStyleInfo *fontStyleInfo;
-    GString *stringTemp;
-
 
     // get the output encoding
     if (!(uMap = globalParams->getTextEncoding())) {
         return;
     }
-
-//    for (int i = 0; i < words->getLength(); ++i) {
-//        word = (TextWord *)words->get(i);
-//        stringTemp = new GString();
-//
-//        dumpFragment(word->text, word->len, uMap, stringTemp);
-//        printf("%s\n",stringTemp->getCString());
-//
-//        delete stringTemp;
-//    }
 
     rot = rotateChars(chars);
     primaryLR = checkPrimaryLR(chars);
@@ -4141,8 +4382,6 @@ void TextPage::dumpInReadingOrder(GBool blocks, GBool fullFontName) {
     dumpColumns(columns);
 #endif
 
-
-
     xmlNodePtr node = NULL;
     xmlNodePtr nodeline = NULL;
     xmlNodePtr nodeblocks = NULL;
@@ -4163,11 +4402,6 @@ void TextPage::dumpInReadingOrder(GBool blocks, GBool fullFontName) {
     double xMinRot = 0;
 
     GString *id;
-
-
-
-
-
 
     printSpace = xmlNewNode(NULL, (const xmlChar*)TAG_PRINTSPACE);
     printSpace->type = XML_ELEMENT_NODE;
@@ -4212,6 +4446,10 @@ void TextPage::dumpInReadingOrder(GBool blocks, GBool fullFontName) {
 
                     fontStyleInfo = new TextFontStyleInfo;
 
+                    node = xmlNewNode(NULL, (const xmlChar*)TAG_TOKEN);
+
+                    node->type = XML_ELEMENT_NODE;
+
                     //AA : this is a naive heuristic ( regarding general typography cases ) super/sub script, wikipedia description is good
                     // first is clear, second check is in case of firstword in line and superscript which is recurrent for declaring affiliations or even refs.
                     if((word->base < previousWordBaseLine && word->yMax > previousWordYmin))
@@ -4219,81 +4457,13 @@ void TextPage::dumpInReadingOrder(GBool blocks, GBool fullFontName) {
                     else if(((wordI > 0) && word->base > previousWordBaseLine && word->yMin > previousWordYmax ))
                         fontStyleInfo->setIsSubscript(gTrue);
 
-
-                    s = new GString();
-
-                    node = xmlNewNode(NULL, (const xmlChar*)TAG_TOKEN);
-
-                    node->type = XML_ELEMENT_NODE;
-
-                    id = new GString("p");
-                    xmlNewProp(node, (const xmlChar*)ATTR_SID, (const xmlChar*)buildSID(num, word->getIdx(), id)->getCString());
-                    delete id;
-
-                    id = new GString("p");
-                    xmlNewProp(node, (const xmlChar*)ATTR_ID, (const xmlChar*)buildIdToken(num, numToken, id)->getCString());
-                    delete id;
-                    numToken = numToken + 1;
-
-                    stringTemp = new GString();
-
-                    testLinkedText(node,word->xMin,word->yMin,word->xMax,word->yMax);
-                    if (testAnnotatedText(word->xMin,word->yMin,word->xMax,word->yMax)){
-                        xmlNewProp(node, (const xmlChar*)ATTR_HIGHLIGHT,(const xmlChar*)"yes");
-                    }
-                    dumpFragment(word->text, word->len, uMap, stringTemp);
-                    printf("%s\n",stringTemp->getCString());
-
-                    xmlNewProp(node, (const xmlChar*)ATTR_TOKEN_CONTENT,
-                               (const xmlChar*)stringTemp->getCString());
-                    delete stringTemp;
-
-//                    if (word->fontSize > lineFontSize) {
-//                        lineFontSize = word->fontSize;
-//                    }
-
                     // If option verbose is selected
                     if (verbose) {
                         addAttributsNodeVerbose(node, tmp, word);
                     }
 
-                    GString* gsFontName = new GString();
-                    if (word->getFontName()) {
-                        xmlChar* xcFontName;
-                        // If the font name normalization option is selected
-                        if (fullFontName) {
-                            //xmlNewProp(node, (const xmlChar*)ATTR_FONT_NAME,
-                            //(const xmlChar*)word->getFontName());
-                            //(const xmlChar*)"none1");
-                            xcFontName = (xmlChar*)word->getFontName();
-                        } else {
-                            xcFontName
-                                    = (xmlChar*)word->normalizeFontName(word->getFontName());
-                            //xmlNewProp(
-                            //		node,
-                            //			(const xmlChar*)ATTR_FONT_NAME,
-                            //(const xmlChar*)word->normalizeFontName(word->getFontName()));
-                            //OK (const xmlChar*)"none2");
-                        }
-                        //ugly code because I don't know how all these types...
-                        //convert to a Unicode*
-                        int size = xmlStrlen(xcFontName);
-                        Unicode* uncdFontName = (Unicode *)malloc((size+1)
-                                                                  * sizeof(Unicode));
-                        for (int i=0; i < size; i++) {
-                            uncdFontName[i] = (Unicode) xcFontName[i];
-                        }
-                        uncdFontName[size] = (Unicode)0;
-                        dumpFragment(uncdFontName, size, uMap, gsFontName);
-
-                    }
-                    //            xmlNewProp(node, (const xmlChar*)ATTR_FONT_NAME,
-//                       (const xmlChar*)gsFontName->getCString());
-                    fontStyleInfo->setFontName(gsFontName);
-                    //delete gsFontName;
-
                     addAttributsNode(node, word, xMax, yMax, yMinRot, yMaxRot, xMinRot,
-                                     xMaxRot, fontStyleInfo);
+                                     xMaxRot, fontStyleInfo, uMap, fullFontName);
                     addAttributTypeReadingOrder(node, tmp, word);
 
 //                    encodeFragment(line->text, n, uMap, primaryLR, s);
@@ -4355,21 +4525,21 @@ void TextPage::dumpInReadingOrder(GBool blocks, GBool fullFontName) {
 
                     xmlAddChild(nodeline, node);
 
-//if(wordI < line->words->getLength()) {
-//    xmlNodePtr spacingNode = xmlNewNode(NULL, (const xmlChar *) TAG_SPACING);
-//    spacingNode->type = XML_ELEMENT_NODE;
-//    sprintf(tmp, ATTR_NUMFORMAT, (word->next->xMin - word->xMax));
-//    xmlNewProp(spacingNode, (const xmlChar *) ATTR_WIDTH,
-//               (const xmlChar *) tmp);
-//    sprintf(tmp, ATTR_NUMFORMAT, (word->yMin));
-//    xmlNewProp(spacingNode, (const xmlChar *) ATTR_Y,
-//               (const xmlChar *) tmp);
-//    sprintf(tmp, ATTR_NUMFORMAT, (word->xMax));
-//    xmlNewProp(spacingNode, (const xmlChar *) ATTR_X,
-//               (const xmlChar *) tmp);
-//
-//    xmlAddChild(nodeline, spacingNode);
-//}
+                    if(wordI < line->words->getLength() - 1) {
+                        xmlNodePtr spacingNode = xmlNewNode(NULL, (const xmlChar *) TAG_SPACING);
+                        spacingNode->type = XML_ELEMENT_NODE;
+                        sprintf(tmp, ATTR_NUMFORMAT, (((TextWord *)line->words->get(wordI+1))->xMin - word->xMax));
+                        xmlNewProp(spacingNode, (const xmlChar *) ATTR_WIDTH,
+                                   (const xmlChar *) tmp);
+                        sprintf(tmp, ATTR_NUMFORMAT, (word->yMin));
+                        xmlNewProp(spacingNode, (const xmlChar *) ATTR_Y,
+                                   (const xmlChar *) tmp);
+                        sprintf(tmp, ATTR_NUMFORMAT, (word->xMax));
+                        xmlNewProp(spacingNode, (const xmlChar *) ATTR_X,
+                                   (const xmlChar *) tmp);
+
+                        xmlAddChild(nodeline, spacingNode);
+                    }
 
                     free(tmp);
 
@@ -4379,8 +4549,6 @@ void TextPage::dumpInReadingOrder(GBool blocks, GBool fullFontName) {
                 if(blocks)
                     xmlAddChild(nodeblocks, nodeline);
                 else xmlAddChild(printSpace, nodeline);
-
-                delete s;
             }
 
             xmlAddChild(printSpace, nodeblocks);
@@ -4392,7 +4560,6 @@ void TextPage::dumpInReadingOrder(GBool blocks, GBool fullFontName) {
 
     int imageCount = listeImages.size();
     for(int i = 0; i < imageCount; ++i) {
-
 
         char* tmp;
 
@@ -4438,9 +4605,8 @@ void TextPage::dumpInReadingOrder(GBool blocks, GBool fullFontName) {
 void TextPage::dump(GBool blocks, GBool fullFontName) {
     UnicodeMap *uMap;
 
-    TextWord *word;
+    TextRawWord *word;
     TextFontStyleInfo *fontStyleInfo;
-    GString *stringTemp;
 
     GString *id;
 
@@ -4566,27 +4732,6 @@ void TextPage::dump(GBool blocks, GBool fullFontName) {
 
         node->type = XML_ELEMENT_NODE;
 
-        id = new GString("p");
-        xmlNewProp(node, (const xmlChar*)ATTR_SID, (const xmlChar*)buildSID(num, word->getIdx(), id)->getCString());
-        delete id;
-
-        id = new GString("p");
-        xmlNewProp(node, (const xmlChar*)ATTR_ID, (const xmlChar*)buildIdToken(num, numToken, id)->getCString());
-        delete id;
-        numToken = numToken + 1;
-
-        stringTemp = new GString();
-        testLinkedText(node,word->xMin,word->yMin,word->xMax,word->yMax);
-        if (testAnnotatedText(word->xMin,word->yMin,word->xMax,word->yMax)){
-            xmlNewProp(node, (const xmlChar*)ATTR_HIGHLIGHT,(const xmlChar*)"yes");
-        }
-        dumpFragment(word->text, word->len, uMap, stringTemp);
-        //printf("%s\n",stringTemp->getCString());
-
-        xmlNewProp(node, (const xmlChar*)ATTR_TOKEN_CONTENT,
-                   (const xmlChar*)stringTemp->getCString());
-        delete stringTemp;
-
         if (word->fontSize > lineFontSize) {
             lineFontSize = word->fontSize;
         }
@@ -4596,43 +4741,8 @@ void TextPage::dump(GBool blocks, GBool fullFontName) {
             addAttributsNodeVerbose(node, tmp, word);
         }
 
-        GString* gsFontName = new GString();
-        if (word->getFontName()) {
-            xmlChar* xcFontName;
-            // If the font name normalization option is selected
-            if (fullFontName) {
-                //xmlNewProp(node, (const xmlChar*)ATTR_FONT_NAME,
-                //(const xmlChar*)word->getFontName());
-                //(const xmlChar*)"none1");
-                xcFontName = (xmlChar*)word->getFontName();
-            } else {
-                xcFontName
-                        = (xmlChar*)word->normalizeFontName(word->getFontName());
-                //xmlNewProp(
-                //		node,
-                //			(const xmlChar*)ATTR_FONT_NAME,
-                //(const xmlChar*)word->normalizeFontName(word->getFontName()));
-                //OK (const xmlChar*)"none2");
-            }
-            //ugly code because I don't know how all these types...
-            //convert to a Unicode*
-            int size = xmlStrlen(xcFontName);
-            Unicode* uncdFontName = (Unicode *)malloc((size+1)
-                                                      * sizeof(Unicode));
-            for (int i=0; i < size; i++) {
-                uncdFontName[i] = (Unicode) xcFontName[i];
-            }
-            uncdFontName[size] = (Unicode)0;
-            dumpFragment(uncdFontName, size, uMap, gsFontName);
-
-        }
-        //            xmlNewProp(node, (const xmlChar*)ATTR_FONT_NAME,
-//                       (const xmlChar*)gsFontName->getCString());
-        fontStyleInfo->setFontName(gsFontName);
-        //delete gsFontName;
-
         addAttributsNode(node, word, xMax, yMax, yMinRot, yMaxRot, xMinRot,
-                         xMaxRot, fontStyleInfo);
+                         xMaxRot, fontStyleInfo, uMap, fullFontName);
         addAttributTypeReadingOrder(node, tmp, word);
 
         /// annotations: higlighted, underline,
@@ -5380,7 +5490,7 @@ GBool TextPage::addBlockChildReadingOrder(xmlNodePtr nodeblock, GBool lastInsert
 }
 
 void TextPage::addImageInlineNode(xmlNodePtr nodeline,
-                                  xmlNodePtr nodeImageInline, char* tmp, TextWord *word) {
+                                  xmlNodePtr nodeImageInline, char* tmp, IWord *word) {
     indiceImage = -1;
     idWORDBefore = -1;
     GBool first= gTrue;
@@ -6539,7 +6649,7 @@ XmlAltoOutputDev::XmlAltoOutputDev(GString *fileName, GString *fileNamePdf,
     GString *imgDirName;
     Catalog *myCatalog;
 
-    if (parameters->getReadingOrder())
+    if (parameters->getReadingOrder() == gTrue)
         readingOrder = 1;
     else
         readingOrder = 0;
