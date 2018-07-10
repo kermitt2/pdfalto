@@ -623,8 +623,6 @@ int rotA, int dirA, GBool spaceAfterA, GfxState *state,
         gfxFont = NULL;
     }
 
-    spaceAfter = gFalse;
-
     len = lenA;
     text = (Unicode *)gmallocn(len, sizeof(Unicode));
     edge = (double *)gmallocn(len + 1, sizeof(double));
@@ -4529,7 +4527,7 @@ void TextPage::dumpInReadingOrder(GBool blocks, GBool fullFontName) {
 
                     xmlAddChild(nodeline, node);
 
-                    if(wordI < line->words->getLength() - 1) {
+                    if(wordI < line->words->getLength() - 1 and word->spaceAfter) {
                         xmlNodePtr spacingNode = xmlNewNode(NULL, (const xmlChar *) TAG_SPACING);
                         spacingNode->type = XML_ELEMENT_NODE;
                         sprintf(tmp, ATTR_NUMFORMAT, (nextWord->xMin - word->xMax));
