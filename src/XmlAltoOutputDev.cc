@@ -4352,7 +4352,7 @@ void TextPage::dumpInReadingOrder(GBool blocks, GBool fullFontName) {
     TextWord *word;
     TextWord *nextWord;
     GList *columns;
-    GBool primaryLR;
+    //GBool primaryLR;
 
     int colIdx, parIdx, lineIdx, wordI, rot, n;
 
