@@ -131,6 +131,10 @@ drwxr-xr-x 1 lfoppiano 197121 0 lug 28 09:06 xpdf-3.04/
 
 # Changes
 
+- use subscript/superscript text font style attribut.
+
+- use SVG as a format for vectorial images.
+
 - propagate unsolved character unicode value (free unicode range for embedded fonts) as encoded special character in ALTO (so-called "placeholder" approach)
 
 - generate metadata information in a separate XML file (as ALTO schema does not support that)
