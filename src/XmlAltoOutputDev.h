@@ -53,6 +53,9 @@ class GList;
 class GfxState;
 class UnicodeMap;
 
+class TextBlock;
+class TextChar;
+
 class XmlAltoOutputDev;
 
 //------------------------------------------------------------------------
@@ -93,13 +96,18 @@ public:
 
 private:
 
+    Ref fontID;
     GfxFont *gfxFont;
 //#if TEXTOUT_WORD_LIST
     GString *fontName;
     int flags;
+    double mWidth;
+    double ascent, descent;
 //#endif
 
+    friend class TextLine;
     friend class TextWord;
+    friend class TextRawWord;
     friend class TextPage;
 };
 
@@ -292,6 +300,7 @@ private:
     GString* hrefImage;
 
     friend class TextWord;
+    friend class TextRawWord;
     friend class TextPage;
 };
 
@@ -397,130 +406,80 @@ private:
     GBool isInline;
 
     friend class TextWord;
+    friend class TextRawWord;
     friend class TextPage;
 };
 
 
-
 //------------------------------------------------------------------------
-// TextWord
+// IWord
 //------------------------------------------------------------------------
-/**
- * TextWord class (based on TextOutputDev.h, Copyright 1997-2003 Glyph & Cog, LLC)<br></br>
- * Xerox Research Centre Europe <br></br>
- * @date 04-2006
- * @author Herv� D�jean
- * @author Sophie Andrieu
- * @version xpdf 3.01 */
-
-class TextWord {
+class IWord {
 public:
 
-    /** Construct a new <code>TextWord</code>
-     * @param state The state description
-     * @param rotA The rotation value of the current word
-     * @param angleDegre The angle value of the current word (value in degree)
-     * @param angleSkewingY The skewing angle value for the Y axis of this word (value in degree)
-     * @param angleSkewingX The skewing angle value for the X axis of this word (value in degree)
-     * @param x0 The x value coordinate about the left bottom corner of the word box
-     * @param y0 The y value coordinate about the left bottom corner of the word box
-     * @param charPosA The position of the character
-     * @param fontA The fonts informations about the current word
-     * @param fontSize The font size about the current word
-     * @param idWord The id of the word (used to include and localize the image inline in the stream)
-     * @param idx The absolute object index in the stream */
-    TextWord(GfxState *state, int rotA, int angleDegre, int angleSkewingY, int angleSkewingX, double x0, double y0,
-             int charPosA, TextFontInfo *fontA, double fontSize, int idWord, int index);
+    /** The id of the word (used to include and localize the image inline in the stream) */
+    int idWord;
 
-    /** Destructor */
-    ~TextWord();
+    /** The absolute object index in the stream **/
+    int idx;
 
-    /** Get the absolute object index in the stream
-     * @return The absolute object index in the stream */
-    int getIdx(){return idx;};
+    double xMin, xMax;		// bounding box x coordinates
+    double yMin, yMax;		// bounding box y coordinates
 
-    /** Add a character to the current word
-     *  @param state The state description
-     *  @param x The x value
-     *  @param y The y value
-     *  @param dx The dx value
-     *  @param dy The dy value
-     *  @param u The unicode char to add
-     */
-    void addChar(GfxState *state, double x, double y,
-                 double dx, double dy, Unicode u);
+    /** The baseline x or y coordinate */
+    double base;
+    /** The yMin of the word function the rotation */
+    double baseYmin;
 
-    /** Merge <code>word</code> onto the end of <code>this</code>
-     *  @param word The current word */
-    void merge(TextWord *word);
+    /** The rotation which is multiple of 90 degrees (0, 1, 2, or 3) */
+    int rot;
+    /** The angle value of rotation in degree (0 to 360 degree) */
+    int angle;
+    /** The y angle skewing value : the value can be positive or negative and it is function the angle position in the y axis */
+    int angleSkewing_Y;
+    /** The x angle skewing value : the value can be positive or negative and it is function the angle position in the x axis */
+    int angleSkewing_X;
 
-    /** Compares <code>this</code> to <code>word</code>, returning -1 (<), 0 (=), or +1 (>),<br></br>
-     *  based on a primary-axis comparison, e.g., x ordering if rot=0
-     *  @param word The current word */
-    int primaryCmp(TextWord *word);
+    /** The unicode text */
+    Unicode *text;
+    /** "near" edge x or y coord of each char (plus one extra entry for the last char) */
+    double *edge;
+    /** The length of text and edge arrays */
+    int len;
+    /** The size of text and edge arrays */
+    int size;
+    /** The character position (within content stream) */
+    int *charPos;			// character position (within content stream)
+    //   of each char (plus one extra entry for
+    //   the last char)
+    /** The number of content stream characters in this word */
+    int charLen;
 
-    /** Get the distance along the primary axis between <code>this</code> and <code>word</code>
-     *  @param word The current word */
-    double primaryDelta(TextWord *word);
+    GBool spaceAfter;		// set if there is a space between this
+    //   word and the next word on the line
 
-    /**
-     * return True if overlap with w2
-     */
-    GBool overlap(TextWord *w2);
+    /** <code>true</code> if the current <code>TextRawWord</code> is <b>bold</b>, <code>false</code> else */
+    GBool  bold;
+    /** <code>true</code> if the current <code>TextRawWord</code> is <b>italic</b>, <code>false</code> else */
+    GBool  italic;
+    /** <code>true</code> if the current <code>TextRawWord</code> is <b>symbolic</b>, <code>false</code> else */
+    GBool  symbolic;
+    /** <code>true</code> if the current <code>TextRawWord</code> is <b>serif</b>, <code>false</code> else */
+    GBool  serif;
 
-    static int cmpYX(const void *p1, const void *p2);
+    /** The font information */
+    TextFontInfo *font;
+    /** The font name */
+    char *fontName;
+    /** The font size */
+    double fontSize;
 
-    /** Get the font name of the current word
-     *  @return The font name of the current word */
-    char *getFontName(){return fontName;}
-
-    /** Check if the current <code>TextWord</code> is <b>bold</b>
-     *  @return <code>true</code> if the current <code>TextWord</code> is <b>bold</b>, <code>false</code> else */
-    GBool isBold() {return bold;}
-
-    /** Check if the current <code>TextWord</code> is <b>italic</b>
-     *  @return <code>true</code> if the current <code>TextWord</code> is <b>italic</b>, <code>false</code> else */
-    GBool isItalic() {return italic;}
-
-    /** Check if the current <code>TextWord</code> is <b>symbolic</b>
-     *  @return <code>true</code> if the current <code>TextWord</code> is <b>symbolic</b>, <code>false</code> else */
-    GBool isSymbloic() {return symbolic;}
-
-    /** Get the color RGB of the word
-     * @param r The Red color value
-     * @param g The Green color value
-     * @param b The Blue color value */
-    void getColor(double *r, double *g, double *b)
-    { *r = colorR; *g = colorG; *b = colorB; }
-
-    GString *convtoX(double xcol) const;
-
-    /** Convert the RGB color to string hexadecimal color value*/
-    GString *colortoString() const;
-
-    /** Normalize the font name :<br></br>
-     *  - remove the prefix (if it is present) which is the basefont of subsetted fonts.
-     * This prefix is composed of six characters (A-Z letters) and is followed by a +.<br></br>
-     *  - remove the suffix which can indicated if font is italic, bold, normal... This
-     * suffix is preceded by a coma or by a hyphen.<br/>
-     * <b>CACHJA+OfficinaSerif-Bold</b> is normalized in <b>OfficinaSerif</b> <br></br>
-     * <b>TimesNewRoman,Italic</b> is normalized in <b>TimesNewRoman</b>
-     * @param fontName The current font name
-     * @return The new font name which is normalized */
-    const char* normalizeFontName(char* fontName);
-
-#if TEXTOUT_WORD_LIST
-    int getLength() { return len; }
-  Unicode getChar(int idx) { return text[idx]; }
-
-  GString *getFontName() { return font->fontName; }
-  void getBBox(double *xMinA, double *yMinA, double *xMaxA, double *yMaxA)
-    { *xMinA = xMin; *yMinA = yMin; *xMaxA = xMax; *yMaxA = yMax; }
-  int getCharPos() { return charPos; }
-  int getCharLen() { return charLen; }
-#endif
-
-private:
+    /** The value of word Red color */
+    double colorR;
+    /** The value of word Green color */
+    double colorG;
+    /** The value of word Blue color */
+    double colorB;
 
     /** The value of the character spacing */
     float charSpace;
@@ -534,82 +493,314 @@ private:
     float render;
     /** The value of the leading */
     float leading;
+//public:
+
+
+    /** Get the absolute object index in the stream
+     * @return The absolute object index in the stream */
+    int getIdx(){return idx;};
+    /** Get the font name of the current word
+     *  @return The font name of the current word */
+    char *getFontName(){return fontName;}
+
+    double getFontSize() { return fontSize; }
+    int getRotation() { return rot; }
+
+    /** Check if the current <code>TextRawWord</code> is <b>bold</b>
+     *  @return <code>true</code> if the current <code>TextRawWord</code> is <b>bold</b>, <code>false</code> else */
+    GBool isBold() {return bold;}
+
+    /** Check if the current <code>TextRawWord</code> is <b>italic</b>
+     *  @return <code>true</code> if the current <code>TextRawWord</code> is <b>italic</b>, <code>false</code> else */
+    GBool isItalic() {return italic;}
+
+    /** Check if the current <code>TextRawWord</code> is <b>symbolic</b>
+     *  @return <code>true</code> if the current <code>TextRawWord</code> is <b>symbolic</b>, <code>false</code> else */
+    GBool isSymbloic() {return symbolic;}
+
+    /** Get the color RGB of the word
+     * @param r The Red color value
+     * @param g The Green color value
+     * @param b The Blue color value */
+    void getColor(double *r, double *g, double *b)
+    { *r = colorR; *g = colorG; *b = colorB; }
+
+    /** Normalize the font name :<br></br>
+     *  - remove the prefix (if it is present) which is the basefont of subsetted fonts.
+     * This prefix is composed of six characters (A-Z letters) and is followed by a +.<br></br>
+     *  - remove the suffix which can indicated if font is italic, bold, normal... This
+     * suffix is preceded by a coma or by a hyphen.<br/>
+     * <b>CACHJA+OfficinaSerif-Bold</b> is normalized in <b>OfficinaSerif</b> <br></br>
+     * <b>TimesNewRoman,Italic</b> is normalized in <b>TimesNewRoman</b>
+     * @param fontName The current font name
+     * @return The new font name which is normalized */
+    const char* normalizeFontName(char* fontName);
+
+    int getLength() { return len; }
+
+    Unicode getChar(int idx) { return text[idx]; }
+
+    /** Convert the RGB color to string hexadecimal color value*/
+    GString *colortoString() const;
+
+    GString *convtoX(double xcol) const;
+
+    static int cmpX(const void *p1, const void *p2);
+
+    static int cmpY(const void *p1, const void *p2);
+
+    static int cmpYX(const void *p1, const void *p2);
+
+    void getBBox(double *xMinA, double *yMinA, double *xMaxA, double *yMaxA)
+    { *xMinA = xMin; *yMinA = yMin; *xMaxA = xMax; *yMaxA = yMax; }
+    void getCharBBox(int charIdx, double *xMinA, double *yMinA,
+                     double *xMaxA, double *yMaxA);
+
+    GBool getSpaceAfter() { return spaceAfter; }
+
+    GBool setSpaceAfter(GBool spaceAfterA) { return spaceAfter = spaceAfterA; }
+
+    int getCharPos() { return charPos[0]; }
+    int getCharLen() { return charPos[len] - charPos[0]; }
+};
+
+//------------------------------------------------------------------------
+// TextWord
+//------------------------------------------------------------------------
+
+class TextWord : public IWord {
+public:
+
+    TextWord(GList *chars, int start, int lenA,
+             int rotA, int dirA, GBool spaceAfterA, GfxState *state,
+             TextFontInfo *fontA, double fontSizeA, int idCurrentWord,
+             int index);
+    ~TextWord();
+    TextWord *copy() { return new TextWord(this); }
+
+    // Get the TextFontInfo object associated with this word.
+    TextFontInfo *getFontInfo() { return font; }
+
+    Unicode getChar(int idx) { return text[idx]; }
+    GString *getText();
+    GBool isInvisible() { return invisible; }
+
+    int getDirection() { return dir; }
+    double getBaseline();
+    GBool isUnderlined() { return underlined; }
+    GString *getLinkURI();
+
+private:
+
+    TextWord(TextWord *word);
+    static int cmpYX(const void *p1, const void *p2);
+    static int cmpCharPos(const void *p1, const void *p2);
+
+    int dir;			// character direction (+1 = left-to-right;
+    //   -1 = right-to-left; 0 = neither)
+
+    GBool underlined;
+    //TextLink *link;
+
+    GBool invisible;		// set for invisible text (render mode 3)
+
+    friend class TextBlock;
+    friend class TextLine;
+    friend class TextPage;
+};
+
+//------------------------------------------------------------------------
+// TextRawWord
+//------------------------------------------------------------------------
+/**
+ * TextRawWord class<br></br>
+ * Represents the words as a character sequence from stream order separated by a space character (U+0020) each word pointing to next one<br></br>
+ * @date 07-2018
+ * @author Achraf Azhar
+ * @version xpdf 3.01 */
+
+class TextRawWord : public IWord {
+public:
+
+    /** Construct a new <code>TextRawWord</code>
+     * @param state The state description
+     * @param rotA The rotation value of the current word
+     * @param angleDegre The angle value of the current word (value in degree)
+     * @param angleSkewingY The skewing angle value for the Y axis of this word (value in degree)
+     * @param angleSkewingX The skewing angle value for the X axis of this word (value in degree)
+     * @param x0 The x value coordinate about the left bottom corner of the word box
+     * @param y0 The y value coordinate about the left bottom corner of the word box
+     * @param charPosA The position of the character
+     * @param fontA The fonts informations about the current word
+     * @param fontSize The font size about the current word
+     * @param idWord The id of the word (used to include and localize the image inline in the stream)
+     * @param idx The absolute object index in the stream */
+    TextRawWord(GfxState *state, double x0, double y0,
+                TextFontInfo *fontA, double fontSizeA, int idCurrentWord,
+                int index);
+
+    /** Destructor */
+    ~TextRawWord();
+
+    /** Add a character to the current word
+     *  @param state The state description
+     *  @param x The x value
+     *  @param y The y value
+     *  @param dx The dx value
+     *  @param dy The dy value
+     *  @param u The unicode char to add
+     */
+    void addChar(GfxState *state, double x, double y,
+                 double dx, double dy, Unicode u, int charPosA);
+
+    /** Merge <code>word</code> onto the end of <code>this</code>
+     *  @param word The current word */
+    void merge(TextRawWord *word);
+
+    /** Compares <code>this</code> to <code>word</code>, returning -1 (<), 0 (=), or +1 (>),<br></br>
+     *  based on a primary-axis comparison, e.g., x ordering if rot=0
+     *  @param word The current word */
+    int primaryCmp(TextRawWord *word);
+
+    /** Get the distance along the primary axis between <code>this</code> and <code>word</code>
+     *  @param word The current word */
+    double primaryDelta(TextRawWord *word);
+
+    /**
+     * return True if overlap with w2
+     */
+    GBool overlap(TextRawWord *w2);
+
+
+//private:
 
     /** Rank in the original flow */
     int indexmin;
     int indexmax;
 
-    /** The id of the word (used to include and localize the image inline in the stream) */
-    int idWord;
-
-    /** The absolute object index in the stream **/
-    int idx;
-
-    /** The rotation which is multiple of 90 degrees (0, 1, 2, or 3) */
-    int rot;
-    /** The angle value of rotation in degree (0 to 360 degree) */
-    int angle;
-    /** The y angle skewing value : the value can be positive or negative and it is function the angle position in the y axis */
-    int angleSkewing_Y;
-    /** The x angle skewing value : the value can be positive or negative and it is function the angle position in the x axis */
-    int angleSkewing_X;
-
-    /** The x value minimum coordinate of bounding box */
-    double xMin;
-    /** The x value maximum coordinate of bounding box */
-    double xMax;
-    /** The y value minimum coordinate of bounding box */
-    double yMin;
-    /** The y value maximum coordinate of bounding box */
-    double yMax;
-    /** The baseline x or y coordinate */
-    double base;
-    /** The yMin of the word function the rotation */
-    double baseYmin;
-
-    /** The unicode text */
-    Unicode *text;
-    /** "near" edge x or y coord of each char (plus one extra entry for the last char) */
-    double *edge;
-    /** The length of text and edge arrays */
-    int len;
-    /** The size of text and edge arrays */
-    int size;
-    /** The character position (within content stream) */
-    int charPos;
-    /** The number of content stream characters in this word */
-    int charLen;
-
-    /** <code>true</code> if the current <code>TextWord</code> is <b>bold</b>, <code>false</code> else */
-    GBool  bold;
-    /** <code>true</code> if the current <code>TextWord</code> is <b>italic</b>, <code>false</code> else */
-    GBool  italic;
-    /** <code>true</code> if the current <code>TextWord</code> is <b>symbolic</b>, <code>false</code> else */
-    GBool  symbolic;
-    /** <code>true</code> if the current <code>TextWord</code> is <b>serif</b>, <code>false</code> else */
-    GBool  serif;
-
-    /** The font information */
-    TextFontInfo *font;
-    /** The font name */
-    char* fontName;
-    /** The font size */
-    double fontSize;
-
-    /** To set if there is a space between this word and the next word on the line */
-    GBool spaceAfter;
     /** The next word in line */
-    TextWord *next;
-
-    /** The value of word Red color */
-    double colorR;
-    /** The value of word Green color */
-    double colorG;
-    /** The value of word Blue color */
-    double colorB;
+    TextRawWord *next;
 
     friend class TextPage;
 };
+
+
+//------------------------------------------------------------------------
+// TextLine
+//------------------------------------------------------------------------
+
+class TextLine {
+public:
+
+    TextLine(GList *wordsA, double xMinA, double yMinA,
+             double xMaxA, double yMaxA, double fontSizeA);
+    ~TextLine();
+
+    double getXMin() { return xMin; }
+    double getYMin() { return yMin; }
+    double getXMax() { return xMax; }
+    double getYMax() { return yMax; }
+    double getBaseline();
+    int getRotation() { return rot; }
+    GList *getWords() { return words; }
+    int getLength() { return len; }
+    double getEdge(int idx) { return edge[idx]; }
+
+private:
+
+    static int cmpX(const void *p1, const void *p2);
+
+    GList *words;			// [TextWord]
+    int rot;			// rotation, multiple of 90 degrees
+    //   (0, 1, 2, or 3)
+    double xMin, xMax;		// bounding box x coordinates
+    double yMin, yMax;		// bounding box y coordinates
+    double fontSize;		// main (max) font size for this line
+    Unicode *text;		// Unicode text of the line, including
+    //   spaces between words
+    double *edge;			// "near" edge x or y coord of each char
+    //   (plus one extra entry for the last char)
+    int len;			// number of Unicode chars
+    GBool hyphenated;		// set if last char is a hyphen
+    int px;			// x offset (in characters, relative to
+    //   containing column) in physical layout mode
+    int pw;			// line width (in characters) in physical
+    //   layout mode
+
+    friend class TextSuperLine;
+    friend class TextPage;
+    friend class TextParagraph;
+};
+
+//------------------------------------------------------------------------
+// TextParagraph
+//------------------------------------------------------------------------
+
+class TextParagraph {
+public:
+
+    TextParagraph(GList *linesA, GBool dropCapA);
+    ~TextParagraph();
+
+    // Get the list of TextLine objects.
+    GList *getLines() { return lines; }
+
+    GBool hasDropCap() { return dropCap; }
+
+    double getXMin() { return xMin; }
+    double getYMin() { return yMin; }
+    double getXMax() { return xMax; }
+    double getYMax() { return yMax; }
+
+private:
+
+    GList *lines;			// [TextLine]
+    GBool dropCap;		// paragraph starts with a drop capital
+    double xMin, xMax;		// bounding box x coordinates
+    double yMin, yMax;		// bounding box y coordinates
+
+    friend class TextPage;
+};
+
+//------------------------------------------------------------------------
+// TextColumn
+//------------------------------------------------------------------------
+
+class TextColumn {
+public:
+
+    TextColumn(GList *paragraphsA, double xMinA, double yMinA,
+               double xMaxA, double yMaxA);
+    ~TextColumn();
+
+    // Get the list of TextParagraph objects.
+    GList *getParagraphs() { return paragraphs; }
+
+    double getXMin() { return xMin; }
+    double getYMin() { return yMin; }
+    double getXMax() { return xMax; }
+    double getYMax() { return yMax; }
+
+    int getRotation();
+
+private:
+
+    static int cmpX(const void *p1, const void *p2);
+    static int cmpY(const void *p1, const void *p2);
+    static int cmpPX(const void *p1, const void *p2);
+
+    GList *paragraphs;		// [TextParagraph]
+    double xMin, xMax;		// bounding box x coordinates
+    double yMin, yMax;		// bounding box y coordinates
+    int px, py;			// x, y position (in characters) in physical
+    //   layout mode
+    int pw, ph;			// column width, height (in characters) in
+    //   physical layout mode
+
+    friend class TextPage;
+};
+
+
 
 //------------------------------------------------------------------------
 // TextPage
@@ -663,7 +854,7 @@ public:
      *  @param y0 The y value of left bottom corner of the box word */
     void beginWord(GfxState *state, double x0, double y0);
 
-    /** Add a character to the current word
+    /** Add a character either to the current word or to the list of page chars to be ordered
      *  @param state The state description
      *  @param x The x value of left bottom corner of the box character
      *  @param y The y value of left bottom corner of the box character
@@ -677,17 +868,128 @@ public:
                  double dx, double dy,
                  CharCode c, int nBytes, Unicode *u, int uLen);
 
+    /** Add a character to the list of characters in the page
+     *  @param state The state description
+     *  @param x The x value of left bottom corner of the box character
+     *  @param y The y value of left bottom corner of the box character
+     *  @param dx The dx value
+     *  @param dy The dy value
+     *  @param c The code character
+     *  @param nBytes The number of bytes
+     *  @param u The unicode character value
+     *  @param uLen The lenght */
+    void addCharToPageChars(GfxState *state, double x, double y,
+                 double dx, double dy,
+                 CharCode c, int nBytes, Unicode *u, int uLen);
+
+    /** Add a character to the current word in raw order
+     *  @param state The state description
+     *  @param x The x value of left bottom corner of the box character
+     *  @param y The y value of left bottom corner of the box character
+     *  @param dx The dx value
+     *  @param dy The dy value
+     *  @param c The code character
+     *  @param nBytes The number of bytes
+     *  @param u The unicode character value
+     *  @param uLen The lenght */
+    void addCharToRawWord(GfxState *state, double x, double y,
+                 double dx, double dy,
+                 CharCode c, int nBytes, Unicode *u, int uLen);
+
     /** End the current word, sorting it into the list of words */
     void endWord();
 
     /** Add a word, sorting it into the list of words
      *  @param word The current word */
-    void addWord(TextWord *word);
+    void addWord(TextRawWord *word);
 
     /** Dump contents of the current page
      * @param blocks To know if the blocks option is selected
      * @param fullFontName To know if the fullFontName option is selected */
     void dump(GBool blocks, GBool fullFontName);
+
+    /** Dump contents of the current page following the reading order.
+     * @param blocks To know if the blocks option is selected
+     * @param fullFontName To know if the fullFontName option is selected */
+    void dumpInReadingOrder(GBool blocks, GBool fullFontName);
+
+    int rotateChars(GList *charsA);
+
+    void unrotateChars(GList *wordsA, int rot);
+
+    GBool checkPrimaryLR(GList *charsA);
+
+    TextBlock *splitChars(GList *charsA);
+
+    void insertClippedChars(GList *clippedChars, TextBlock *tree);
+
+    TextBlock *findClippedCharLeaf(TextChar *ch, TextBlock *tree);
+
+    TextBlock *split(GList *charsA, int rot);
+
+    void insertLargeChars(GList *largeChars, TextBlock *blk);
+
+    void insertLargeCharsInFirstLeaf(GList *largeChars, TextBlock *blk);
+
+    void insertLargeCharInLeaf(TextChar *ch, TextBlock *blk);
+
+    GList *getWords(GList *wordsA, double xMin, double yMin,
+                              double xMax, double yMax);
+
+    void findGaps(GList *charsA, int rot,
+                            double *xMinOut, double *yMinOut,
+                            double *xMaxOut, double *yMaxOut,
+                            double *avgFontSizeOut,
+                            GList *horizGaps, GList *vertGaps);
+
+    void tagBlock(TextBlock *blk);
+
+    GList *buildColumns(TextBlock *tree, GBool primaryLR);
+
+    void buildColumns2(TextBlock *blk, GList *columns, GBool primaryLR);
+
+    TextColumn *buildColumn(TextBlock *blk);
+
+    double getLineIndent(TextLine *line, TextBlock *blk);
+
+    double getAverageLineSpacing(GList *lines);
+
+    double getLineSpacing(TextLine *line0, TextLine *line1);
+
+    void buildLines(TextBlock *blk, GList *lines);
+
+    TextLine *buildLine(TextBlock *blk);
+
+    void getLineChars(TextBlock *blk, GList *charsA);
+
+    double computeWordSpacingThreshold(GList *charsA, int rot);
+
+    int getCharDirection(TextChar *ch);
+
+    int assignPhysLayoutPositions(GList *columns);
+
+    void assignLinePhysPositions(GList *columns);
+
+    void computeLinePhysWidth(TextLine *line, UnicodeMap *uMap);
+
+    int assignColumnPhysPositions(GList *columns);
+
+    void buildSuperLines(TextBlock *blk, GList *superLines);
+
+    void assignSimpleLayoutPositions(GList *superLines,
+                                               UnicodeMap *uMap);
+
+    void generateUnderlinesAndLinks(GList *columns);
+
+    void insertIntoTree(TextBlock *blk, TextBlock *primaryTree);
+
+    void insertColumnIntoTree(TextBlock *column, TextBlock *tree);
+
+    void insertLargeWords(GList *largeWords, TextBlock *blk);
+
+    void insertLargeWordsInFirstLeaf(GList *largeWords, TextBlock *blk);
+
+    void insertLargeWordInLeaf(TextWord *ch, TextBlock *blk);
 
     /** PL: insert a block in the page's list of block nodes according to the reading order
      * @param nodeblock the block node to be inserted
@@ -704,13 +1006,13 @@ public:
      * @param nodeImageInline The TOKEN node which represents the image inline to add to the current line
      * @param tmp A variable to build attributes
      * @param word The word which has been read */
-    void addImageInlineNode(xmlNodePtr nodeline, xmlNodePtr nodeImageInline, char* tmp, TextWord *word);
+    void addImageInlineNode(xmlNodePtr nodeline, xmlNodePtr nodeImageInline, char* tmp, IWord *word);
 
     /** Add attributes to TOKEN node when verbose option is selected
      * @param node The current TOKEN node
      * @param tmp A variable which store the string attributs values
      * @param word The current word */
-    void addAttributsNodeVerbose(xmlNodePtr node, char* tmp, TextWord *word);
+    void addAttributsNodeVerbose(xmlNodePtr node, char* tmp, IWord *word);
 
     /** Add all minimum attributes to TOKEN node
      * @param node The current TOKEN node
@@ -721,13 +1023,13 @@ public:
      * @param yMaxRot The y value maximum coordinate of the left bottom corner word box (used for rotation 1 and 3)
      * @param xMinRot The x value minimum coordinate of the left bottom corner word box (used for rotation 1 and 3)
      * @param xMaxRot The x value maximum coordinate of the left bottom corner word box (used for rotation 1 and 3) */
-    void addAttributsNode(xmlNodePtr node, TextWord *word, double &xMaxi, double &yMaxi, double &yMinRot,double &yMaxRot, double &xMinRot, double &xMaxRot, TextFontStyleInfo *fontStyleInfo);
+    void addAttributsNode(xmlNodePtr node, IWord *word, double &xMaxi, double &yMaxi, double &yMinRot,double &yMaxRot, double &xMinRot, double &xMaxRot, TextFontStyleInfo *fontStyleInfo, UnicodeMap *uMap, GBool fullFontName);
 
     /** Add the type attribute to TOKEN node for the reading order
      * @param node The current TOKEN node
      * @param tmp A variable which store the string attributs values
      * @param word The current word */
-    void addAttributTypeReadingOrder(xmlNodePtr node, char* tmp, TextWord *word);
+    void addAttributTypeReadingOrder(xmlNodePtr node, char* tmp, IWord *word);
 
     /** Add the GROUP tag whithin the instructions vectorials node
      * @param path The path description
@@ -821,6 +1123,10 @@ public:
     /** Get the absolute object index in the stream
      * @return The absolute object index in the stream */
     int getIdx(){return idx;};
+
+    void endActualText(GfxState *state);
+
+    void beginActualText(GfxState *state, Unicode *u, int uLen);
 
     vector<ImageInline*> listeImageInline;
 
@@ -958,8 +1264,6 @@ private:
 
     void *vecOutputStream;
 
-    /** To keep text in content stream order */
-    GBool rawOrder;
     /** PL: To modify the blocks in reading order */
     GBool readingOrder;
     /** To know if the verbose option is selected */
@@ -972,11 +1276,15 @@ private:
     /** The height of current page */
     double pageHeight;
     /** The currently active string */
-    TextWord *curWord;
+    TextRawWord *curWord;
     /** The next character position (within content stream) */
     int charPos;
     /** The current font */
     TextFontInfo *curFont;
+
+    int curRot;			// current rotation
+    GBool diagonal;		// set if rotation is not close to
+    //   0/90/180/270 degrees
     /** The current font size */
     double curFontSize;
     /** The current nesting level (for Type 3 fonts) */
@@ -990,10 +1298,13 @@ private:
     int primaryRot;
     /** The primary direction (<code>true</code> means L-to-R, <code>false</code> means R-to-L) */
     GBool primaryLR;
+    GList *chars;			// [TextChar]
+    /** The list of words */
+    GList *words;
     /** The list of words, in raw order (only if rawOrder is set) */
-    TextWord *rawWords;
+    TextRawWord *rawWords;
     /** The last word on rawWords list */
-    TextWord *rawLastWord;
+    TextRawWord *rawLastWord;
     /** All fonts info objects used on this page <code>TextFontInfo</code> */
     GList *fonts;
     /** The <b>x</b> value coordinate of the last "find" result */
@@ -1016,6 +1327,24 @@ private:
     vector<Dict*>underlineObject;
     vector<Dict*>highlightedObject;
     Links *pageLinks;
+
+
+    Unicode *actualText;		// current "ActualText" span
+    int actualTextLen;
+    double actualTextX0,
+            actualTextY0,
+            actualTextX1,
+            actualTextY1;
+    int actualTextNBytes;
+
+
+    GList *getChars(GList *charsA, double xMin, double yMin, double xMax, double yMax);
+//
+//    friend class TextBlock;
+//    friend class TextColumn;
+//    friend class TextLine;
+//    friend class TextRawWord;
+//    friend class TextWord;
 
 };
 
@@ -1331,7 +1660,9 @@ private:
     /** To keep text in content stream order */
     GBool verbose;
     /** To keep text in content stream order */
-    GBool rawOrder;
+    //GBool rawOrder;
+/** To make text in reading order */
+    GBool readingOrder;
     /** To know if the blocks option is selected */
     GBool blocks;
     /** To know if the fullFontName option is selected */
@@ -1368,6 +1699,9 @@ private:
 
     vector<Unicode> placeholders;
 
+    void beginActualText(GfxState *state, Unicode *u, int uLen);
+
+    void endActualText(GfxState *state);
 };
 
 #endif
