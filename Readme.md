@@ -6,7 +6,7 @@
 
 **pdfalto** is a fork of [pdf2xml](http://sourceforge.net/projects/pdf2xml), developed at XRCE, with modifications for robustness, addition of features and output enhanced format in [ALTO](https://github.com/altoxml/documentation/wiki) (including in particular space information, useful for instance for further machine learning processing). It is based on the Xpdf library.  
 
-The latest (non-)stable version is *0.1*. 
+The latest (non-)stable version is *0.2*. 
 
 # Usage
 
