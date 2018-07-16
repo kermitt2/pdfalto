@@ -6884,6 +6884,11 @@ void XmlAltoOutputDev::initMetadataInfoDoc(){
     xmlDocSetRootElement(docMetadata, docMetadataRoot);
 }
 
+GBool XmlAltoOutputDev::needNonText() {
+    if(parameters->getDisplayImage())
+        return gTrue;
+    else return gFalse;
+}
 
 void XmlAltoOutputDev::addMetadataInfo(PDFDocXrce *pdfdocxrce){
     Object info;

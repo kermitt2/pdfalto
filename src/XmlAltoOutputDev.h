@@ -1421,6 +1421,8 @@ public:
      * @return <code>true</code> if this device use drawChar(), <code>false</code> otherwise */
     virtual GBool useDrawChar() { return gTrue; }
 
+    virtual GBool needNonText();
+
     /** Does this device use beginType3Char/endType3Char?  Otherwise,
      * text in Type 3 fonts will be drawn with drawChar/drawString.
      * @return <code>true</code> if this device use beginType3Char/endType3Char, <code>false</code> otherwise */
