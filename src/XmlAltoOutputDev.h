@@ -1421,6 +1421,11 @@ public:
      * @return <code>true</code> if this device use drawChar(), <code>false</code> otherwise */
     virtual GBool useDrawChar() { return gTrue; }
 
+    // Does this device use tilingPatternFill()?  If this returns false,
+    // tiling pattern fills will be reduced to a series of other drawing
+    // operations.
+    virtual GBool useTilingPatternFill() { return gTrue; }
+
     virtual GBool needNonText();
 
     /** Does this device use beginType3Char/endType3Char?  Otherwise,
@@ -1473,6 +1478,12 @@ public:
     /** Add informations about the fill painting with even-odd rule
      * @param state The state description */
     virtual void eoFill(GfxState *state) ;
+
+    virtual void tilingPatternFill(GfxState *state, Gfx *gfx, Object *strRef,
+                                   int paintType, int tilingType, Dict *resDict,
+                                   double *mat, double *bbox,
+                                   int x0, int y0, int x1, int y1,
+                                   double xStep, double yStep);
 
     /** Create a clipping
      * @param state The state description */

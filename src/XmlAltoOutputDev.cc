@@ -7960,3 +7960,13 @@ void XmlAltoOutputDev::closeOutline(GString *shortFileName) {
     xmlSaveFile(shortFileName->getCString(), docOutline);
     xmlFreeDoc(docOutline);
 }
+
+void XmlAltoOutputDev::tilingPatternFill(GfxState *state, Gfx *gfx,
+                                       Object *strRef,
+                                       int paintType, int tilingType,
+                                       Dict *resDict,
+                                       double *mat, double *bbox,
+                                       int x0, int y0, int x1, int y1,
+                                       double xStep, double yStep) {
+    // do nothing -- this avoids the potentially slow loop in Gfx.cc
+}
