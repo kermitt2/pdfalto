@@ -7802,6 +7802,8 @@ GBool XmlAltoOutputDev::dumpOutline(xmlNodePtr parentNode,GList *itemsA, PDFDoc 
         GString *fileName;
         int page = 0;
 
+        GBool destLink = gFalse;
+
         double left = 0;
         double top = 0;
         double right = 0;
@@ -7834,20 +7836,20 @@ GBool XmlAltoOutputDev::dumpOutline(xmlNodePtr parentNode,GList *itemsA, PDFDoc 
                         } else {
                             page = dest->getPageNum();
                         }
+
+                        left = dest->getLeft();
+                        top = dest->getTop();
+                        x2= left;
+                        y2=top;
+                        //printf("%g %g %g %g %g %g\n",curstate[0],curstate[1],curstate[2],curstate[3],curstate[4],curstate[5]);
+                        x2 = curstate[0] * left +  curstate[2] * top +  curstate[4];
+                        y2 = curstate[1] * left +  curstate[3] * top +  curstate[5];
+
+                        //printf("%g %g \n",x2,y2);
+                        bottom = dest->getBottom();
+                        right = dest->getRight();
+                        destLink = gTrue;
                     }
-
-
-                    left = dest->getLeft();
-                    top = dest->getTop();
-                    x2= left;
-                    y2=top;
-                    //printf("%g %g %g %g %g %g\n",curstate[0],curstate[1],curstate[2],curstate[3],curstate[4],curstate[5]);
-                    x2 = curstate[0] * left +  curstate[2] * top +  curstate[4];
-                    y2 = curstate[1] * left +  curstate[3] * top +  curstate[5];
-
-                    //printf("%g %g \n",x2,y2);
-                    bottom = dest->getBottom();
-                    right = dest->getRight();
 
                     if (dest) {
                         delete dest;
@@ -7917,21 +7919,24 @@ GBool XmlAltoOutputDev::dumpOutline(xmlNodePtr parentNode,GList *itemsA, PDFDoc 
         xmlAddChild(nodeItem, nodeString);
 
         // LINK node
-        nodeLink = xmlNewNode(NULL, (const xmlChar*)TAG_LINK);
-        nodeLink->type = XML_ELEMENT_NODE;
+        if(destLink) {
+                nodeLink = xmlNewNode(NULL, (const xmlChar *) TAG_LINK);
+                nodeLink->type = XML_ELEMENT_NODE;
 
-        sprintf(tmp, "%d", page);
-        xmlNewProp(nodeLink, (const xmlChar*)ATTR_PAGE, (const xmlChar*)tmp);
-        sprintf(tmp, "%g", y2);
-        xmlNewProp(nodeLink, (const xmlChar*)ATTR_TOP, (const xmlChar*)tmp);
-        sprintf(tmp, "%g", bottom);
-        xmlNewProp(nodeLink, (const xmlChar*)ATTR_BOTTOM, (const xmlChar*)tmp);
-        sprintf(tmp, "%g", x2);
-        xmlNewProp(nodeLink, (const xmlChar*)ATTR_LEFT, (const xmlChar*)tmp);
-        sprintf(tmp, "%g", right);
-        xmlNewProp(nodeLink, (const xmlChar*)ATTR_RIGHT, (const xmlChar*)tmp);
+                sprintf(tmp, "%d", page);
+                xmlNewProp(nodeLink, (const xmlChar*)ATTR_PAGE, (const xmlChar*)tmp);
+                sprintf(tmp, "%g", y2);
+                xmlNewProp(nodeLink, (const xmlChar*)ATTR_TOP, (const xmlChar*)tmp);
+                sprintf(tmp, "%g", bottom);
+                xmlNewProp(nodeLink, (const xmlChar*)ATTR_BOTTOM, (const xmlChar*)tmp);
+                sprintf(tmp, "%g", x2);
+                xmlNewProp(nodeLink, (const xmlChar*)ATTR_LEFT, (const xmlChar*)tmp);
+                sprintf(tmp, "%g", right);
+                xmlNewProp(nodeLink, (const xmlChar*)ATTR_RIGHT, (const xmlChar*)tmp);
 
-        xmlAddChild(nodeItem, nodeLink);
+                xmlAddChild(nodeItem, nodeLink);
+        }
+
         int idItemCurrent = idItemToc;
         idItemToc++;
         if (((OutlineItem *)itemsA->get(i))->hasKids()) {
