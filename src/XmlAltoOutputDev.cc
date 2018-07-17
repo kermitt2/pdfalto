@@ -7528,7 +7528,7 @@ void XmlAltoOutputDev::drawImage(GfxState *state, Object *ref, Stream *str,
         if (index == -1)
         {
             //HD : in order to avoid millions of small (pixel) images
-            if (height > 8 && width > 8 && imageIndex <1000){
+            if (height > 8 && width > 8 && imageIndex < parameters->getFilesCountLimit()){
                 imageIndex+=1;
                 // Save this in the references
                 //			text->drawImage(state, ref, str, width, height, colorMap, maskColors,inlineImg, dumpJPEG, imageIndex);
@@ -7541,7 +7541,7 @@ void XmlAltoOutputDev::drawImage(GfxState *state, Object *ref, Stream *str,
         }
         else{
             //HD : in order to avoid millions of small (pixel) images
-            if (height > 8 && width > 8 && imageIndex <1000){
+            if (height > 8 && width > 8 && imageIndex < parameters->getFilesCountLimit()){
                 imageIndex+=1;
                 //			text->drawImage(state, ref, str, width, height, colorMap, maskColors,inlineImg, dumpJPEG, imageIndex);
                 ext= text->drawImageOrMask(state, ref, str, width, height, colorMap, maskColors, inlineImg, false, imageIndex); // not a mask
@@ -7613,7 +7613,7 @@ void XmlAltoOutputDev::drawImageMask(GfxState *state, Object *ref, Stream *str,
     {
         if (parameters->getDisplayImage()) {
             //HD : in order to avoid millions of small (pixel) images
-            if (height>8 && width > 8 && imageIndex<1000){
+            if (height>8 && width > 8 && imageIndex < parameters->getFilesCountLimit()){
                 imageIndex +=1;
                 // Save this in the references
                 ext= text->drawImageOrMask(state, ref, str, width, height, NULL, NULL, inlineImg, true,imageIndex); // mask
@@ -7627,7 +7627,7 @@ void XmlAltoOutputDev::drawImageMask(GfxState *state, Object *ref, Stream *str,
     else{
         if (parameters->getDisplayImage()) {
             //HD : in order to avoid millions of small (pixel) images
-            if (height>8 && width > 8  && imageIndex<1000){
+            if (height>8 && width > 8  && imageIndex < parameters->getFilesCountLimit()){
                 imageIndex+=1;
                 //use reference instead
                 ext= text->drawImageOrMask(state, ref, str, width, height, NULL, NULL, inlineImg, true,imageIndex); // mask

@@ -72,6 +72,11 @@ public:
 	 */
 	GBool getReadingOrder() {return readingOrder;}
 
+	/** Return the limit of files to be extracted.
+	 * @return <code>true</code> if the readingOrder option is selected, <code>false</code> otherwise
+	 */
+	int getFilesCountLimit() {return filesCountLimit;}
+
 	/** Modify the boolean which inform if the images are displayed
 	 * @param noImage <code>true</code> if the noImage option is not selected, <code>false</code> otherwise
 	 */
@@ -111,6 +116,8 @@ public:
 	 * @param readingOrder <code>true</code> if the readingOrder option is selected, <code>false</code> otherwise
 	 */	
 	void setReadingOrder(GBool readingOrders);
+
+	void setFilesCountLimit(int count);
 	
 	void saveToXML(const char *fileName,int firstPage,int lastPage);
 	
@@ -132,6 +139,8 @@ private:
 	GBool imageInline;
 	/** PL: The value of the readingOrder option */
 	GBool readingOrder;
+	/** the count limit of files */
+	int filesCountLimit;
   
 };
 

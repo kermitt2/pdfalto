@@ -15,6 +15,13 @@ Parameters::Parameters() {}
 
 Parameters::~Parameters() {}
 
+void Parameters::setFilesCountLimit(int count) {
+	lockGlobalParams;
+	filesCountLimit = count;
+	unlockGlobalParams;
+}
+
+
 void Parameters::setDisplayImage(GBool image) {
   lockGlobalParams;
   displayImage = image;

@@ -49,6 +49,7 @@ static const char cvsid[] = "$Revision: 1.4 $";
 
 static int firstPage = 1;
 static int lastPage = 0;
+static int filesCountLimit = 0;
 static GBool physLayout = gTrue;
 static GBool verbose = gFalse;
 
@@ -120,6 +121,9 @@ static ArgDesc argDesc[] = {
                 "save all command line parameters in the specified XML <file>"},
 //  {"-conf",        argString,      cfgFileName,    sizeof(cfgFileName),
 //   "configuration file to use in place of .xpdfrc"},
+
+        {"-filesLimit",       argInt,      &filesCountLimit,      0,
+                    "limit of asset files be extracted"},
         {NULL}
 };
 
@@ -277,6 +281,12 @@ int main(int argc, char *argv[]) {
     } else {
         userPW = NULL;
     }
+
+    if(filesCountLimit > 0){
+        parameters->setFilesCountLimit(filesCountLimit);
+        cmd->append("--filesLimit ")->append(filesCountLimit)->append(" ");
+    } else
+        parameters->setFilesCountLimit(1000);//this is the previous default limit
 
     if (namespaceUri[0] != '\001') {
         nsURI = new GString(namespaceUri);
