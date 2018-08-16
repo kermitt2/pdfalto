@@ -19,7 +19,7 @@ add_subdirectory(image/zlib)
 add_subdirectory(${XPDF_SUBDIR})
 
 set(ICU_DEBUG ON)
-find_package(ICU 62.1 COMPONENTS "data" "i18n" "io" "test" "tu" "uc" REQUIRED)
+find_package(ICU 52.1 COMPONENTS "data" "i18n" "io" "test" "tu" "uc" REQUIRED)
 
 set(SOURCE_FILES
         src/AnnotsXrce.cc
