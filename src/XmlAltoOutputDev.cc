@@ -34,6 +34,10 @@ using namespace ConstantsXMLALTO;
 #include <fcntl.h>
 #include <stdarg.h>
 
+#include "unicode/normalizer2.h"
+
+using namespace icu;
+
 #ifndef WIN32
 #include <libgen.h>
 #endif
@@ -64,10 +68,10 @@ using namespace ConstantsXMLALTO;
 #include "png.h"
 
 
-#ifdef MACOS
-// needed for setting type/creator of MacOS files
-#include "ICSupport.h"
-#endif
+//#ifdef MACOS
+//// needed for setting type/creator of MacOS files
+//#include "ICSupport.h"
+//#endif
 
 //------------------------------------------------------------------------
 // parameters
@@ -473,8 +477,7 @@ int rotA, int dirA, GBool spaceAfterA, GfxState *state,
     GfxFont *gfxFont;
     double ascent, descent;
 
-    TextChar *ch;
-    int i;
+    TextChar *chPrev, *ch;
 
     font = fontA;
     italic = gFalse;
@@ -648,9 +651,66 @@ int rotA, int dirA, GBool spaceAfterA, GfxState *state,
         baseYmin = yMin;
     }
 
-    for (i = 0; i < len; ++i) {
-        ch = (TextChar *)chars->get(rot >= 2 ? start + len - 1 - i : start + i);
+    int i = 0, j = 0;
+    GBool overlap;
+    double delta;
+    while (j < len) {
+
+        GBool isUpdateAccentedChar = gFalse;
+        ModifierClass leftClass = NOT_A_MODIFIER, rightClass = NOT_A_MODIFIER;
+
+        ch = (TextChar *)chars->get(rot >= 2 ? start + len - 1 - j : start + j);
+        if(j > 0) {
+            chPrev = (TextChar *)chars->get(rot >= 2 ? start + len - 1 - j : start + j - 1);
+            delta = ch->rot % 2 == 0 ? ch->xMin - chPrev->xMin : ch->yMin - chPrev->yMin;
+
+            //compute overlaping
+            overlap = fabs(delta) < dupMaxPriDelta * ch->fontSize && fabs(ch->yMin
+                                                                               - chPrev->yMin) <
+                                                                              dupMaxSecDelta * ch->fontSize;
+            //Do char composition + Update coords and char
+            //compose here somehow
+            rightClass = classifyChar(ch->c);
+            leftClass = classifyChar(chPrev->c);
+            // if one of the left or right characters is a modifier and they overlap.
+            if((rightClass != NOT_A_MODIFIER || leftClass != NOT_A_MODIFIER) && overlap) {
+
+                Unicode diactritic = 0;
+                UnicodeString* baseChar;
+                UnicodeString* diacriticChar;
+                UnicodeString resultChar;
+
+                if(rightClass != NOT_A_MODIFIER){
+                    if (leftClass == NOT_A_MODIFIER) {
+                        diactritic = getCombiningDiacritic(rightClass);
+                        baseChar = new UnicodeString(wchar_t(chPrev->c));
+                    }
+                } else if(leftClass != NOT_A_MODIFIER) {
+                    diactritic = getCombiningDiacritic(leftClass);
+                    baseChar = new UnicodeString(wchar_t(ch->c));
+                }
+
+                if(diactritic != 0) {
+                    UnicodeString* diacriticChar = new UnicodeString(wchar_t(diactritic));
+                    UErrorCode errorCode = U_ZERO_ERROR;
+                    const Normalizer2 *nfkc = Normalizer2::getNFKCInstance(errorCode);
+                    if (!nfkc->isNormalized(*baseChar, errorCode)) {
+                        resultChar = nfkc->normalize(*baseChar, errorCode);
+                        resultChar = nfkc->normalizeSecondAndAppend(resultChar, *diacriticChar, errorCode);
+                    } else
+                        resultChar = nfkc->normalizeSecondAndAppend(*baseChar, *diacriticChar, errorCode);
+                    --i;
+                    text[i] = resultChar.charAt(0);
+                    isUpdateAccentedChar = gTrue;
+                }
+            }
+        }
+
+    if(!isUpdateAccentedChar)
         text[i] = ch->c;
+
+
+
         charPos[i] = ch->charPos;
         if (i == len - 1) {
             charPos[len] = ch->charPos + ch->charLen;
@@ -682,6 +742,8 @@ int rotA, int dirA, GBool spaceAfterA, GfxState *state,
                 }
                 break;
         }
+        ++j;
+        ++i;
     }
 
     GfxRGB rgb;
@@ -946,7 +1008,7 @@ TextRawWord::~TextRawWord() {
 }
 
 void TextRawWord::addChar(GfxState *state, double x, double y, double dx,
-                       double dy, Unicode u, int charPosA) {
+                       double dy, Unicode u, int charPosA, GBool overlap) {
 
     if (len == size) {
         size += 16;
@@ -955,39 +1017,109 @@ void TextRawWord::addChar(GfxState *state, double x, double y, double dx,
         //charPos = (int *)grealloc(charPos, size + 1 * sizeof(int));
     }
 
-    //charPos[len] = charPosA;
-    text[len] = u;
-    switch (rot) {
-        case 0:
-            if (len == 0) {
-                xMin = x;
+    GBool isUpdateAccentedChar = gFalse;
+
+    if(overlap && len > 0) {
+        ModifierClass leftClass = NOT_A_MODIFIER, rightClass = NOT_A_MODIFIER;
+        leftClass = classifyChar(text[len - 1]);
+        rightClass = classifyChar(u);
+
+        if (leftClass != NOT_A_MODIFIER || rightClass != NOT_A_MODIFIER) {
+            Unicode diactritic = 0;
+            UnicodeString *baseChar;
+            UnicodeString resultChar;
+
+            if(leftClass != NOT_A_MODIFIER) {
+                if (leftClass == NOT_A_MODIFIER) {
+                    diactritic = getCombiningDiacritic(leftClass);
+                    baseChar = new UnicodeString(wchar_t(u));
+                }
+            } else if(rightClass != NOT_A_MODIFIER){
+                diactritic = getCombiningDiacritic(rightClass);
+                baseChar = new UnicodeString(wchar_t(text[len - 1]));
             }
-            edge[len] = x;
-            xMax = edge[len+1] = x + dx;
-            break;
-        case 3:
-            if (len == 0) {
-                yMin = y;
+
+            if (diactritic != 0) {
+                UnicodeString *diacriticChar = new UnicodeString(wchar_t(diactritic));
+                UErrorCode errorCode = U_ZERO_ERROR;
+                const Normalizer2 *nfkc = Normalizer2::getNFKCInstance(errorCode);
+                if (!nfkc->isNormalized(*baseChar, errorCode)) {
+                    resultChar = nfkc->normalize(*baseChar, errorCode);
+                    resultChar = nfkc->normalizeSecondAndAppend(resultChar, *diacriticChar, errorCode);
+                } else
+                    resultChar = nfkc->normalizeSecondAndAppend(*baseChar, *diacriticChar, errorCode);
+                text[len - 1] = resultChar.charAt(0);
+                //here we should compare both coords and keep surrounding ones
+                switch (rot) {
+                    case 0:
+                        if (len == 0) {
+                            xMin = x;
+                        }
+                        edge[len] = x;
+                        xMax = edge[len + 1] = x + dx;
+                        break;
+                    case 3:
+                        if (len == 0) {
+                            yMin = y;
+                        }
+                        edge[len] = y;
+                        yMax = edge[len + 1] = y + dy;
+                        break;
+                    case 2:
+                        if (len == 0) {
+                            xMax = x;
+                        }
+                        edge[len] = x;
+                        xMin = edge[len + 1] = x + dx;
+                        break;
+                    case 1:
+                        if (len == 0) {
+                            yMax = y;
+                        }
+                        edge[len] = y;
+                        yMin = edge[len + 1] = y + dy;
+                        break;
+                }
             }
-            edge[len] = y;
-            yMax = edge[len+1] = y + dy;
-            break;
-        case 2:
-            if (len == 0) {
-                xMax = x;
-            }
-            edge[len] = x;
-            xMin = edge[len+1] = x + dx;
-            break;
-        case 1:
-            if (len == 0) {
-                yMax = y;
-            }
-            edge[len] = y;
-            yMin = edge[len+1] = y + dy;
-            break;
+            isUpdateAccentedChar = gTrue;
+        }
     }
-    ++len;
+
+    if(!isUpdateAccentedChar) {
+        text[len] = u;
+        switch (rot) {
+            case 0:
+                if (len == 0) {
+                    xMin = x;
+                }
+                edge[len] = x;
+                xMax = edge[len + 1] = x + dx;
+                break;
+            case 3:
+                if (len == 0) {
+                    yMin = y;
+                }
+                edge[len] = y;
+                yMax = edge[len + 1] = y + dy;
+                break;
+            case 2:
+                if (len == 0) {
+                    xMax = x;
+                }
+                edge[len] = x;
+                xMin = edge[len + 1] = x + dx;
+                break;
+            case 1:
+                if (len == 0) {
+                    yMax = y;
+                }
+                edge[len] = y;
+                yMin = edge[len + 1] = y + dy;
+                break;
+        }
+        ++len;
+    }
+
 }
 
 void TextRawWord::merge(TextRawWord *word) {
@@ -1064,6 +1196,44 @@ double TextRawWord::primaryDelta(TextRawWord *word) {
 GBool TextRawWord::overlap(TextRawWord *w2){
 
     return gFalse;
+}
+
+void TextRawWord::normalize() {
+//    Unicode* normalizedText = (Unicode *)gmallocn(len, sizeof(Unicode));
+//    int i = 0;
+//for(int j = 0; j < len ;j++){
+//    ModifierClass modifierClass = classifyChar(text[j]);
+//
+//    if(modifierClass != NOT_A_MODIFIER) {
+//        if (i > 0) {
+//            //if based on (closer)position determine if left or right
+//            Unicode baseTextChar = text[j-1];
+//            //if(baseTextChar->spaceAfter != (char)gTrue){
+//                Unicode diactritic = getCombiningDiacritic(modifierClass);
+//
+//                UnicodeString resultChar;
+//                Unicode u;
+//                if(diactritic != 0) {
+//                    UnicodeString* baseChar = new UnicodeString(static_cast<char>(wchar_t(baseTextChar)));
+//                    UnicodeString* diacriticChar = new UnicodeString(wchar_t(diactritic));
+//                    UErrorCode errorCode = U_ZERO_ERROR;
+//                    const Normalizer2 *nfkc = Normalizer2::getNFKCInstance(errorCode);
+//                    if (!nfkc->isNormalized(*baseChar, errorCode)) {
+//                        resultChar = nfkc->normalize(*baseChar, errorCode);
+//                        resultChar = nfkc->normalizeSecondAndAppend(resultChar, *diacriticChar, errorCode);
+//                    } else
+//                        resultChar = nfkc->normalizeSecondAndAppend(*baseChar, *diacriticChar, errorCode);
+//                    --i;
+//                    normalizedText[i] = resultChar.charAt(0);
+//                }
+//            //}
+//        }
+//    } else {
+//        normalizedText[i] = text[j];
+//    }
+//i++;
+//}
+//    text = normalizedText;
 }
 
 //------------------------------------------------------------------------
@@ -2144,6 +2314,299 @@ void TextPage::beginWord(GfxState *state, double x0, double y0) {
             = new TextRawWord(state, x0, y0, curFont, curFontSize, getIdWORD(), getIdx());
 }
 
+ModifierClass TextPage::classifyChar(Unicode u) {
+    switch (u) {
+        case (Unicode)776: //COMBINING DIAERESIS
+        case (Unicode)168: //DIAERESIS
+            return DIAERESIS;
+
+        case 833:
+        case 779: // COMBINING DOUBLE_ACUTE_ACCENT
+        case 733:
+            return DOUBLE_ACUTE_ACCENT;
+        case 180:
+        case 769: //COMBINING
+        case 714:
+            return ACUTE_ACCENT;
+
+        case 768: //COMBINING
+        case 832:
+        case 715:
+        case 96:
+            return GRAVE_ACCENT;
+
+        case 783: //COMBINING
+            return DOUBLE_GRAVE_ACCENT;
+
+        case 774: //COMBINING
+        case 728:
+            //case '\uA67C':
+            return BREVE_ACCENT;
+
+        case 785: //COMBINING
+        case 1156:
+        case 1159:
+            return INVERTED_BREVE_ACCENT;
+
+
+        case 770: //COMBINING
+        case 94:
+        case 710:
+            return CIRCUMFLEX;
+
+
+        case 771: //COMBINING
+        case 126:
+        case 732:
+            return TILDE;
+
+        case 778: //COMBINING
+        case 176:
+        case 730:
+            return NORDIC_RING;//LOOK AT UNICODE RING BELOW...
+
+        case 780: //COMBINING
+        case 711:
+            return CZECH_CARON;
+
+        case 807: //COMBINING
+        case 184:
+            return CEDILLA;
+
+        case 775: //COMBINING
+        case 729:
+            return DOT_ABOVE;
+
+        case 777: //COMBINING
+        case 704:
+            return HOOK;
+
+        case 795: //COMBINING
+            return HORN;
+
+        case 808: //COMBINING
+        case 731:
+            //case '\u1AB7':// combining open mark below
+            return OGONEK;
+
+        case 772: //COMBINING
+        case 175:
+        case 713:
+            return MACRON;
+        default:
+            return NOT_A_MODIFIER;
+    }
+
+}
+
+Unicode TextPage::getCombiningDiacritic(ModifierClass modifierClass) {
+
+    Unicode diactritic = 0;
+    switch (modifierClass) {
+        case DIAERESIS:
+            diactritic = 776;
+            break;
+        case ACUTE_ACCENT:
+            diactritic = 769;
+            break;
+        case GRAVE_ACCENT:
+            diactritic = 768;
+            break;
+        case CIRCUMFLEX:
+            diactritic = 770;
+            break;
+        case TILDE:
+            diactritic = 771;
+            break;
+        case NORDIC_RING:
+            diactritic = 778;
+            break;
+        case CZECH_CARON:
+            diactritic = 780;
+            break;
+        case CEDILLA:
+            diactritic = 807;
+            break;
+        case DOUBLE_ACUTE_ACCENT:
+            diactritic = 779;
+            break;
+        case DOUBLE_GRAVE_ACCENT:
+            diactritic = 783;
+            break;
+        case BREVE_ACCENT:
+            diactritic = 785;
+            break;
+        case INVERTED_BREVE_ACCENT:
+            diactritic = 785;
+            break;
+        case DOT_ABOVE:
+            diactritic = 775;
+            break;
+        case HOOK:
+            diactritic = 777;
+            break;
+        case HORN:
+            diactritic = 795;
+            break;
+        case OGONEK:
+            diactritic = 808;
+            break;
+        case MACRON:
+            diactritic = 772;
+            break;
+        default:
+            break;
+    }
+    return diactritic;
+}
+
+ModifierClass IWord::classifyChar(Unicode u) {
+    switch (u) {
+        case (Unicode)776: //COMBINING DIAERESIS
+        case (Unicode)168: //DIAERESIS
+            return DIAERESIS;
+
+        case 833:
+        case 779: // COMBINING DOUBLE_ACUTE_ACCENT
+        case 733:
+            return DOUBLE_ACUTE_ACCENT;
+        case 180:
+        case 769: //COMBINING
+        case 714:
+            return ACUTE_ACCENT;
+
+        case 768: //COMBINING
+        case 832:
+        case 715:
+        case 96:
+            return GRAVE_ACCENT;
+
+        case 783: //COMBINING
+            return DOUBLE_GRAVE_ACCENT;
+
+        case 774: //COMBINING
+        case 728:
+            //case '\uA67C':
+            return BREVE_ACCENT;
+
+        case 785: //COMBINING
+        case 1156:
+        case 1159:
+            return INVERTED_BREVE_ACCENT;
+
+
+        case 770: //COMBINING
+        case 94:
+        case 710:
+            return CIRCUMFLEX;
+
+
+        case 771: //COMBINING
+        case 126:
+        case 732:
+            return TILDE;
+
+        case 778: //COMBINING
+        case 176:
+        case 730:
+            return NORDIC_RING;//LOOK AT UNICODE RING BELOW...
+
+        case 780: //COMBINING
+        case 711:
+            return CZECH_CARON;
+
+        case 807: //COMBINING
+        case 184:
+            return CEDILLA;
+
+        case 775: //COMBINING
+        case 729:
+            return DOT_ABOVE;
+
+        case 777: //COMBINING
+        case 704:
+            return HOOK;
+
+        case 795: //COMBINING
+            return HORN;
+
+        case 808: //COMBINING
+        case 731:
+            //case '\u1AB7':// combining open mark below
+            return OGONEK;
+
+        case 772: //COMBINING
+        case 175:
+        case 713:
+            return MACRON;
+        default:
+            return NOT_A_MODIFIER;
+    }
+
+}
+
+Unicode IWord::getCombiningDiacritic(ModifierClass modifierClass) {
+
+Unicode diactritic = 0;
+    switch (modifierClass) {
+        case DIAERESIS:
+            diactritic = 776;
+            break;
+        case ACUTE_ACCENT:
+            diactritic = 769;
+            break;
+        case GRAVE_ACCENT:
+            diactritic = 768;
+            break;
+        case CIRCUMFLEX:
+            diactritic = 770;
+            break;
+        case TILDE:
+            diactritic = 771;
+            break;
+        case NORDIC_RING:
+            diactritic = 778;
+            break;
+        case CZECH_CARON:
+            diactritic = 780;
+            break;
+        case CEDILLA:
+            diactritic = 807;
+            break;
+        case DOUBLE_ACUTE_ACCENT:
+            diactritic = 779;
+            break;
+        case DOUBLE_GRAVE_ACCENT:
+            diactritic = 783;
+            break;
+        case BREVE_ACCENT:
+            diactritic = 785;
+            break;
+        case INVERTED_BREVE_ACCENT:
+            diactritic = 785;
+            break;
+        case DOT_ABOVE:
+            diactritic = 775;
+            break;
+        case HOOK:
+            diactritic = 777;
+            break;
+        case HORN:
+            diactritic = 795;
+            break;
+        case OGONEK:
+            diactritic = 808;
+            break;
+        case MACRON:
+            diactritic = 772;
+            break;
+        default:
+            break;
+    }
+    return diactritic;
+}
+
+
 void TextPage::addCharToPageChars(GfxState *state, double x, double y, double dx,
                        double dy, CharCode c, int nBytes, Unicode *u, int uLen){
     double x1, y1, x2, y2, w1, h1, dx2, dy2, ascent, descent, sp;
@@ -2406,10 +2869,14 @@ void TextPage::addCharToRawWord(GfxState *state, double x, double y, double dx,
                                                                            - curWord->base) <
                                                                       dupMaxSecDelta * curWord->fontSize;
 
+        //Avoid splitting token when overlaping is surrounded by diacritic
+        ModifierClass modifierClass = classifyChar(curWord->text[curWord->len-1]);
+        modifierClass = classifyChar(u[0]);
+
         // take into account rotation angle ??
-        if ((overlap || fabs(base - curWord->base) > 1 ||
+        if (((overlap && modifierClass != NOT_A_MODIFIER)  || fabs(base - curWord->base) > 1 ||
              sp > minWordBreakSpace * curWord->fontSize ||
-             sp < -minDupBreakOverlap * curWord->fontSize)) {
+                (sp < -minDupBreakOverlap * curWord->fontSize && modifierClass != NOT_A_MODIFIER))) {
             endWord();
             beginWord(state, x, y);
         }
@@ -2441,7 +2908,7 @@ void TextPage::addCharToRawWord(GfxState *state, double x, double y, double dx,
         h1 /= uLen;
 
         for (i = 0; i < uLen; ++i) {
-            curWord->addChar(state, x1 + i * w1, y1 + i * h1, w1, h1, u[i], charPos);
+            curWord->addChar(state, x1 + i * w1, y1 + i * h1, w1, h1, u[i], charPos, (overlap || sp < -minDupBreakOverlap * curWord->fontSize));
         }
     }
 
@@ -2470,6 +2937,8 @@ void TextPage::endWord() {
     }
 
     if (curWord) {
+curWord->normalize();
+        //Here once the word is finished check, diacritics
         addWord(curWord);
         curWord = NULL;
         idWORD++;

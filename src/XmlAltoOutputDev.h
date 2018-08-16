@@ -58,6 +58,10 @@ class TextChar;
 
 class XmlAltoOutputDev;
 
+enum ModifierClass {
+    NOT_A_MODIFIER, DIAERESIS, ACUTE_ACCENT, DOUBLE_ACUTE_ACCENT, GRAVE_ACCENT, DOUBLE_GRAVE_ACCENT, BREVE_ACCENT, INVERTED_BREVE_ACCENT, CIRCUMFLEX, TILDE, NORDIC_RING, CZECH_CARON, CEDILLA, DOT_ABOVE, HOOK, HORN, MACRON, OGONEK,
+};
+
 //------------------------------------------------------------------------
 
 typedef void (*TextOutputFunc)(void *stream, char *text, int len);
@@ -562,6 +566,9 @@ public:
 
     int getCharPos() { return charPos[0]; }
     int getCharLen() { return charPos[len] - charPos[0]; }
+    ModifierClass classifyChar(Unicode u);
+
+    Unicode getCombiningDiacritic(ModifierClass modifierClass);
 };
 
 //------------------------------------------------------------------------
@@ -651,7 +658,7 @@ public:
      *  @param u The unicode char to add
      */
     void addChar(GfxState *state, double x, double y,
-                 double dx, double dy, Unicode u, int charPosA);
+                 double dx, double dy, Unicode u, int charPosA, GBool overlap);
 
     /** Merge <code>word</code> onto the end of <code>this</code>
      *  @param word The current word */
@@ -1346,6 +1353,9 @@ private:
 //    friend class TextRawWord;
 //    friend class TextWord;
 
+    ModifierClass classifyChar(Unicode u);
+
+    Unicode getCombiningDiacritic(ModifierClass modifierClass);
 };
 
 

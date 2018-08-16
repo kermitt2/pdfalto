@@ -18,6 +18,9 @@ add_subdirectory(image/png)
 add_subdirectory(image/zlib)
 add_subdirectory(${XPDF_SUBDIR})
 
+set(ICU_DEBUG ON)
+find_package(ICU 62.1 COMPONENTS "data" "i18n" "io" "test" "tu" "uc" REQUIRED)
+
 set(SOURCE_FILES
         src/AnnotsXrce.cc
         src/AnnotsXrce.h
@@ -37,11 +40,12 @@ set(SOURCE_FILES
 add_executable(pdfalto ${SOURCE_FILES})
 
 if(${HAVE_PAPER_H})
-    target_link_libraries(pdfalto zlib ${ZLIB_SUBDIR}/libzlib.a png ${PNG_SUBDIR}/libpng.a xml2 xpdf ${XPDF_BUILD_DIR}/xpdf/lib/libxpdf.a goo fofi  ${HAVE_PAPER_H})
+    target_link_libraries(pdfalto zlib ${ZLIB_SUBDIR}/libzlib.a png ${PNG_SUBDIR}/libpng.a xml2 xpdf ${XPDF_BUILD_DIR}/xpdf/lib/libxpdf.a goo fofi ${ICU_LIBRARIES} ${HAVE_PAPER_H})
 else()
-    target_link_libraries(pdfalto png ${PNG_SUBDIR}/libpng.a zlib ${ZLIB_SUBDIR}/libzlib.a xml2 xpdf ${XPDF_BUILD_DIR}/xpdf/lib/libxpdf.a goo fofi )
+    target_link_libraries(pdfalto png ${PNG_SUBDIR}/libpng.a zlib ${ZLIB_SUBDIR}/libzlib.a xml2 xpdf ${XPDF_BUILD_DIR}/xpdf/lib/libxpdf.a goo fofi ${ICU_LIBRARIES})
 endif()
 
+message("${ICU_LIBRARIES}")
 target_include_directories(pdfalto
         PUBLIC /usr/include/libxml2
         PUBLIC image/png
@@ -51,4 +55,5 @@ target_include_directories(pdfalto
         PUBLIC ${XPDF_SUBDIR}/fofi
         PUBLIC ${XPDF_SUBDIR}/xpdf
         PUBLIC ${XPDF_BUILD_DIR}
+        PUBLIC ${ICU_INCLUDE_DIRS}/unicode
         )
