@@ -1198,44 +1198,6 @@ GBool TextRawWord::overlap(TextRawWord *w2){
     return gFalse;
 }
 
-void TextRawWord::normalize() {
-//    Unicode* normalizedText = (Unicode *)gmallocn(len, sizeof(Unicode));
-//    int i = 0;
-//for(int j = 0; j < len ;j++){
-//    ModifierClass modifierClass = classifyChar(text[j]);
-//
-//    if(modifierClass != NOT_A_MODIFIER) {
-//        if (i > 0) {
-//            //if based on (closer)position determine if left or right
-//            Unicode baseTextChar = text[j-1];
-//            //if(baseTextChar->spaceAfter != (char)gTrue){
-//                Unicode diactritic = getCombiningDiacritic(modifierClass);
-//
-//                UnicodeString resultChar;
-//                Unicode u;
-//                if(diactritic != 0) {
-//                    UnicodeString* baseChar = new UnicodeString(static_cast<char>(wchar_t(baseTextChar)));
-//                    UnicodeString* diacriticChar = new UnicodeString(wchar_t(diactritic));
-//                    UErrorCode errorCode = U_ZERO_ERROR;
-//                    const Normalizer2 *nfkc = Normalizer2::getNFKCInstance(errorCode);
-//                    if (!nfkc->isNormalized(*baseChar, errorCode)) {
-//                        resultChar = nfkc->normalize(*baseChar, errorCode);
-//                        resultChar = nfkc->normalizeSecondAndAppend(resultChar, *diacriticChar, errorCode);
-//                    } else
-//                        resultChar = nfkc->normalizeSecondAndAppend(*baseChar, *diacriticChar, errorCode);
-//                    --i;
-//                    normalizedText[i] = resultChar.charAt(0);
-//                }
-//            //}
-//        }
-//    } else {
-//        normalizedText[i] = text[j];
-//    }
-//i++;
-//}
-//    text = normalizedText;
-}
-
 //------------------------------------------------------------------------
 // TextRawWord
 //------------------------------------------------------------------------
@@ -2937,7 +2899,6 @@ void TextPage::endWord() {
     }
 
     if (curWord) {
-curWord->normalize();
         //Here once the word is finished check, diacritics
         addWord(curWord);
         curWord = NULL;
