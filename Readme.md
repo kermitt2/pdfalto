@@ -54,7 +54,9 @@ In addition to the [ALTO](https://github.com/altoxml/documentation/wiki) file de
 
 * Install libxml2 (development headers). See http://xmlsoft.org/ 
 
-* Install libmotif-dev (development headers) 
+* Install libmotif-dev (development headers)
+
+* Install ICU4C (development headers). See [ICU Readme](http://source.icu-project.org/repos/icu/trunk/icu4c/readme.html) 
 
 > git clone https://github.com/kermitt2/pdfalto.git && cd pdfalto
 

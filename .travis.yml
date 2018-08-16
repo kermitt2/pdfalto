@@ -26,10 +26,21 @@ before_install:
 install:
   - if [ "$TRAVIS_OS_NAME" = "linux" ]; then
       sudo apt-get install -qq cmake libxml2-dev libmotif-dev;
+      cd ;
+      curl -sLO http://download.icu-project.org/files/icu4c/62.1/icu4c-62_1-src.tgz;
+      tar zxvf icu4c-62_1-src.tgz;
+      cd icu/source;
+      chmod +x runConfigureICU configure install-sh;
+      make;
+      sudo make install;
+      icu-config --version;
+      export ICU_LD_FLAGS=`icu-config --ldflags`;
+      export CGO_LDFLAGS="${CGO_LDFLAGS} ${ICU_LD_FLAGS}";
     fi
   - if [ "$TRAVIS_OS_NAME" = "osx" ]; then
      brew install openmotif;
      brew install libxml2;
+     brew install icu4c;
     fi
 
 script:
