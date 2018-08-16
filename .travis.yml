@@ -36,6 +36,7 @@ install:
       icu-config --version;
       export ICU_LD_FLAGS=`icu-config --ldflags`;
       export CGO_LDFLAGS="${CGO_LDFLAGS} ${ICU_LD_FLAGS}";
+      cd ;
     fi
   - if [ "$TRAVIS_OS_NAME" = "osx" ]; then
      brew install openmotif;
