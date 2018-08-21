@@ -569,6 +569,8 @@ public:
     ModifierClass classifyChar(Unicode u);
 
     Unicode getCombiningDiacritic(ModifierClass modifierClass);
+
+    Unicode getStandardBaseChar(Unicode c);
 };
 
 //------------------------------------------------------------------------
@@ -1357,7 +1359,6 @@ private:
 
     Unicode getCombiningDiacritic(ModifierClass modifierClass);
 };
-
 
 
 // Simple class to save picture references

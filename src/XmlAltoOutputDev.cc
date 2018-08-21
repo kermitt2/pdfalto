@@ -683,15 +683,15 @@ int rotA, int dirA, GBool spaceAfterA, GfxState *state,
                 if(rightClass != NOT_A_MODIFIER){
                     if (leftClass == NOT_A_MODIFIER) {
                         diactritic = getCombiningDiacritic(rightClass);
-                        baseChar = new UnicodeString(wchar_t(chPrev->c));
+                        baseChar = new UnicodeString(wchar_t(getStandardBaseChar(chPrev->c)));
                     }
                 } else if(leftClass != NOT_A_MODIFIER) {
                     diactritic = getCombiningDiacritic(leftClass);
-                    baseChar = new UnicodeString(wchar_t(ch->c));
+                    baseChar = new UnicodeString(wchar_t(getStandardBaseChar(ch->c)));
                 }
 
                 if(diactritic != 0) {
-                    UnicodeString* diacriticChar = new UnicodeString(wchar_t(diactritic));
+                    diacriticChar = new UnicodeString(wchar_t(diactritic));
                     UErrorCode errorCode = U_ZERO_ERROR;
                     const Normalizer2 *nfkc = Normalizer2::getNFKCInstance(errorCode);
                     if (!nfkc->isNormalized(*baseChar, errorCode)) {
@@ -1028,19 +1028,20 @@ void TextRawWord::addChar(GfxState *state, double x, double y, double dx,
             Unicode diactritic = 0;
             UnicodeString *baseChar;
             UnicodeString resultChar;
+            UnicodeString *diacriticChar;
 
             if(leftClass != NOT_A_MODIFIER) {
                 if (leftClass == NOT_A_MODIFIER) {
                     diactritic = getCombiningDiacritic(leftClass);
-                    baseChar = new UnicodeString(wchar_t(u));
+                    baseChar = new UnicodeString(wchar_t(getStandardBaseChar(u)));
                 }
             } else if(rightClass != NOT_A_MODIFIER){
                 diactritic = getCombiningDiacritic(rightClass);
-                baseChar = new UnicodeString(wchar_t(text[len - 1]));
+                baseChar = new UnicodeString(wchar_t(getStandardBaseChar(text[len - 1])));
             }
 
             if (diactritic != 0) {
-                UnicodeString *diacriticChar = new UnicodeString(wchar_t(diactritic));
+                diacriticChar = new UnicodeString(wchar_t(diactritic));
                 UErrorCode errorCode = U_ZERO_ERROR;
                 const Normalizer2 *nfkc = Normalizer2::getNFKCInstance(errorCode);
                 if (!nfkc->isNormalized(*baseChar, errorCode)) {
@@ -2359,6 +2360,18 @@ ModifierClass TextPage::classifyChar(Unicode u) {
             return NOT_A_MODIFIER;
     }
 
+}
+
+/*
+ * Returns the correct base char for composition with icu4c following unicode standard.
+ */
+Unicode IWord::getStandardBaseChar(Unicode c) {
+    switch (c) {
+        case 305:
+            return 105;
+        default:
+            return c;
+    }
 }
 
 Unicode TextPage::getCombiningDiacritic(ModifierClass modifierClass) {
