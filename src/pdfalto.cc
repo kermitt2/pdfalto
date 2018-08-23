@@ -119,8 +119,8 @@ static ArgDesc argDesc[] = {
                 "print usage information"},
         {"--saveconf",        argString,      XMLcfgFileName,    sizeof(XMLcfgFileName),
                 "save all command line parameters in the specified XML <file>"},
-//  {"-conf",        argString,      cfgFileName,    sizeof(cfgFileName),
-//   "configuration file to use in place of .xpdfrc"},
+        {"-conf",        argString,      cfgFileName,    sizeof(cfgFileName),
+                "configuration file to use in place of xpdfrc"},
 
         {"-filesLimit",       argInt,      &filesCountLimit,      0,
                     "limit of asset files be extracted"},
