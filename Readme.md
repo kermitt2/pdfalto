@@ -163,6 +163,10 @@ See the issue tracker and future work :
 
 1. Text like containing block element characters (https://unicode.org/charts/PDF/U2B00.pdf) might be placeholders for unknown characters unicodes instead of what you expect when you are extracting text. This is because the actual characters are glyphs that are embedded in the PDF document. The only way to access the text is to use OCR. This may be a future enhancement.
 
+# Unicode mapping configuration
+
+In order to fix unicode mapping for some characters (especially greek letters), a configuration mapping files are provided under the directory `xpdfrc`, and could be used from xpdf by adding the `-config <absolute path to xpdfrc file>`.
+
 # Contributors
 
 xpdf is developed by Glyph & Cog, LLC (1996-2017) and distributed under GPL2 or GPL3 license. 
