@@ -40,7 +40,17 @@ install:
   - if [ "$TRAVIS_OS_NAME" = "osx" ]; then
      brew install openmotif;
      brew install libxml2;
-     brew install icu4c;
+     curl -sLO http://download.icu-project.org/files/icu4c/62.1/icu4c-62_1-src.tgz;
+     tar zxvf icu4c-62_1-src.tgz;
+     cd icu/source;
+     chmod +x runConfigureICU configure install-sh;
+     ./runConfigureICU MacOSX
+     make
+     sudo make install
+     icu-config --version;
+     export ICU_LD_FLAGS=`icu-config --ldflags`;
+     export CGO_LDFLAGS="${CGO_LDFLAGS} ${ICU_LD_FLAGS}";
+     cd ../..;
     fi
 
 script:
