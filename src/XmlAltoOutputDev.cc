@@ -580,18 +580,18 @@ int rotA, int dirA, GBool spaceAfterA, GfxState *state,
     //baseYmin = 0;
     fontName = NULL;
 
-    if (state->getFont()) {
-        if (state->getFont()->getName()) {
+    if (fontA) {
+        if (fontA->getFontName()) {
             // PDF reference guide 5.5.3 For a font subset, the PostScript name of the font�the value of the font�s
             //BaseFont entry and the font descriptor�s FontName entry�begins with a tag
             //followed by a plus sign (+). The tag consists of exactly six uppercase letters; the
             //choice of letters is arbitrary, but different subsets in the same PDF file must have
             //different tags. For example, EOODIA+Poetica is the name of a subset of Poetica�, a
             //Type 1 font. (See implementation note 62 in Appendix H.)
-            fontName = strdup(state->getFont()->getName()->getCString());
-            if (strstr(state->getFont()->getName()->lowerCase()->getCString(), "bold"))
+            fontName = strdup(fontA->getFontName()->getCString());
+            if (strstr(fontA->getFontName()->lowerCase()->getCString(), "bold"))
                 bold=gTrue;
-            if (strstr(state->getFont()->getName()->lowerCase()->getCString(), "italic")|| strstr(state->getFont()->getName()->lowerCase()->getCString(), "oblique"))
+            if (strstr(fontA->getFontName()->lowerCase()->getCString(), "italic")|| strstr(fontA->getFontName()->lowerCase()->getCString(), "oblique"))
                 italic=gTrue;
         } else {
             fontName = NULL;
