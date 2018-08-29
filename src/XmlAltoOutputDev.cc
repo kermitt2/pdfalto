@@ -1031,7 +1031,7 @@ void TextRawWord::addChar(GfxState *state, double x, double y, double dx,
             UnicodeString *diacriticChar;
 
             if(leftClass != NOT_A_MODIFIER) {
-                if (leftClass == NOT_A_MODIFIER) {
+                if (rightClass == NOT_A_MODIFIER) {
                     diactritic = getCombiningDiacritic(leftClass);
                     baseChar = new UnicodeString(wchar_t(getStandardBaseChar(u)));
                 }
@@ -2846,12 +2846,13 @@ void TextPage::addCharToRawWord(GfxState *state, double x, double y, double dx,
 
         //Avoid splitting token when overlaping is surrounded by diacritic
         ModifierClass modifierClass = classifyChar(curWord->text[curWord->len-1]);
-        modifierClass = classifyChar(u[0]);
+        if(modifierClass == NOT_A_MODIFIER)
+            modifierClass = classifyChar(u[0]);
 
         // take into account rotation angle ??
-        if (((overlap && modifierClass != NOT_A_MODIFIER)  || fabs(base - curWord->base) > 1 ||
+        if (((overlap  || fabs(base - curWord->base) > 1 ||
              sp > minWordBreakSpace * curWord->fontSize ||
-                (sp < -minDupBreakOverlap * curWord->fontSize && modifierClass != NOT_A_MODIFIER))) {
+                (sp < -minDupBreakOverlap * curWord->fontSize)) && modifierClass == NOT_A_MODIFIER)) {
             endWord();
             beginWord(state, x, y);
         }
