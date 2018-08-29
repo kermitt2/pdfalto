@@ -2485,7 +2485,7 @@ ModifierClass IWord::classifyChar(Unicode u) {
             return TILDE;
 
         case 778: //COMBINING
-        case 176:
+        //case 176:
         case 730:
             return NORDIC_RING;//LOOK AT UNICODE RING BELOW...
 
