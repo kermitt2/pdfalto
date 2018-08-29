@@ -5327,7 +5327,8 @@ void TextPage::dump(GBool blocks, GBool fullFontName) {
         if (word->next && (word->rot==word->next->rot) && (
                 (
                         (fabs(word->base - word->next->baseYmin) < maxSpacingWordsBetweenTwoLines) ||
-                        (fabs(word->next->base - word->base) < maxIntraLineDelta * min(lineFontSize,word->next->fontSize) )
+                        (fabs(word->next->base - word->base) < maxIntraLineDelta * min(lineFontSize,word->next->fontSize) ) ||
+                                (word->next->yMax > word->yMin && word->next->base < word->base)
                 )
                 && (word->next->xMin <= word->xMax + maxWordSpacing * lineFontSize)
         )
