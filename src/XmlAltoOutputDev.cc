@@ -746,6 +746,9 @@ int rotA, int dirA, GBool spaceAfterA, GfxState *state,
         ++i;
     }
 
+    if(j==len)
+        len = i;
+
     GfxRGB rgb;
 
     if ((state->getRender() & 3) == 1) {
