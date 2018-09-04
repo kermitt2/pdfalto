@@ -56,7 +56,30 @@ In addition to the [ALTO](https://github.com/altoxml/documentation/wiki) file de
 
 * Install libmotif-dev (development headers)
 
-* Install ICU4C (development headers). See [ICU Readme](http://source.icu-project.org/repos/icu/trunk/icu4c/readme.html) 
+* Install ICU4C (development headers):
+ 
+   After downloading sources from http://site.icu-project.org/download/ :
+   
+  1- Decompress the archive file. For example,
+  > gunzip -d < icu-X.Y.tgz | tar xvf -
+ 
+  2- Change directory to icu/source.
+  >cd icu/source
+  
+  3- Some files may have the wrong permissions.
+  >chmod +x runConfigureICU configure install-sh
+  
+  4- Run the runConfigureICU script for your platform (static library should be generated).
+  >./runConfigureICU <MacOSX | Linux>  --enable-static --disable-shared 
+  
+  5- Now build:
+  >make
+  
+  6- To install:
+  >make install
+ 
+  See [ICU Readme](http://source.icu-project.org/repos/icu/trunk/icu4c/readme.html) for futher details.
+
 
 > git clone https://github.com/kermitt2/pdfalto.git && cd pdfalto
 
