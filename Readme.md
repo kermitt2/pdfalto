@@ -74,9 +74,6 @@ In addition to the [ALTO](https://github.com/altoxml/documentation/wiki) file de
   
   5- Now build:
   >make
-  
-  6- To install:
-  >make install
  
   See [ICU Readme](http://source.icu-project.org/repos/icu/trunk/icu4c/readme.html) for futher details.
 
@@ -89,7 +86,7 @@ In addition to the [ALTO](https://github.com/altoxml/documentation/wiki) file de
 
 * Build pdfalto:
 
-> cmake .
+> cmake -D'ICU_PATH=Path to ICU source folder'
 
 > make
 
