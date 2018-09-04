@@ -37,9 +37,9 @@ set(SOURCE_FILES
 add_executable(pdfalto ${SOURCE_FILES})
 
 if(${HAVE_PAPER_H})
-    target_link_libraries(pdfalto zlib ${ZLIB_SUBDIR}/libzlib.a png ${PNG_SUBDIR}/libpng.a xml2 xpdf ${XPDF_BUILD_DIR}/xpdf/lib/libxpdf.a goo fofi ${ICU_PATH}/lib/libicuuc.a ${ICU_PATH}/lib/libicudata.a ${HAVE_PAPER_H})
+    target_link_libraries(pdfalto zlib ${ZLIB_SUBDIR}/libzlib.a png ${PNG_SUBDIR}/libpng.a xml2 xpdf ${XPDF_BUILD_DIR}/xpdf/lib/libxpdf.a goo fofi ${ICU_PATH}/lib/libicuuc.a ${ICU_PATH}/lib/libicudata.a dl ${HAVE_PAPER_H})
 else()
-    target_link_libraries(pdfalto png ${PNG_SUBDIR}/libpng.a zlib ${ZLIB_SUBDIR}/libzlib.a xml2 xpdf ${XPDF_BUILD_DIR}/xpdf/lib/libxpdf.a goo fofi ${ICU_PATH}/lib/libicuuc.a ${ICU_PATH}/lib/libicudata.a)
+    target_link_libraries(pdfalto png ${PNG_SUBDIR}/libpng.a zlib ${ZLIB_SUBDIR}/libzlib.a xml2 xpdf ${XPDF_BUILD_DIR}/xpdf/lib/libxpdf.a goo fofi ${ICU_PATH}/lib/libicuuc.a ${ICU_PATH}/lib/libicudata.a dl)
 endif()
 
 target_include_directories(pdfalto
