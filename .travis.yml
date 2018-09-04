@@ -11,7 +11,7 @@ compiler: gcc
 dist: trusty
 
 before_install:
-  - git submodule foreach "(git checkout master; git pull)&"
+  - git submodule update --init --recursive;
   - if [ "$TRAVIS_OS_NAME" = "linux" ]; then
       sudo add-apt-repository ppa:ubuntu-toolchain-r/test -y;
       sudo add-apt-repository ppa:beineri/opt-qt571-trusty -y;
