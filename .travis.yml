@@ -38,7 +38,7 @@ install:
       export CGO_LDFLAGS="${CGO_LDFLAGS} ${ICU_LD_FLAGS}";
       t=$(pwd)
       cd ../..;
-      cmake -D'ICU_PATH='$(t)'' CMakeLists.txt;
+      cmake -D'ICU_PATH='$t'' CMakeLists.txt;
     fi
   - if [ "$TRAVIS_OS_NAME" = "osx" ]; then
      brew install openmotif;
@@ -55,7 +55,7 @@ install:
      export CGO_LDFLAGS="${CGO_LDFLAGS} ${ICU_LD_FLAGS}";
      t=$(pwd)
      cd ../..;
-     cmake -D'ICU_PATH='$(t)'' CMakeLists.txt;
+     cmake -D'ICU_PATH='$t'' CMakeLists.txt;
     fi
 
 script:
