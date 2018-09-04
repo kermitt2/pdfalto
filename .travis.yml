@@ -57,7 +57,7 @@ install:
     fi
 
 script:
-  - cmake -D'ICU_PATH='$t'' CMakeLists.txt
+  - cmake -D'ICU_PATH=/home/travis/build/kermitt2/pdfalto/icu/source' CMakeLists.txt
   - make
 
 notifications:
