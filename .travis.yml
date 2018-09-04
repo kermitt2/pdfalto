@@ -25,12 +25,12 @@ before_install:
 
 install:
   - if [ "$TRAVIS_OS_NAME" = "linux" ]; then
-      sudo apt-get install -qq cmake libxml2-dev libmotif-dev;
+      sudo apt-get install -qq cmake libxml2-dev libmotif-dev build-essential;
       curl -sLO http://download.icu-project.org/files/icu4c/62.1/icu4c-62_1-src.tgz;
       tar zxvf icu4c-62_1-src.tgz;
       cd icu/source;
       chmod +x runConfigureICU configure install-sh;
-      ./runConfigureICU Linux  --enable-static --disable-shared
+      ./runConfigureICU Linux  --enable-static --disable-shared;
       make;
       sudo make install;
       icu-config --version;
@@ -46,9 +46,9 @@ install:
      tar zxvf icu4c-62_1-src.tgz;
      cd icu/source;
      chmod +x runConfigureICU configure install-sh;
-     ./runConfigureICU MacOSX  --enable-static --disable-shared
-     make
-     sudo make install
+     ./runConfigureICU MacOSX  --enable-static --disable-shared;
+     make;
+     sudo make install;
      icu-config --version;
      export ICU_LD_FLAGS=`icu-config --ldflags`;
      export CGO_LDFLAGS="${CGO_LDFLAGS} ${ICU_LD_FLAGS}";
