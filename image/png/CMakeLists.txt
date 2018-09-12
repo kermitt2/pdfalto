@@ -27,6 +27,7 @@ set(PNG_SOURCE_FILES
         pngwtran.c
         pngwutil.c
         )
+include_directories("${ZLIB_SUBDIR}")
 
 add_library(${PROJECT_NAME} STATIC ${PNG_SOURCE_FILES})
 target_link_libraries(png zlib ${ZLIB_SUBDIR}/libzlib.a)
