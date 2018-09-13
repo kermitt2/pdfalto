@@ -137,8 +137,6 @@ drwxr-xr-x 1 lfoppiano 197121 0 lug 28 09:06 xpdf-3.04/
 
 # Future work
 
-- support unicode composition of characters
-
 - map special characters in secondary fonts to their expected unicode 
 
 - try OCR for unsolved character unicode value based on their associated glyph in embedded font
@@ -150,6 +148,8 @@ drwxr-xr-x 1 lfoppiano 197121 0 lug 28 09:06 xpdf-3.04/
 - ..see the issue tracker
 
 # Changes
+
+- support unicode composition of characters
 
 - generalize reading order to all blocks (now it is limited to the blocks of the first page)
 
