@@ -67,7 +67,27 @@ using namespace icu;
 // PNG lib
 #include "png.h"
 
+#include "CharCodeToUnicode.h"
 
+#include <splash/SplashBitmap.h>
+#include <splash/Splash.h>
+#include <splash/SplashFontEngine.h>
+#include "FoFiTrueType.h"
+#include <splash/SplashFontFile.h>
+#include <splash/SplashFontFileID.h>
+#include <splash/SplashGlyphBitmap.h>
+#include <splash/SplashPath.h>
+#include <splash/SplashPattern.h>
+
+
+#include "BuiltinFont.h"
+#include "BuiltinFontTables.h"
+
+
+// Type 3 font cache size parameters
+#define type3FontCacheAssoc   8
+#define type3FontCacheMaxSets 8
+#define type3FontCacheSize    (128*1024)
 //#ifdef MACOS
 //// needed for setting type/creator of MacOS files
 //#include "ICSupport.h"
@@ -364,42 +384,15 @@ Image::~Image() {
 // TextChar
 //------------------------------------------------------------------------
 
-class TextChar {
-public:
-
-    TextChar(GfxState *state, Unicode cA, int charPosA, int charLenA,
-             double xMinA, double yMinA, double xMaxA, double yMaxA,
-             int rotA, GBool clippedA, GBool invisibleA,
-             TextFontInfo *fontA, double fontSizeA,
-             double colorRA, double colorGA, double colorBA);
-
-    static int cmpX(const void *p1, const void *p2);
-    static int cmpY(const void *p1, const void *p2);
-
-    GfxState *state;
-    Unicode c;
-    int charPos;
-    int charLen;
-    double xMin, yMin, xMax, yMax;
-    Guchar rot;
-    char clipped;
-    char invisible;
-    char spaceAfter;
-    TextFontInfo *font;
-    double fontSize;
-    double colorR,
-            colorG,
-            colorB;
-};
-
-TextChar::TextChar(GfxState *stateA, Unicode cA, int charPosA, int charLenA,
+TextChar::TextChar(GfxState *stateA, Unicode cA, CharCode charCodeA, int charPosA, int charLenA,
                    double xMinA, double yMinA, double xMaxA, double yMaxA,
                    int rotA, GBool clippedA, GBool invisibleA,
-                   TextFontInfo *fontA, double fontSizeA,
-                   double colorRA, double colorGA, double colorBA) {
+                   TextFontInfo *fontA, double fontSizeA, SplashFont *splashFontA,
+                   double colorRA, double colorGA, double colorBA, GBool isNonUnicodeGlyphA) {
     double t;
     state = stateA;
     c = cA;
+    charCode = charCodeA;
     charPos = charPosA;
     charLen = charLenA;
     xMin = xMinA;
@@ -435,6 +428,8 @@ TextChar::TextChar(GfxState *stateA, Unicode cA, int charPosA, int charLenA,
     spaceAfter = (char)gFalse;
     font = fontA;
     fontSize = fontSizeA;
+    splashfont = splashFontA;
+    isNonUnicodeGlyph = isNonUnicodeGlyphA;
     colorR = colorRA;
     colorG = colorGA;
     colorB = colorBA;
@@ -470,7 +465,7 @@ int TextChar::cmpY(const void *p1, const void *p2) {
 // TextWord
 //------------------------------------------------------------------------
 
-TextWord::TextWord(GList *chars, int start, int lenA,
+TextWord::TextWord(GList *charsA, int start, int lenA,
 int rotA, int dirA, GBool spaceAfterA, GfxState *state,
                    TextFontInfo *fontA, double fontSizeA, int idCurrentWord,
                    int index) {
@@ -627,25 +622,27 @@ int rotA, int dirA, GBool spaceAfterA, GfxState *state,
     }
 
     len = lenA;
-    text = (Unicode *)gmallocn(len, sizeof(Unicode));
+    chars = new GList();
+
+    //text = (Unicode *)gmallocn(len, sizeof(Unicode));
     edge = (double *)gmallocn(len + 1, sizeof(double));
     charPos = (int *)gmallocn(len + 1, sizeof(int));
     rot = rotA;
     if (rot & 1) {
-        ch = (TextChar *)chars->get(start);
+        ch = (TextChar *)charsA->get(start);
         xMin = ch->xMin;
         xMax = ch->xMax;
         yMin = ch->yMin;
-        ch = (TextChar *)chars->get(start + len - 1);
+        ch = (TextChar *)charsA->get(start + len - 1);
         yMax = ch->yMax;
         base = xMin - descent;
         baseYmin = xMin;
     } else {
-        ch = (TextChar *)chars->get(start);
+        ch = (TextChar *)charsA->get(start);
         xMin = ch->xMin;
         yMin = ch->yMin;
         yMax = ch->yMax;
-        ch = (TextChar *)chars->get(start + len - 1);
+        ch = (TextChar *)charsA->get(start + len - 1);
         xMax = ch->xMax;
         base = yMin + ascent;
         baseYmin = yMin;
@@ -659,9 +656,9 @@ int rotA, int dirA, GBool spaceAfterA, GfxState *state,
         GBool isUpdateAccentedChar = gFalse;
         ModifierClass leftClass = NOT_A_MODIFIER, rightClass = NOT_A_MODIFIER;
 
-        ch = (TextChar *)chars->get(rot >= 2 ? start + len - 1 - j : start + j);
+        ch = (TextChar *)charsA->get(rot >= 2 ? start + len - 1 - j : start + j);
         if(j > 0) {
-            chPrev = (TextChar *)chars->get(rot >= 2 ? start + len - 1 - j : start + j - 1);
+            chPrev = (TextChar *)charsA->get(rot >= 2 ? start + len - 1 - j : start + j - 1);
             delta = ch->rot % 2 == 0 ? ch->xMin - chPrev->xMin : ch->yMin - chPrev->yMin;
 
             //compute overlaping
@@ -700,15 +697,16 @@ int rotA, int dirA, GBool spaceAfterA, GfxState *state,
                     } else
                         resultChar = nfkc->normalizeSecondAndAppend(*baseChar, *diacriticChar, errorCode);
                     --i;
-                    text[i] = resultChar.charAt(0);
+                    //text[i] = resultChar.charAt(0);
+                    ((TextChar *)chars->get(i))->c = resultChar.charAt(0);
                     isUpdateAccentedChar = gTrue;
                 }
             }
         }
 
     if(!isUpdateAccentedChar)
-        text[i] = ch->c;
-
+        //text[i] = ch->c;
+        chars->append(ch);
 
 
         charPos[i] = ch->charPos;
@@ -762,10 +760,13 @@ int rotA, int dirA, GBool spaceAfterA, GfxState *state,
     colorB = colToDbl(rgb.b);
 }
 
+Unicode TextWord::getChar(int idx) { return ((TextChar *)chars->get(idx))->c; }
+
 TextWord::TextWord(TextWord *word) {
     *this = *word;
-    text = (Unicode *)gmallocn(len, sizeof(Unicode));
-    memcpy(text, word->text, len * sizeof(Unicode));
+//    text = (Unicode *)gmallocn(len, sizeof(Unicode));
+//    memcpy(text, word->text, len * sizeof(Unicode));
+        chars = word->chars->copy();
     edge = (double *)gmallocn(len + 1, sizeof(double));
     memcpy(edge, word->edge, (len + 1) * sizeof(double));
     charPos = (int *)gmallocn(len + 1, sizeof(int));
@@ -773,7 +774,7 @@ TextWord::TextWord(TextWord *word) {
 }
 
 TextWord::~TextWord() {
-    gfree(text);
+    //gfree(text);
     gfree(edge);
     gfree(charPos);
 }
@@ -986,7 +987,8 @@ TextRawWord::TextRawWord(GfxState *state, double x0, double y0,
             break;
     }
 
-    text = NULL;
+    //text = NULL;
+    chars = new GList();
     charPos = NULL;
     edge = NULL;
     len = size = 0;
@@ -1003,28 +1005,37 @@ TextRawWord::TextRawWord(GfxState *state, double x0, double y0,
     colorR = colToDbl(rgb.r);
     colorG = colToDbl(rgb.g);
     colorB = colToDbl(rgb.b);
+
+    isNonUnicodeGlyph = gFalse;
 }
 
 TextRawWord::~TextRawWord() {
-    gfree(text);
+    //gfree(text);
     gfree(edge);
 }
 
+Unicode TextRawWord::getChar(int idx) { return ((TextChar *)chars->get(idx))->c; }
+
 void TextRawWord::addChar(GfxState *state, double x, double y, double dx,
-                       double dy, Unicode u, int charPosA, GBool overlap) {
+                       double dy, Unicode u, CharCode charCodeA, int charPosA, GBool overlap, TextFontInfo *fontA, double fontSizeA, SplashFont* splashFont, int rotA, int nBytes, GBool isNonUnicodeGlyph) {
 
     if (len == size) {
         size += 16;
-        text = (Unicode *)grealloc(text, size * sizeof(Unicode));
+        //text = (Unicode *)grealloc(text, size * sizeof(Unicode));
         edge = (double *)grealloc(edge, (size + 1) * sizeof(double));
         //charPos = (int *)grealloc(charPos, size + 1 * sizeof(int));
+        //chars = new GList();
     }
 
+    GfxRGB rgb;
+    double alpha;
     GBool isUpdateAccentedChar = gFalse;
 
     if(overlap && len > 0) {
         ModifierClass leftClass = NOT_A_MODIFIER, rightClass = NOT_A_MODIFIER;
-        leftClass = classifyChar(text[len - 1]);
+        //Unicode prvChar = text[len - 1];
+        Unicode prvChar = ((TextChar *)chars->get(len - 1))->c;
+        leftClass = classifyChar(prvChar);
         rightClass = classifyChar(u);
 
         if (leftClass != NOT_A_MODIFIER || rightClass != NOT_A_MODIFIER) {
@@ -1040,7 +1051,7 @@ void TextRawWord::addChar(GfxState *state, double x, double y, double dx,
                 }
             } else if(rightClass != NOT_A_MODIFIER){
                 diactritic = getCombiningDiacritic(rightClass);
-                baseChar = new UnicodeString(wchar_t(getStandardBaseChar(text[len - 1])));
+                baseChar = new UnicodeString(wchar_t(getStandardBaseChar(prvChar)));
             }
 
             if (diactritic != 0) {
@@ -1052,7 +1063,8 @@ void TextRawWord::addChar(GfxState *state, double x, double y, double dx,
                     resultChar = nfkc->normalizeSecondAndAppend(resultChar, *diacriticChar, errorCode);
                 } else
                     resultChar = nfkc->normalizeSecondAndAppend(*baseChar, *diacriticChar, errorCode);
-                text[len - 1] = resultChar.charAt(0);
+                //text[len - 1] = resultChar.charAt(0);
+                ((TextChar *)chars->get(len - 1))->c = resultChar.charAt(0);
                 //here we should compare both coords and keep surrounding ones
                 switch (rot) {
                     case 0:
@@ -1089,8 +1101,59 @@ void TextRawWord::addChar(GfxState *state, double x, double y, double dx,
         }
     }
 
+    double xxMin, xxMax, yyMin, yyMax, ascent, descent;
+    ascent = fontA->ascent * fontSizeA;
+    descent = fontA->descent * fontSizeA;
+    switch (rot) {
+        case 0:
+        default:
+            xxMin = x;
+            xxMax = x + dx;
+            yyMin = y - ascent;
+            yyMax = y - descent;
+            break;
+        case 1:
+            xxMin = x + descent;
+            xxMax = x + ascent;
+            yyMin = y;
+            yyMax = y + dy;
+            break;
+        case 2:
+            xxMin = x + dx;
+            xxMax = x;
+            yyMin = y + descent;
+            yyMax = y + ascent;
+            break;
+        case 3:
+            xxMin = x - ascent;
+            xxMax = x - descent;
+            yyMin = y + dy;
+            yyMax = y;
+            break;
+    }
     if(!isUpdateAccentedChar) {
-        text[len] = u;
+        //text[len] = u;
+        if ((state->getRender() & 3) == 1) {
+            state->getStrokeRGB(&rgb);
+            alpha = state->getStrokeOpacity();
+        } else {
+            state->getFillRGB(&rgb);
+            alpha = state->getFillOpacity();
+        }
+
+        GBool clipped = gFalse;
+        GfxState *charState = state->copy();
+        //this is workaround since copy doesnt is not deep
+        charState->setCTM(state->getCTM()[0], state->getCTM()[1], state->getCTM()[2], state->getCTM()[3], state->getCTM()[4], state->getCTM()[5]);
+        charState->setTextMat(state->getTextMat()[0], state->getTextMat()[1], state->getTextMat()[2], state->getTextMat()[3], state->getTextMat()[4], state->getTextMat()[5]);
+        charState->setHorizScaling(state->getHorizScaling());
+
+        chars->append(new TextChar(charState, u, charCodeA, charPosA, nBytes, xxMin, yyMin, xxMax, yyMax,
+                                   rotA, clipped,
+                                   state->getRender() == 3 || alpha < 0.001,
+                                   fontA, fontSizeA, splashFont,
+                                   colToDbl(rgb.r), colToDbl(rgb.g),
+                                   colToDbl(rgb.b), isNonUnicodeGlyph));
         switch (rot) {
             case 0:
                 if (len == 0) {
@@ -1143,11 +1206,11 @@ void TextRawWord::merge(TextRawWord *word) {
     }
     if (len + word->len > size) {
         size = len + word->len;
-        text = (Unicode *)grealloc(text, size * sizeof(Unicode));
+        //text = (Unicode *)grealloc(text, size * sizeof(Unicode));
         edge = (double *)grealloc(edge, (size + 1) * sizeof(double));
     }
     for (i = 0; i < word->len; ++i) {
-        text[len + i] = word->text[i];
+        chars->append(((TextChar *)word->chars->get(i)));
         edge[len + i] = word->edge[i];
     }
     edge[len + word->len] = word->edge[word->len];
@@ -1200,6 +1263,10 @@ double TextRawWord::primaryDelta(TextRawWord *word) {
 GBool TextRawWord::overlap(TextRawWord *w2){
 
     return gFalse;
+}
+
+void IWord::setContainNonUnicodeGlyph(GBool containNonUnicodeGlyph) {
+    isNonUnicodeGlyph = containNonUnicodeGlyph;
 }
 
 //------------------------------------------------------------------------
@@ -1346,7 +1413,7 @@ TextLine::TextLine(GList *wordsA, double xMinA, double yMinA,
             rot = word->rot;
         }
         for (k = 0; k < word->getLength(); ++k) {
-            text[j] = word->text[k];
+            text[j] = ((TextChar *)word->chars->get(k))->c;
             edge[j] = word->edge[k];
             ++j;
         }
@@ -2145,7 +2212,7 @@ void TextPage::beginActualText(GfxState *state, Unicode *u, int uLen) {
     actualTextNBytes = 0;
 }
 
-void TextPage::endActualText(GfxState *state) {
+void TextPage::endActualText(GfxState *state, SplashFont* splashFont) {
     Unicode *u;
 
     u = actualText;
@@ -2156,7 +2223,7 @@ void TextPage::endActualText(GfxState *state) {
         // addChar()
         addChar(state, actualTextX0, actualTextY0,
                 actualTextX1 - actualTextX0, actualTextY1 - actualTextY0,
-                0, actualTextNBytes, u, actualTextLen);
+                0, actualTextNBytes, u, actualTextLen, splashFont, gFalse);
     }
     gfree(u);
     actualText = NULL;
@@ -2586,7 +2653,7 @@ Unicode diactritic = 0;
 
 
 void TextPage::addCharToPageChars(GfxState *state, double x, double y, double dx,
-                       double dy, CharCode c, int nBytes, Unicode *u, int uLen){
+                       double dy, CharCode c, int nBytes, Unicode *u, int uLen, SplashFont * splashFont, GBool isNonUnicodeGlyph){
     double x1, y1, x2, y2, w1, h1, dx2, dy2, ascent, descent, sp;
     double xMin, yMin, xMax, yMax, xMid, yMid;
     double clipXMin, clipYMin, clipXMax, clipYMax;
@@ -2733,12 +2800,12 @@ void TextPage::addCharToPageChars(GfxState *state, double x, double y, double dx
             } else {
                 j = i;
             }
-            chars->append(new TextChar(state->copy(), u[j], charPos, nBytes, xMin, yMin, xMax, yMax,
+            chars->append(new TextChar(state->copy(), u[j], c, charPos, nBytes, xMin, yMin, xMax, yMax,
                                        curRot, clipped,
                                        state->getRender() == 3 || alpha < 0.001,
-                                       curFont, curFontSize,
+                                       curFont, curFontSize, splashFont,
                                        colToDbl(rgb.r), colToDbl(rgb.g),
-                                       colToDbl(rgb.b)));
+                                       colToDbl(rgb.b), isNonUnicodeGlyph));
         }
     }
 
@@ -2746,7 +2813,7 @@ void TextPage::addCharToPageChars(GfxState *state, double x, double y, double dx
 }
 
 void TextPage::addCharToRawWord(GfxState *state, double x, double y, double dx,
-                       double dy, CharCode c, int nBytes, Unicode *u, int uLen){
+                       double dy, CharCode c, int nBytes, Unicode *u, int uLen, SplashFont * splashFont, GBool isNonUnicodeGlyph){
 
     double x1, y1, w1, h1, dx2, dy2, base, sp, delta;
     GBool overlap;
@@ -2797,6 +2864,9 @@ void TextPage::addCharToRawWord(GfxState *state, double x, double y, double dx,
         if (curWord) {
             ++curWord->charLen;
             curWord->setSpaceAfter(gTrue);
+            if(curWord->chars->getLength() > 0)
+            ((TextChar *)curWord->chars->get(curWord->chars->getLength() - 1))->spaceAfter =
+                    (char)gTrue;
         }
         charPos += nBytes;
         endWord();
@@ -2848,7 +2918,9 @@ void TextPage::addCharToRawWord(GfxState *state, double x, double y, double dx,
                                                                       dupMaxSecDelta * curWord->fontSize;
 
         //Avoid splitting token when overlaping is surrounded by diacritic
-        ModifierClass modifierClass = classifyChar(curWord->text[curWord->len-1]);
+        ModifierClass modifierClass = NOT_A_MODIFIER;
+        if(curWord->len >0)
+            modifierClass = classifyChar(((TextChar *)curWord->chars->get(curWord->getLength() - 1))->c);
         if(modifierClass == NOT_A_MODIFIER)
             modifierClass = classifyChar(u[0]);
 
@@ -2887,7 +2959,9 @@ void TextPage::addCharToRawWord(GfxState *state, double x, double y, double dx,
         h1 /= uLen;
 
         for (i = 0; i < uLen; ++i) {
-            curWord->addChar(state, x1 + i * w1, y1 + i * h1, w1, h1, u[i], charPos, (overlap || sp < -minDupBreakOverlap * curWord->fontSize));
+            if(isNonUnicodeGlyph)
+                curWord->setContainNonUnicodeGlyph(isNonUnicodeGlyph);
+            curWord->addChar(state, x1 + i * w1, y1 + i * h1, w1, h1, u[i], c, charPos, (overlap || sp < -minDupBreakOverlap * curWord->fontSize), curFont, curFontSize, splashFont, nBytes, curRot, isNonUnicodeGlyph);
         }
     }
 
@@ -2898,15 +2972,16 @@ void TextPage::addCharToRawWord(GfxState *state, double x, double y, double dx,
 }
 
 void TextPage::addChar(GfxState *state, double x, double y, double dx,
-                       double dy, CharCode c, int nBytes, Unicode *u, int uLen) {
+                       double dy, CharCode c, int nBytes, Unicode *u, int uLen, SplashFont * splashFont, GBool isNonUnicodeGlyph) {
 
     if(parameters->getReadingOrder() == gTrue)
-        addCharToPageChars(state, x, y, dx, dy, c, nBytes, u, uLen);
+        addCharToPageChars(state, x, y, dx, dy, c, nBytes, u, uLen, splashFont, isNonUnicodeGlyph);
     else
-        addCharToRawWord(state, x, y, dx, dy, c, nBytes, u, uLen);
+        addCharToRawWord(state, x, y, dx, dy, c, nBytes, u, uLen, splashFont, isNonUnicodeGlyph);
 }
 
 void TextPage::endWord() {
+    // This check is needed because Type 3 characters can contain
     // This check is needed because Type 3 characters can contain
     // text-drawing operations (when TextPage is being used via
     // {X,Win}SplashOutputDev rather than TextOutputDev).
@@ -2951,7 +3026,7 @@ void TextPage::addAttributTypeReadingOrder(xmlNodePtr node, char* tmp,
 
     // Recover the reading order for each characters of the word
     for (int i = 0; i < word->len; ++i) {
-        if (unicodeTypeR(word->text[i])) {
+        if (unicodeTypeR(((TextChar *)word->chars->get(i))->c)) {
             nbLeft++;
         } else {
             nbRight++;
@@ -3015,8 +3090,15 @@ void TextPage::addAttributsNode(xmlNodePtr node, IWord *word, double &xMaxi,
     if (testAnnotatedText(word->xMin,word->yMin,word->xMax,word->yMax)){
         xmlNewProp(node, (const xmlChar*)ATTR_HIGHLIGHT,(const xmlChar*)"yes");
     }
-    dumpFragment(word->text, word->len, uMap, stringTemp);
+    Unicode *text = NULL;
+    text = (Unicode *)grealloc(text, word->size * sizeof(Unicode));
+    for(int i=0; i<word->len;i++){
+        text[i] = ((TextChar *)word->chars->get(i))->c;
+    }
+    dumpFragment(text, word->len, uMap, stringTemp);
     //printf("%s\n",stringTemp->getCString());
+
+    gfree(text);
 
     xmlNewProp(node, (const xmlChar*)ATTR_TOKEN_CONTENT,
                (const xmlChar*)stringTemp->getCString());
@@ -7108,6 +7190,12 @@ XmlAltoOutputDev::XmlAltoOutputDev(GString *fileName, GString *fileNamePdf,
     else
         readingOrder = 0;
 
+    //font = NULL;
+    needFontUpdate = gFalse;
+    fontEngine = NULL;
+
+    nT3Fonts = 0;
+
     unicode_map = new GHash(gTrue);
     //initialise some special unicodes 9 to begin with as placeholders, from https://unicode.org/charts/PDF/U2B00.pdf
     placeholders.push_back((Unicode)9724); placeholders.push_back((Unicode)9650); placeholders.push_back((Unicode)9658);
@@ -7301,6 +7389,18 @@ XmlAltoOutputDev::XmlAltoOutputDev(GString *fileName, GString *fileNamePdf,
 }
 
 XmlAltoOutputDev::~XmlAltoOutputDev() {
+    int j;
+
+    for (j = 0; j < nT3Fonts; ++j) {
+        delete t3FontCache[j];
+    }
+    if (fontEngine) {
+        delete fontEngine;
+    }
+    if (splash) {
+        delete splash;
+    }
+
     xmlSaveFile(myfilename->getCString(), doc);
     xmlFreeDoc(doc);
 
@@ -7321,7 +7421,16 @@ XmlAltoOutputDev::~XmlAltoOutputDev() {
     }
 
     void XmlAltoOutputDev::endActualText(GfxState *state) {
-        text->endActualText(state);
+
+        SplashCoord mat[6];
+        mat[0] = (SplashCoord)curstate[0];
+        mat[1] = (SplashCoord)curstate[1];
+        mat[2] = (SplashCoord)curstate[2];
+        mat[3] = (SplashCoord)curstate[3];
+        mat[4] = (SplashCoord)curstate[4];
+        mat[5] = (SplashCoord)curstate[5];
+        SplashFont* splashFont = getSplashFont(state, mat);
+        text->endActualText(state, splashFont);
     }
 
 void XmlAltoOutputDev::initMetadataInfoDoc(){
@@ -7652,12 +7761,18 @@ void XmlAltoOutputDev::startPage(int pageNum, GfxState *state) {
         text->startPage(pageNum, state, gTrue);
     }
 }
-
+// Map StrokeAdjustMode (from GlobalParams) to SplashStrokeAdjustMode
+// (for Splash).
+static SplashStrokeAdjustMode mapStrokeAdjustMode[3] = {
+        splashStrokeAdjustOff,
+        splashStrokeAdjustNormal,
+        splashStrokeAdjustCAD
+};
 
 void XmlAltoOutputDev::endPage() {
     text->configuration();
     if (parameters->getDisplayText()) {
-        if (readingOrder) {
+            if (readingOrder) {
             text->dumpInReadingOrder(blocks, fullFontName);
         }
         else
@@ -7668,12 +7783,585 @@ void XmlAltoOutputDev::endPage() {
 }
 
 void XmlAltoOutputDev::updateFont(GfxState *state) {
+    needFontUpdate = gTrue;
     text->updateFont(state);
+}
+
+void XmlAltoOutputDev::startDoc(XRef *xrefA) {
+    int i;
+
+    GBool allowAntialias = gTrue;
+    SplashColorMode colorMode = splashModeRGB8;
+
+    xref = xrefA;
+    if (fontEngine) {
+        delete fontEngine;
+    }
+    fontEngine = new SplashFontEngine(
+#if HAVE_FREETYPE_H
+            globalParams->getEnableFreeType(),
+            globalParams->getDisableFreeTypeHinting()
+            ? splashFTNoHinting : 0,
+#endif
+            allowAntialias &&
+            globalParams->getAntialias() &&
+            colorMode != splashModeMono1);
+    for (i = 0; i < nT3Fonts; ++i) {
+        delete t3FontCache[i];
+    }
+    nT3Fonts = 0;
+}
+
+class SplashOutFontFileID: public SplashFontFileID {
+public:
+
+    SplashOutFontFileID(Ref *rA) {
+        r = *rA;
+        substIdx = -1;
+        oblique = 0;
+    }
+    ~SplashOutFontFileID() {}
+
+    GBool matches(SplashFontFileID *id) {
+        return ((SplashOutFontFileID *)id)->r.num == r.num &&
+               ((SplashOutFontFileID *)id)->r.gen == r.gen;
+    }
+
+    void setOblique(double obliqueA) { oblique = obliqueA; }
+    double getOblique() { return oblique; }
+    void setSubstIdx(int substIdxA) { substIdx = substIdxA; }
+    int getSubstIdx() { return substIdx; }
+
+private:
+
+    Ref r;
+    double oblique;
+    int substIdx;
+};
+
+SplashFont* XmlAltoOutputDev::getSplashFont(GfxState *state, SplashCoord* matrix) {
+    SplashFont *font;
+    GfxFont *gfxFont;
+    GfxFontLoc *fontLoc;
+    GfxFontType fontType;
+    SplashOutFontFileID *id;
+    SplashFontFile *fontFile;
+    int fontNum;
+    FoFiTrueType *ff;
+    Ref embRef;
+    Object refObj, strObj;
+#if LOAD_FONTS_FROM_MEM
+    GString *fontBuf;
+  FILE *extFontFile;
+#else
+    GString *tmpFileName, *fileName;
+    FILE *tmpFile;
+#endif
+    char blk[4096];
+    int *codeToGID;
+    CharCodeToUnicode *ctu;
+    double *textMat;
+    double m11, m12, m21, m22, fontSize, oblique;
+    double fsx, fsy, w, fontScaleMin, fontScaleAvg, fontScale;
+    Gushort ww;
+    SplashCoord mat[4];
+    char *name;
+    Unicode uBuf[8];
+    int substIdx, n, code, cmap, cmapPlatform, cmapEncoding, i;
+
+    //needFontUpdate = gFalse;
+    font = NULL;
+#if LOAD_FONTS_FROM_MEM
+    fontBuf = NULL;
+#else
+    tmpFileName = NULL;
+    fileName = NULL;
+#endif
+    substIdx = -1;
+
+    if (!(gfxFont = state->getFont())) {
+        goto err1;
+    }
+    fontType = gfxFont->getType();
+    if (fontType == fontType3) {
+        goto err1;
+    }
+
+    // sanity-check the font size - skip anything larger than 20 inches
+    // (this avoids problems allocating memory for the font cache)
+    state->textTransformDelta(state->getFontSize(), state->getFontSize(),
+                              &fsx, &fsy);
+    state->transformDelta(fsx, fsy, &fsx, &fsy);
+    if (fabs(fsx) > 20 * state->getHDPI() ||
+        fabs(fsy) > 20 * state->getVDPI()) {
+        goto err1;
+    }
+
+    // check the font file cache
+    id = new SplashOutFontFileID(gfxFont->getID());
+    if ((fontFile = fontEngine->getFontFile(id))) {
+        delete id;
+
+    } else {
+
+        fontNum = 0;
+
+        if (!(fontLoc = gfxFont->locateFont(xref, gFalse))) {
+            error(errSyntaxError, -1, "Couldn't find a font for '{0:s}'",
+                  gfxFont->getName() ? gfxFont->getName()->getCString()
+                                     : "(unnamed)");
+            goto err2;
+        }
+
+        // embedded font
+        if (fontLoc->locType == gfxFontLocEmbedded) {
+            gfxFont->getEmbeddedFontID(&embRef);
+#if LOAD_FONTS_FROM_MEM
+            fontBuf = new GString();
+      refObj.initRef(embRef.num, embRef.gen);
+      refObj.fetch(xref, &strObj);
+      refObj.free();
+      if (!strObj.isStream()) {
+    error(errSyntaxError, -1, "Embedded font object is wrong type");
+    strObj.free();
+    delete fontLoc;
+    goto err2;
+      }
+      strObj.streamReset();
+      while ((n = strObj.streamGetBlock(blk, sizeof(blk))) > 0) {
+    fontBuf->append(blk, n);
+      }
+      strObj.streamClose();
+      strObj.free();
+#else
+            if (!openTempFile(&tmpFileName, &tmpFile, "wb", NULL)) {
+                error(errIO, -1, "Couldn't create temporary font file");
+                delete fontLoc;
+                goto err2;
+            }
+            refObj.initRef(embRef.num, embRef.gen);
+            refObj.fetch(xref, &strObj);
+            refObj.free();
+            if (!strObj.isStream()) {
+                error(errSyntaxError, -1, "Embedded font object is wrong type");
+                strObj.free();
+                fclose(tmpFile);
+                delete fontLoc;
+                goto err2;
+            }
+            strObj.streamReset();
+            while ((n = strObj.streamGetBlock(blk, sizeof(blk))) > 0) {
+                fwrite(blk, 1, n, tmpFile);
+            }
+            strObj.streamClose();
+            strObj.free();
+            fclose(tmpFile);
+            fileName = tmpFileName;
+#endif
+
+            // external font
+        } else { // gfxFontLocExternal
+#if LOAD_FONTS_FROM_MEM
+            if (!(extFontFile = fopen(fontLoc->path->getCString(), "rb"))) {
+    error(errSyntaxError, -1, "Couldn't open external font file '{0:t}'",
+          fontLoc->path);
+    delete fontLoc;
+    goto err2;
+      }
+      fontBuf = new GString();
+      while ((n = fread(blk, 1, sizeof(blk), extFontFile)) > 0) {
+    fontBuf->append(blk, n);
+      }
+      fclose(extFontFile);
+#else
+            fileName = fontLoc->path;
+#endif
+            fontNum = fontLoc->fontNum;
+            if (fontLoc->substIdx >= 0) {
+                id->setSubstIdx(fontLoc->substIdx);
+            }
+            if (fontLoc->oblique != 0) {
+                id->setOblique(fontLoc->oblique);
+            }
+        }
+
+        // load the font file
+        switch (fontLoc->fontType) {
+            case fontType1:
+                if (!(fontFile = fontEngine->loadType1Font(
+                        id,
+#if LOAD_FONTS_FROM_MEM
+                        fontBuf,
+#else
+                        fileName->getCString(),
+                        fileName == tmpFileName,
+#endif
+                        (const char **) ((Gfx8BitFont *) gfxFont)->getEncoding()))) {
+                    error(errSyntaxError, -1, "Couldn't create a font for '{0:s}'",
+                          gfxFont->getName() ? gfxFont->getName()->getCString()
+                                             : "(unnamed)");
+                    delete fontLoc;
+                    goto err2;
+                }
+                break;
+            case fontType1C:
+                if (!(fontFile = fontEngine->loadType1CFont(
+                        id,
+#if LOAD_FONTS_FROM_MEM
+                        fontBuf,
+#else
+                        fileName->getCString(),
+                        fileName == tmpFileName,
+#endif
+                        (const char **) ((Gfx8BitFont *) gfxFont)->getEncoding()))) {
+                    error(errSyntaxError, -1, "Couldn't create a font for '{0:s}'",
+                          gfxFont->getName() ? gfxFont->getName()->getCString()
+                                             : "(unnamed)");
+                    delete fontLoc;
+                    goto err2;
+                }
+                break;
+            case fontType1COT:
+                if (!(fontFile = fontEngine->loadOpenTypeT1CFont(
+                        id,
+#if LOAD_FONTS_FROM_MEM
+                        fontBuf,
+#else
+                        fileName->getCString(),
+                        fileName == tmpFileName,
+#endif
+                        (const char **) ((Gfx8BitFont *) gfxFont)->getEncoding()))) {
+                    error(errSyntaxError, -1, "Couldn't create a font for '{0:s}'",
+                          gfxFont->getName() ? gfxFont->getName()->getCString()
+                                             : "(unnamed)");
+                    delete fontLoc;
+                    goto err2;
+                }
+                break;
+            case fontTrueType:
+            case fontTrueTypeOT:
+#if LOAD_FONTS_FROM_MEM
+                if ((ff = FoFiTrueType::make(fontBuf->getCString(), fontBuf->getLength(),
+                   fontNum))) {
+#else
+                if ((ff = FoFiTrueType::load(fileName->getCString(), fontNum))) {
+#endif
+                    codeToGID = ((Gfx8BitFont *) gfxFont)->getCodeToGIDMap(ff);
+                    n = 256;
+                    delete ff;
+                    // if we're substituting for a non-TrueType font, we need to mark
+                    // all notdef codes as "do not draw" (rather than drawing TrueType
+                    // notdef glyphs)
+                    if (gfxFont->getType() != fontTrueType &&
+                        gfxFont->getType() != fontTrueTypeOT) {
+                        for (i = 0; i < 256; ++i) {
+                            if (codeToGID[i] == 0) {
+                                codeToGID[i] = -1;
+                            }
+                        }
+                    }
+                } else {
+                    codeToGID = NULL;
+                    n = 0;
+                }
+                if (!(fontFile = fontEngine->loadTrueTypeFont(
+                        id,
+#if LOAD_FONTS_FROM_MEM
+                        fontBuf,
+#else
+                        fileName->getCString(),
+                        fileName == tmpFileName,
+#endif
+                        fontNum, codeToGID, n,
+                        gfxFont->getEmbeddedFontName()
+                        ? gfxFont->getEmbeddedFontName()->getCString()
+                        : (char *) NULL))) {
+                    error(errSyntaxError, -1, "Couldn't create a font for '{0:s}'",
+                          gfxFont->getName() ? gfxFont->getName()->getCString()
+                                             : "(unnamed)");
+                    delete fontLoc;
+                    goto err2;
+                }
+                break;
+            case fontCIDType0:
+            case fontCIDType0C:
+                if (((GfxCIDFont *) gfxFont)->getCIDToGID()) {
+                    n = ((GfxCIDFont *) gfxFont)->getCIDToGIDLen();
+                    codeToGID = (int *) gmallocn(n, sizeof(int));
+                    memcpy(codeToGID, ((GfxCIDFont *) gfxFont)->getCIDToGID(),
+                           n * sizeof(int));
+                } else {
+                    codeToGID = NULL;
+                    n = 0;
+                }
+                if (!(fontFile = fontEngine->loadCIDFont(
+                        id,
+#if LOAD_FONTS_FROM_MEM
+                        fontBuf,
+#else
+                        fileName->getCString(),
+                        fileName == tmpFileName,
+#endif
+                        codeToGID, n))) {
+
+                    error(errSyntaxError, -1, "Couldn't create a font for '{0:s}'",
+                          gfxFont->getName() ? gfxFont->getName()->getCString()
+                                             : "(unnamed)");
+                    delete fontLoc;
+                    goto err2;
+                }
+                break;
+            case fontCIDType0COT:
+                codeToGID = NULL;
+                n = 0;
+                if (fontLoc->locType == gfxFontLocEmbedded) {
+                    if (((GfxCIDFont *) gfxFont)->getCIDToGID()) {
+                        n = ((GfxCIDFont *) gfxFont)->getCIDToGIDLen();
+                        codeToGID = (int *) gmallocn(n, sizeof(int));
+                        memcpy(codeToGID, ((GfxCIDFont *) gfxFont)->getCIDToGID(),
+                               n * sizeof(int));
+                    }
+                } else if (globalParams->getMapExtTrueTypeFontsViaUnicode()) {
+                    // create a CID-to-GID mapping, via Unicode
+                    if ((ctu = ((GfxCIDFont *) gfxFont)->getToUnicode())) {
+#if LOAD_FONTS_FROM_MEM
+                        if ((ff = FoFiTrueType::make(fontBuf->getCString(),
+                       fontBuf->getLength(), fontNum))) {
+#else
+                        if ((ff = FoFiTrueType::load(fileName->getCString(), fontNum))) {
+#endif
+                            // look for a Unicode cmap
+                            for (cmap = 0; cmap < ff->getNumCmaps(); ++cmap) {
+                                cmapPlatform = ff->getCmapPlatform(cmap);
+                                cmapEncoding = ff->getCmapEncoding(cmap);
+                                if ((cmapPlatform == 3 && cmapEncoding == 1) ||
+                                    (cmapPlatform == 0 && cmapEncoding <= 4)) {
+                                    break;
+                                }
+                            }
+                            if (cmap < ff->getNumCmaps()) {
+                                // map CID -> Unicode -> GID
+                                if (ctu->isIdentity()) {
+                                    n = 65536;
+                                } else {
+                                    n = ctu->getLength();
+                                }
+                                codeToGID = (int *) gmallocn(n, sizeof(int));
+                                for (code = 0; code < n; ++code) {
+                                    if (ctu->mapToUnicode(code, uBuf, 8) > 0) {
+                                        codeToGID[code] = ff->mapCodeToGID(cmap, uBuf[0]);
+                                    } else {
+                                        codeToGID[code] = -1;
+                                    }
+                                }
+                            }
+                            delete ff;
+                        }
+                        ctu->decRefCnt();
+                    } else {
+                        error(errSyntaxError, -1,
+                              "Couldn't find a mapping to Unicode for font '{0:s}'",
+                              gfxFont->getName() ? gfxFont->getName()->getCString()
+                                                 : "(unnamed)");
+                    }
+                }
+                if (!(fontFile = fontEngine->loadOpenTypeCFFFont(
+                        id,
+#if LOAD_FONTS_FROM_MEM
+                        fontBuf,
+#else
+                        fileName->getCString(),
+                        fileName == tmpFileName,
+#endif
+                        codeToGID, n))) {
+                    error(errSyntaxError, -1, "Couldn't create a font for '{0:s}'",
+                          gfxFont->getName() ? gfxFont->getName()->getCString()
+                                             : "(unnamed)");
+                    delete fontLoc;
+                    goto err2;
+                }
+                break;
+            case fontCIDType2:
+            case fontCIDType2OT:
+                codeToGID = NULL;
+                n = 0;
+                if (fontLoc->locType == gfxFontLocEmbedded) {
+                    if (((GfxCIDFont *) gfxFont)->getCIDToGID()) {
+                        n = ((GfxCIDFont *) gfxFont)->getCIDToGIDLen();
+                        codeToGID = (int *) gmallocn(n, sizeof(int));
+                        memcpy(codeToGID, ((GfxCIDFont *) gfxFont)->getCIDToGID(),
+                               n * sizeof(int));
+                    }
+                } else if (globalParams->getMapExtTrueTypeFontsViaUnicode()) {
+                    // create a CID-to-GID mapping, via Unicode
+                    if ((ctu = ((GfxCIDFont *) gfxFont)->getToUnicode())) {
+#if LOAD_FONTS_FROM_MEM
+                        if ((ff = FoFiTrueType::make(fontBuf->getCString(),
+                       fontBuf->getLength(), fontNum))) {
+#else
+                        if ((ff = FoFiTrueType::load(fileName->getCString(), fontNum))) {
+#endif
+                            // look for a Unicode cmap
+                            for (cmap = 0; cmap < ff->getNumCmaps(); ++cmap) {
+                                cmapPlatform = ff->getCmapPlatform(cmap);
+                                cmapEncoding = ff->getCmapEncoding(cmap);
+                                if ((cmapPlatform == 3 && cmapEncoding == 1) ||
+                                    (cmapPlatform == 0 && cmapEncoding <= 4)) {
+                                    break;
+                                }
+                            }
+                            if (cmap < ff->getNumCmaps()) {
+                                // map CID -> Unicode -> GID
+                                if (ctu->isIdentity()) {
+                                    n = 65536;
+                                } else {
+                                    n = ctu->getLength();
+                                }
+                                codeToGID = (int *) gmallocn(n, sizeof(int));
+                                for (code = 0; code < n; ++code) {
+                                    if (ctu->mapToUnicode(code, uBuf, 8) > 0) {
+                                        codeToGID[code] = ff->mapCodeToGID(cmap, uBuf[0]);
+                                    } else {
+                                        codeToGID[code] = -1;
+                                    }
+                                }
+                            }
+                            delete ff;
+                        }
+                        ctu->decRefCnt();
+                    } else {
+                        error(errSyntaxError, -1,
+                              "Couldn't find a mapping to Unicode for font '{0:s}'",
+                              gfxFont->getName() ? gfxFont->getName()->getCString()
+                                                 : "(unnamed)");
+                    }
+                }
+                if (!(fontFile = fontEngine->loadTrueTypeFont(
+                        id,
+#if LOAD_FONTS_FROM_MEM
+                        fontBuf,
+#else
+                        fileName->getCString(),
+                        fileName == tmpFileName,
+#endif
+                        fontNum, codeToGID, n,
+                        gfxFont->getEmbeddedFontName()
+                        ? gfxFont->getEmbeddedFontName()->getCString()
+                        : (char *) NULL))) {
+                    error(errSyntaxError, -1, "Couldn't create a font for '{0:s}'",
+                          gfxFont->getName() ? gfxFont->getName()->getCString()
+                                             : "(unnamed)");
+                    delete fontLoc;
+                    goto err2;
+                }
+                break;
+            default:
+                // this shouldn't happen
+                goto err2;
+        }
+
+        delete fontLoc;
+    }
+
+    // get the font matrix
+    textMat = state->getTextMat();
+    fontSize = state->getFontSize();
+    oblique = ((SplashOutFontFileID *) fontFile->getID())->getOblique();
+    m11 = state->getHorizScaling() * textMat[0];
+    m12 = state->getHorizScaling() * textMat[1];
+    m21 = oblique * m11 + textMat[2];
+    m22 = oblique * m12 + textMat[3];
+    m11 *= fontSize;
+    m12 *= fontSize;
+    m21 *= fontSize;
+    m22 *= fontSize;
+
+    // for substituted fonts: adjust the font matrix -- compare the
+    // widths of letters and digits (A-Z, a-z, 0-9) in the original font
+    // and the substituted font
+    substIdx = ((SplashOutFontFileID *) fontFile->getID())->getSubstIdx();
+    if (substIdx >= 0 && substIdx < 12) {
+        fontScaleMin = 1;
+        fontScaleAvg = 0;
+        n = 0;
+        for (code = 0; code < 256; ++code) {
+            if ((name = ((Gfx8BitFont *) gfxFont)->getCharName(code)) &&
+                name[0] && !name[1] &&
+                ((name[0] >= 'A' && name[0] <= 'Z') ||
+                 (name[0] >= 'a' && name[0] <= 'z') ||
+                 (name[0] >= '0' && name[0] <= '9'))) {
+                w = ((Gfx8BitFont *) gfxFont)->getWidth(code);
+                builtinFontSubst[substIdx]->widths->getWidth(name, &ww);
+                if (w > 0.01 && ww > 10) {
+                    w /= ww * 0.001;
+                    if (w < fontScaleMin) {
+                        fontScaleMin = w;
+                    }
+                    fontScaleAvg += w;
+                    ++n;
+                }
+            }
+        }
+        // if real font is narrower than substituted font, reduce the font
+        // size accordingly -- this currently uses a scale factor halfway
+        // between the minimum and average computed scale factors, which
+        // is a bit of a kludge, but seems to produce mostly decent
+        // results
+        if (n) {
+            fontScaleAvg /= n;
+            if (fontScaleAvg < 1) {
+                fontScale = 0.5 * (fontScaleMin + fontScaleAvg);
+                m11 *= fontScale;
+                m12 *= fontScale;
+            }
+        }
+    }
+
+    // create the scaled font
+    mat[0] = m11;  mat[1] = m12;
+    mat[2] = m21;  mat[3] = m22;
+    font = fontEngine->getFont(fontFile, mat, matrix);
+
+#if !LOAD_FONTS_FROM_MEM
+    if (tmpFileName) {
+        delete tmpFileName;
+    }
+#endif
+    return font;
+
+    err2:
+    delete id;
+    err1:
+#if LOAD_FONTS_FROM_MEM
+    if (fontBuf) {
+    delete fontBuf;
+  }
+#else
+    if (tmpFileName) {
+        unlink(tmpFileName->getCString());
+        delete tmpFileName;
+    }
+#endif
+    return font;
 }
 
 void XmlAltoOutputDev::drawChar(GfxState *state, double x, double y, double dx,
                             double dy, double originX, double originY, CharCode c, int nBytes,
                             Unicode *u, int uLen) {
+
+    GBool isNonUnicodeGlyph = gFalse;
+
+    SplashFont* splashFont = NULL;
+
+
+    SplashCoord mat[6];
+    mat[0] = (SplashCoord)(curstate[0] );
+    mat[1] = (SplashCoord)(curstate[1] );
+    mat[2] = (SplashCoord)(curstate[2] );
+    mat[3] = (SplashCoord)(curstate[3] );
+    mat[4] = (SplashCoord)(curstate[4] );
+    mat[5] = (SplashCoord)(curstate[5] );
+    splashFont = getSplashFont(state, mat);
     if((uLen == 0  || ((u[0] == (Unicode)0 || u[0] < (Unicode)32) && uLen == 1 ))) {//&& globalParams->getApplyOCR())
         // as a first iteration for dictionnaries, placing a placeholder, which means creating a map based on the font-code mapping to unicode from : https://unicode.org/charts/PDF/U2B00.pdf
         GString *fontName = new GString();
@@ -7697,8 +8385,168 @@ void XmlAltoOutputDev::drawChar(GfxState *state, double x, double y, double dx,
         }
         u[0] = mapped_unicode;
         uLen=1;
+        isNonUnicodeGlyph = gTrue;
     }
-    text->addChar(state, x, y, dx, dy, c, nBytes, u, uLen);
+    text->addChar(state, x, y, dx, dy, c, nBytes, u, uLen, splashFont, isNonUnicodeGlyph);
+}
+
+void XmlAltoOutputDev::updateCTM(GfxState *state, double m11, double m12,
+                                double m21, double m22,
+                                double m31, double m32) {
+    for (int i=0;i<6;++i){
+        curstate[i]=state->getCTM()[i];
+    }
+}
+
+//------------------------------------------------------------------------
+// T3FontCache
+//------------------------------------------------------------------------
+
+struct T3FontCacheTag {
+    Gushort code;
+    Gushort mru;			// valid bit (0x8000) and MRU index
+};
+
+class T3FontCache {
+public:
+
+    T3FontCache(Ref *fontID, double m11A, double m12A,
+                double m21A, double m22A,
+                int glyphXA, int glyphYA, int glyphWA, int glyphHA,
+                GBool validBBoxA, GBool aa);
+    ~T3FontCache();
+    GBool matches(Ref *idA, double m11A, double m12A,
+                  double m21A, double m22A)
+    { return fontID.num == idA->num && fontID.gen == idA->gen &&
+             m11 == m11A && m12 == m12A && m21 == m21A && m22 == m22A; }
+
+    Ref fontID;			// PDF font ID
+    double m11, m12, m21, m22;	// transform matrix
+    int glyphX, glyphY;		// pixel offset of glyph bitmaps
+    int glyphW, glyphH;		// size of glyph bitmaps, in pixels
+    GBool validBBox;		// false if the bbox was [0 0 0 0]
+    int glyphSize;		// size of glyph bitmaps, in bytes
+    int cacheSets;		// number of sets in cache
+    int cacheAssoc;		// cache associativity (glyphs per set)
+    Guchar *cacheData;		// glyph pixmap cache
+    T3FontCacheTag *cacheTags;	// cache tags, i.e., char codes
+};
+
+T3FontCache::T3FontCache(Ref *fontIDA, double m11A, double m12A,
+                         double m21A, double m22A,
+                         int glyphXA, int glyphYA, int glyphWA, int glyphHA,
+                         GBool validBBoxA, GBool aa) {
+    int i;
+
+    fontID = *fontIDA;
+    m11 = m11A;
+    m12 = m12A;
+    m21 = m21A;
+    m22 = m22A;
+    glyphX = glyphXA;
+    glyphY = glyphYA;
+    glyphW = glyphWA;
+    glyphH = glyphHA;
+    validBBox = validBBoxA;
+    // sanity check for excessively large glyphs (which most likely
+    // indicate an incorrect BBox)
+    i = glyphW * glyphH;
+    if (i > 100000 || glyphW > INT_MAX / glyphH || glyphW <= 0 || glyphH <= 0) {
+        glyphW = glyphH = 100;
+        validBBox = gFalse;
+    }
+    if (aa) {
+        glyphSize = glyphW * glyphH;
+    } else {
+        glyphSize = ((glyphW + 7) >> 3) * glyphH;
+    }
+    cacheAssoc = type3FontCacheAssoc;
+    for (cacheSets = type3FontCacheMaxSets;
+         cacheSets > 1 &&
+         cacheSets * cacheAssoc * glyphSize > type3FontCacheSize;
+         cacheSets >>= 1) ;
+    cacheData = (Guchar *)gmallocn(cacheSets * cacheAssoc, glyphSize);
+    cacheTags = (T3FontCacheTag *)gmallocn(cacheSets * cacheAssoc,
+                                           sizeof(T3FontCacheTag));
+    for (i = 0; i < cacheSets * cacheAssoc; ++i) {
+        cacheTags[i].mru = i & (cacheAssoc - 1);
+    }
+}
+
+T3FontCache::~T3FontCache() {
+    gfree(cacheData);
+    gfree(cacheTags);
+}
+
+struct T3GlyphStack {
+    Gushort code;			// character code
+
+    GBool haveDx;			// set after seeing a d0/d1 operator
+    GBool doNotCache;		// set if we see a gsave/grestore before
+    //   the d0/d1
+
+    //----- cache info
+    T3FontCache *cache;		// font cache for the current font
+    T3FontCacheTag *cacheTag;	// pointer to cache tag for the glyph
+    Guchar *cacheData;		// pointer to cache data for the glyph
+
+    //----- saved state
+    SplashBitmap *origBitmap;
+    Splash *origSplash;
+    double origCTM4, origCTM5;
+
+    T3GlyphStack *next;		// next object on stack
+};
+
+void XmlAltoOutputDev::setupScreenParams(double hDPI, double vDPI) {
+    screenParams.size = globalParams->getScreenSize();
+    screenParams.dotRadius = globalParams->getScreenDotRadius();
+    screenParams.gamma = (SplashCoord)globalParams->getScreenGamma();
+    screenParams.blackThreshold =
+            (SplashCoord)globalParams->getScreenBlackThreshold();
+    screenParams.whiteThreshold =
+            (SplashCoord)globalParams->getScreenWhiteThreshold();
+    switch (globalParams->getScreenType()) {
+        case screenDispersed:
+            screenParams.type = splashScreenDispersed;
+            if (screenParams.size < 0) {
+                screenParams.size = 4;
+            }
+            break;
+        case screenClustered:
+            screenParams.type = splashScreenClustered;
+            if (screenParams.size < 0) {
+                screenParams.size = 10;
+            }
+            break;
+        case screenStochasticClustered:
+            screenParams.type = splashScreenStochasticClustered;
+            if (screenParams.size < 0) {
+                screenParams.size = 64;
+            }
+            if (screenParams.dotRadius < 0) {
+                screenParams.dotRadius = 2;
+            }
+            break;
+        case screenUnset:
+        default:
+            // use clustered dithering for resolution >= 300 dpi
+            // (compare to 299.9 to avoid floating point issues)
+            if (hDPI > 299.9 && vDPI > 299.9) {
+                screenParams.type = splashScreenStochasticClustered;
+                if (screenParams.size < 0) {
+                    screenParams.size = 64;
+                }
+                if (screenParams.dotRadius < 0) {
+                    screenParams.dotRadius = 2;
+                }
+            } else {
+                screenParams.type = splashScreenDispersed;
+                if (screenParams.size < 0) {
+                    screenParams.size = 4;
+                }
+            }
+    }
 }
 
 void XmlAltoOutputDev::stroke(GfxState *state) {
@@ -7859,6 +8707,10 @@ void XmlAltoOutputDev::saveState(GfxState *state) {
 }
 
 void XmlAltoOutputDev::restoreState(GfxState *state) {
+    needFontUpdate = gTrue;
+    for (int i=0;i<6;++i){
+        curstate[i]=state->getCTM()[i];
+    }
     text->restoreState(state);
 }
 

@@ -34,6 +34,14 @@ using namespace std;
 #include <string>
 #include <libxml/xmlmemory.h>
 #include <libxml/parser.h>
+#include <splash/SplashTypes.h>
+#include <splash/SplashFont.h>
+#include <splash/SplashFontEngine.h>
+#include <splash/SplashPath.h>
+#include <splash/Splash.h>
+
+// number of Type 3 fonts to cache
+#define splashOutT3FontCacheSize 8
 
 #include "PDFDocXrce.h"
 
@@ -54,7 +62,10 @@ class GfxState;
 class UnicodeMap;
 
 class TextBlock;
-class TextChar;
+
+
+class T3FontCache;
+struct T3FontCacheTag;
 
 class XmlAltoOutputDev;
 
@@ -416,6 +427,41 @@ private:
 
 
 //------------------------------------------------------------------------
+// TextChar
+//------------------------------------------------------------------------
+
+class TextChar {
+public:
+
+    TextChar(GfxState *state, Unicode cA, CharCode charCodeA, int charPosA, int charLenA,
+             double xMinA, double yMinA, double xMaxA, double yMaxA,
+             int rotA, GBool clippedA, GBool invisibleA,
+             TextFontInfo *fontA, double fontSizeA, SplashFont *splashFontA,
+             double colorRA, double colorGA, double colorBA, GBool isNonUnicodeGlyphA);
+
+    static int cmpX(const void *p1, const void *p2);
+    static int cmpY(const void *p1, const void *p2);
+
+    GfxState *state;
+    Unicode c;
+    CharCode charCode;
+    int charPos;
+    int charLen;
+    double xMin, yMin, xMax, yMax;
+    Guchar rot;
+    char clipped;
+    char invisible;
+    char spaceAfter;
+    TextFontInfo *font;
+    SplashFont *splashfont;
+    GBool isNonUnicodeGlyph;
+    double fontSize;
+    double colorR,
+            colorG,
+            colorB;
+};
+
+//------------------------------------------------------------------------
 // IWord
 //------------------------------------------------------------------------
 class IWord {
@@ -445,7 +491,7 @@ public:
     int angleSkewing_X;
 
     /** The unicode text */
-    Unicode *text;
+    GList *chars;			// [TextChar]
     /** "near" edge x or y coord of each char (plus one extra entry for the last char) */
     double *edge;
     /** The length of text and edge arrays */
@@ -497,6 +543,8 @@ public:
     float render;
     /** The value of the leading */
     float leading;
+
+    GBool isNonUnicodeGlyph;
 //public:
 
 
@@ -542,7 +590,7 @@ public:
 
     int getLength() { return len; }
 
-    Unicode getChar(int idx) { return text[idx]; }
+    Unicode getChar(int idx);
 
     /** Convert the RGB color to string hexadecimal color value*/
     GString *colortoString() const;
@@ -571,6 +619,10 @@ public:
     Unicode getCombiningDiacritic(ModifierClass modifierClass);
 
     Unicode getStandardBaseChar(Unicode c);
+
+    void setContainNonUnicodeGlyph(GBool containNonUnicodeGlyph);
+
+    GBool containNonUnicodeGlyph(){return isNonUnicodeGlyph;};
 };
 
 //------------------------------------------------------------------------
@@ -590,7 +642,7 @@ public:
     // Get the TextFontInfo object associated with this word.
     TextFontInfo *getFontInfo() { return font; }
 
-    Unicode getChar(int idx) { return text[idx]; }
+    Unicode getChar(int idx);
     GString *getText();
     GBool isInvisible() { return invisible; }
 
@@ -659,8 +711,8 @@ public:
      *  @param dy The dy value
      *  @param u The unicode char to add
      */
-    void addChar(GfxState *state, double x, double y,
-                 double dx, double dy, Unicode u, int charPosA, GBool overlap);
+    void addChar(GfxState *state, double x, double y, double dx,
+                 double dy, Unicode u, CharCode charCodeA, int charPosA, GBool overlap, TextFontInfo *fontA, double fontSizeA, SplashFont * splashFont, int rotA, int nBytes, GBool isNonUnicodeGlyph);
 
     /** Merge <code>word</code> onto the end of <code>this</code>
      *  @param word The current word */
@@ -679,6 +731,8 @@ public:
      * return True if overlap with w2
      */
     GBool overlap(TextRawWord *w2);
+
+    Unicode getChar(int idx);
 
 
 //private:
@@ -875,7 +929,7 @@ public:
      *  @param uLen The lenght */
     void addChar(GfxState *state, double x, double y,
                  double dx, double dy,
-                 CharCode c, int nBytes, Unicode *u, int uLen);
+                 CharCode c, int nBytes, Unicode *u, int uLen, SplashFont * splashFont, GBool isNonUnicodeGlyph);
 
     /** Add a character to the list of characters in the page
      *  @param state The state description
@@ -889,7 +943,7 @@ public:
      *  @param uLen The lenght */
     void addCharToPageChars(GfxState *state, double x, double y,
                  double dx, double dy,
-                 CharCode c, int nBytes, Unicode *u, int uLen);
+                 CharCode c, int nBytes, Unicode *u, int uLen, SplashFont * splashFont, GBool isNonUnicodeGlyph);
 
     /** Add a character to the current word in raw order
      *  @param state The state description
@@ -903,7 +957,7 @@ public:
      *  @param uLen The lenght */
     void addCharToRawWord(GfxState *state, double x, double y,
                  double dx, double dy,
-                 CharCode c, int nBytes, Unicode *u, int uLen);
+                 CharCode c, int nBytes, Unicode *u, int uLen, SplashFont * splashFont, GBool isNonUnicodeGlyph);
 
     /** End the current word, sorting it into the list of words */
     void endWord();
@@ -1133,7 +1187,7 @@ public:
      * @return The absolute object index in the stream */
     int getIdx(){return idx;};
 
-    void endActualText(GfxState *state);
+    void endActualText(GfxState *state, SplashFont* splashFont);
 
     void beginActualText(GfxState *state, Unicode *u, int uLen);
 
@@ -1151,6 +1205,10 @@ public:
         if (x < 0) return 0;
         return x;
     }
+
+    TextFontInfo * getCurrentFont();
+
+    TextRawWord * getRawWords(){ return rawWords;}
 
 private:
 
@@ -1639,6 +1697,13 @@ public:
     xmlDocPtr getDoc(){return doc;}
 
     TextPage * getText(){return text;}
+
+    void startDoc(XRef *xrefA);
+
+    void updateCTM(GfxState *state, double m11, double m12,
+                                     double m21, double m22,
+                                     double m31, double m32);
+
 private:
 
     /** Generate the path
@@ -1647,7 +1712,7 @@ private:
      * @param gattributes Style attributes to add to the current path */
     void doPath(GfxPath *path, GfxState *state, GString* gattributes);
 
-    double curstate[6];
+    double curstate[6];//this is the ctm
     //double *curstate[1000];
 
 
@@ -1726,6 +1791,25 @@ private:
     void beginActualText(GfxState *state, Unicode *u, int uLen);
 
     void endActualText(GfxState *state);
+
+    void setupScreenParams(double hDPI, double vDPI);
+
+    SplashScreenParams screenParams;
+
+    Splash *splash;
+    SplashPath *path;
+
+    SplashFontEngine *fontEngine;
+
+    XRef *xref;			// xref table for current document
+    int nT3Fonts;
+    T3FontCache *			// Type 3 font cache
+            t3FontCache[splashOutT3FontCacheSize];
+
+    GBool needFontUpdate;		// set when the font needs to be updated
+    SplashFont * getSplashFont(GfxState *state, SplashCoord *matrix);
+
+    SplashPath *convertPath(GfxState *state, GfxPath *path, GBool dropEmptySubpaths);
 };
 
 #endif
