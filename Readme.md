@@ -78,7 +78,7 @@ In addition to the [ALTO](https://github.com/altoxml/documentation/wiki) file de
   See [ICU Readme](http://source.icu-project.org/repos/icu/trunk/icu4c/readme.html) for futher details.
 
 
-> git clone https://github.com/kermitt2/pdfalto.git && cd pdfalto
+> git clone https://github.com/kermitt2/pdfalto.git && cd pdfalto && git checkout tags/0.2
 
 * Xpdf 4.00 is shipped as git submodule, to download it: 
 
