@@ -40,13 +40,14 @@ set(SOURCE_FILES
 add_executable(pdfalto ${SOURCE_FILES})
 
 if(${HAVE_PAPER_H})
-    target_link_libraries(pdfalto zlib png xml2 xpdf goo fofi ${ICU_PATH}/lib/libicuuc.a ${ICU_PATH}/lib/libicudata.a dl ${HAVE_PAPER_H})
+    target_link_libraries(pdfalto ${FREETYPE_LIBRARY} ${FREETYPE_OTHER_LIBS} zlib png xml2 xpdf goo fofi splash ${ICU_PATH}/lib/libicuuc.a ${ICU_PATH}/lib/libicudata.a dl ${HAVE_PAPER_H})
 else()
-    target_link_libraries(pdfalto zlib png xml2 xpdf goo fofi ${ICU_PATH}/lib/libicuuc.a ${ICU_PATH}/lib/libicudata.a dl)
+    target_link_libraries(pdfalto ${FREETYPE_LIBRARY} ${FREETYPE_OTHER_LIBS} zlib png xml2 xpdf goo fofi splash ${ICU_PATH}/lib/libicuuc.a ${ICU_PATH}/lib/libicudata.a dl)
 endif()
 
 target_include_directories(pdfalto
         PUBLIC /usr/include/libxml2
+        PUBLIC /usr/local/include/freetype2
         PUBLIC image/png
         PUBLIC image/zlib
         PUBLIC ${XPDF_SUBDIR}
