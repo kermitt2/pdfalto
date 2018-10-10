@@ -7002,15 +7002,16 @@ const char* TextPage::drawImageOrMask(GfxState *state, Object* ref, Stream *str,
                 for (int y = 0; y < height; y++)
                 {
                     Guchar* p = imgStr->getLine();
-                    for (int x = 0; x < width; x++)
-                    {
-                        GfxRenderingIntent ri;
-                        colorMap->getRGB(p, &rgb, ri);
-                        data[k++] = clamp(rgb.r >> 8);
-                        data[k++] = clamp(rgb.g >> 8);
-                        data[k++] = clamp(rgb.b >> 8);
-                        k += x_increment;
-                        p += colorMap->getNumPixelComps();
+                    if(p) {
+                        for (int x = 0; x < width; x++) {
+                            GfxRenderingIntent ri;
+                            colorMap->getRGB(p, &rgb, ri);
+                            data[k++] = clamp(rgb.r >> 8);
+                            data[k++] = clamp(rgb.g >> 8);
+                            data[k++] = clamp(rgb.b >> 8);
+                            k += x_increment;
+                            p += colorMap->getNumPixelComps();
+                        }
                     }
 
                     k += y_increment;
