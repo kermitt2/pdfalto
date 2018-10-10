@@ -6955,72 +6955,74 @@ const char* TextPage::drawImageOrMask(GfxState *state, Object* ref, Stream *str,
 
             if (data != NULL)
             {
-                ImageStream* imgStr = new ImageStream(str, width, colorMap->getNumPixelComps(), colorMap->getBits());
-                imgStr->reset();
+                if(colorMap->getBits() > 0) {
+                    ImageStream* imgStr = new ImageStream(str, width, colorMap->getNumPixelComps(), colorMap->getBits());
+                    imgStr->reset();
 
-                GfxRGB rgb;
+                    GfxRGB rgb;
 
-                // Prepare increments and initial value for flipping
-                int k, x_increment, y_increment;
+                    // Prepare increments and initial value for flipping
+                    int k, x_increment, y_increment;
 
-                if (flip_x)
-                {
-                    if (flip_y)
+                    if (flip_x)
                     {
-                        // both flipped
-                        k = 3 * height * width - 3;
-                        x_increment = -6;
-                        y_increment = 0;
+                        if (flip_y)
+                        {
+                            // both flipped
+                            k = 3 * height * width - 3;
+                            x_increment = -6;
+                            y_increment = 0;
+                        }
+                        else
+                        {
+                            // x flipped
+                            k = 3 * (width - 1);
+                            x_increment = -6;
+                            y_increment = 6 * width;
+                        }
                     }
                     else
                     {
-                        // x flipped
-                        k = 3 * (width - 1);
-                        x_increment = -6;
-                        y_increment = 6 * width;
-                    }
-                }
-                else
-                {
-                    if (flip_y)
-                    {
-                        // y flipped
-                        k = 3 * (height - 1) * width;
-                        x_increment = 0;
-                        y_increment = -6 * width;
-                    }
-                    else
-                    {
-                        // not flipped
-                        k = 0;
-                        x_increment = 0;
-                        y_increment = 0;
-                    }
-                }
-
-                // Retrieve the image raw data (RGB pixels)
-                for (int y = 0; y < height; y++)
-                {
-                    Guchar* p = imgStr->getLine();
-                    if(p) {
-                        for (int x = 0; x < width; x++) {
-                            GfxRenderingIntent ri;
-                            colorMap->getRGB(p, &rgb, ri);
-                            data[k++] = clamp(rgb.r >> 8);
-                            data[k++] = clamp(rgb.g >> 8);
-                            data[k++] = clamp(rgb.b >> 8);
-                            k += x_increment;
-                            p += colorMap->getNumPixelComps();
+                        if (flip_y)
+                        {
+                            // y flipped
+                            k = 3 * (height - 1) * width;
+                            x_increment = 0;
+                            y_increment = -6 * width;
+                        }
+                        else
+                        {
+                            // not flipped
+                            k = 0;
+                            x_increment = 0;
+                            y_increment = 0;
                         }
                     }
 
-                    k += y_increment;
+                    // Retrieve the image raw data (RGB pixels)
+                    for (int y = 0; y < height; y++)
+                    {
+                        Guchar* p = imgStr->getLine();
+                        if(p) {
+                            for (int x = 0; x < width; x++) {
+                                GfxRenderingIntent ri;
+                                colorMap->getRGB(p, &rgb, ri);
+                                data[k++] = clamp(rgb.r >> 8);
+                                data[k++] = clamp(rgb.g >> 8);
+                                data[k++] = clamp(rgb.b >> 8);
+                                k += x_increment;
+                                p += colorMap->getNumPixelComps();
+                            }
+                        }
+
+                        k += y_increment;
+                    }
+
+                    delete imgStr;
+
+                    // Save PNG file
+                    save_png(relname, width, height, width * 3, data, 24, PNG_COLOR_TYPE_RGB, NULL, 0);
                 }
-
-                delete imgStr;
-
-                // Save PNG file
-                save_png(relname, width, height, width * 3, data, 24, PNG_COLOR_TYPE_RGB, NULL, 0);
             }
         }
 
