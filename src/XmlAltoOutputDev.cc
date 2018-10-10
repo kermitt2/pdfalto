@@ -6289,9 +6289,10 @@ void TextPage::saveState(GfxState *state) {
 }
 
 void TextPage::restoreState(GfxState *state) {
-
+if(!idStack.empty()) {
     idCur = idStack.top();
     idStack.pop();
+}
 }
 
 void TextPage::doPathForClip(GfxPath *path, GfxState *state,
@@ -7174,6 +7175,8 @@ XmlAltoOutputDev::XmlAltoOutputDev(GString *fileName, GString *fileNamePdf,
                            Catalog *catalog, GBool physLayoutA, GBool verboseA, GString *nsURIA,
                            GString *cmdA)	{
     text = NULL;
+    splash = NULL;
+    fontEngine = NULL;
     physLayout = physLayoutA;
     //rawOrder = 1;
     ok = gTrue;
