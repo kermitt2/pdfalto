@@ -45,9 +45,15 @@ else()
     target_link_libraries(pdfalto ${FREETYPE_LIBRARY} ${FREETYPE_OTHER_LIBS} zlib png xml2 xpdf goo fofi splash ${ICU_PATH}/lib/libicuuc.a ${ICU_PATH}/lib/libicudata.a dl)
 endif()
 
+if(${FREETYPE_INCLUDE_DIR_ft2build})
+    set(FREETYPE_INCLUDE_DIR ${FREETYPE_INCLUDE_DIR_ft2build})
+elseif(${FREETYPE_INCLUDE_DIR_freetype})
+    set(FREETYPE_INCLUDE_DIR ${FREETYPE_INCLUDE_DIR_freetype})
+endif()
+
 target_include_directories(pdfalto
         PUBLIC /usr/include/libxml2
-        PUBLIC /usr/local/include/freetype2
+        PUBLIC ${FREETYPE_INCLUDE_DIR}
         PUBLIC image/png
         PUBLIC image/zlib
         PUBLIC ${XPDF_SUBDIR}
