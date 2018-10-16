@@ -3183,16 +3183,16 @@ void TextPage::addAttributsNode(xmlNodePtr node, IWord *word, double &xMaxi,
 //               (const xmlChar*)word->colortoString()->getCString());
     fontStyleInfo->setFontColor(word->colortoString());
 
-    sprintf(tmp, ATTR_NUMFORMAT, word->xMin);
+    snprintf(tmp, sizeof(tmp),ATTR_NUMFORMAT, word->xMin);
     xmlNewProp(node, (const xmlChar*)ATTR_X, (const xmlChar*)tmp);
 
-    sprintf(tmp, ATTR_NUMFORMAT, word->yMin);
+    snprintf(tmp, sizeof(tmp),ATTR_NUMFORMAT, word->yMin);
     xmlNewProp(node, (const xmlChar*)ATTR_Y, (const xmlChar*)tmp);
 
-    sprintf(tmp, ATTR_NUMFORMAT, word->base);
+    snprintf(tmp, sizeof(tmp),ATTR_NUMFORMAT, word->base);
     xmlNewProp(node, (const xmlChar*)ATTR_BASE, (const xmlChar*)tmp);
 
-    sprintf(tmp, ATTR_NUMFORMAT, word->xMax - word->xMin);
+    snprintf(tmp, sizeof(tmp),ATTR_NUMFORMAT, word->xMax - word->xMin);
     xmlNewProp(node, (const xmlChar*)ATTR_WIDTH, (const xmlChar*)tmp);
     if (word->xMax > xMaxi) {
         xMaxi = word->xMax;
@@ -3204,7 +3204,7 @@ void TextPage::addAttributsNode(xmlNodePtr node, IWord *word, double &xMaxi,
         xMaxRot = word->xMax;
     }
 
-    sprintf(tmp, ATTR_NUMFORMAT, word->yMax - word->yMin);
+    snprintf(tmp, sizeof(tmp),ATTR_NUMFORMAT, word->yMax - word->yMin);
     xmlNewProp(node, (const xmlChar*)ATTR_HEIGHT, (const xmlChar*)tmp);
     if (word->yMax > yMaxi) {
         yMaxi = word->yMax;
@@ -5038,11 +5038,11 @@ void TextPage::dumpInReadingOrder(GBool blocks, GBool fullFontName) {
                                             listeImageInline[indiceImage]->getYPositionImage());
                                     xmlNewProp(nodeImageInline, (const xmlChar*)ATTR_Y,
                                                (const xmlChar*)tmp);
-                                    sprintf(tmp, ATTR_NUMFORMAT,
+                                    snprintf(tmp, sizeof(tmp),ATTR_NUMFORMAT,
                                             listeImageInline[indiceImage]->getWidthImage());
                                     xmlNewProp(nodeImageInline, (const xmlChar*)ATTR_WIDTH,
                                                (const xmlChar*)tmp);
-                                    sprintf(tmp, ATTR_NUMFORMAT,
+                                    snprintf(tmp, sizeof(tmp),ATTR_NUMFORMAT,
                                             listeImageInline[indiceImage]->getHeightImage());
                                     xmlNewProp(nodeImageInline,
                                                (const xmlChar*)ATTR_HEIGHT,
@@ -5062,13 +5062,13 @@ void TextPage::dumpInReadingOrder(GBool blocks, GBool fullFontName) {
                     if(wordI < line->words->getLength() - 1 and word->spaceAfter) {
                         xmlNodePtr spacingNode = xmlNewNode(NULL, (const xmlChar *) TAG_SPACING);
                         spacingNode->type = XML_ELEMENT_NODE;
-                        sprintf(tmp, ATTR_NUMFORMAT, (nextWord->xMin - word->xMax));
+                        snprintf(tmp, sizeof(tmp),ATTR_NUMFORMAT, (nextWord->xMin - word->xMax));
                         xmlNewProp(spacingNode, (const xmlChar *) ATTR_WIDTH,
                                    (const xmlChar *) tmp);
-                        sprintf(tmp, ATTR_NUMFORMAT, (word->yMin));
+                        snprintf(tmp, sizeof(tmp),ATTR_NUMFORMAT, (word->yMin));
                         xmlNewProp(spacingNode, (const xmlChar *) ATTR_Y,
                                    (const xmlChar *) tmp);
-                        sprintf(tmp, ATTR_NUMFORMAT, (word->xMax));
+                        snprintf(tmp, sizeof(tmp),ATTR_NUMFORMAT, (word->xMax));
                         xmlNewProp(spacingNode, (const xmlChar *) ATTR_X,
                                    (const xmlChar *) tmp);
 
@@ -5111,13 +5111,13 @@ void TextPage::dumpInReadingOrder(GBool blocks, GBool fullFontName) {
         //xmlNewProp(node, (const xmlChar *) ATTR_SID,(const xmlChar*)listeImages[i]->getImageSid()->getCString());
 
 
-        sprintf(tmp, ATTR_NUMFORMAT, listeImages[i]->getXPositionImage());
+        snprintf(tmp, sizeof(tmp),ATTR_NUMFORMAT, listeImages[i]->getXPositionImage());
         xmlNewProp(printSpace, (const xmlChar *) ATTR_X, (const xmlChar *) tmp);
-        sprintf(tmp, ATTR_NUMFORMAT, listeImages[i]->getYPositionImage());
+        snprintf(tmp, sizeof(tmp),ATTR_NUMFORMAT, listeImages[i]->getYPositionImage());
         xmlNewProp(printSpace, (const xmlChar *) ATTR_Y, (const xmlChar *) tmp);
-        sprintf(tmp, ATTR_NUMFORMAT, listeImages[i]->getWidthImage());
+        snprintf(tmp, sizeof(tmp),ATTR_NUMFORMAT, listeImages[i]->getWidthImage());
         xmlNewProp(printSpace, (const xmlChar *) ATTR_WIDTH, (const xmlChar *) tmp);
-        sprintf(tmp, ATTR_NUMFORMAT, listeImages[i]->getHeightImage());
+        snprintf(tmp, sizeof(tmp),ATTR_NUMFORMAT, listeImages[i]->getHeightImage());
         xmlNewProp(printSpace, (const xmlChar *) ATTR_HEIGHT, (const xmlChar *) tmp);
 //			if (rotate){
 //				xmlNewProp(node,(const xmlChar*)ATTR_ROTATION,(const xmlChar*)sTRUE);
@@ -5381,11 +5381,11 @@ void TextPage::dump(GBool blocks, GBool fullFontName) {
                                 listeImageInline[indiceImage]->getYPositionImage());
                         xmlNewProp(nodeImageInline, (const xmlChar*)ATTR_Y,
                                    (const xmlChar*)tmp);
-                        sprintf(tmp, ATTR_NUMFORMAT,
+                        snprintf(tmp, sizeof(tmp),ATTR_NUMFORMAT,
                                 listeImageInline[indiceImage]->getWidthImage());
                         xmlNewProp(nodeImageInline, (const xmlChar*)ATTR_WIDTH,
                                    (const xmlChar*)tmp);
-                        sprintf(tmp, ATTR_NUMFORMAT,
+                        snprintf(tmp, sizeof(tmp),ATTR_NUMFORMAT,
                                 listeImageInline[indiceImage]->getHeightImage());
                         xmlNewProp(nodeImageInline,
                                    (const xmlChar*)ATTR_HEIGHT,
@@ -5453,13 +5453,13 @@ void TextPage::dump(GBool blocks, GBool fullFontName) {
                 double arr;
                 if (word->rot==2) {
                     arr = fabs(xMaxRot-xMinRot);
-                    sprintf(tmp, ATTR_NUMFORMAT, arr);
+                    snprintf(tmp, sizeof(tmp),ATTR_NUMFORMAT, arr);
                     xmlNewProp(nodeline, (const xmlChar*)ATTR_WIDTH,
                                (const xmlChar*)tmp);
                     lineWidth = arr;
                 } else {
                     arr = xMax-xMin;
-                    sprintf(tmp, ATTR_NUMFORMAT, arr);
+                    snprintf(tmp, sizeof(tmp),ATTR_NUMFORMAT, arr);
                     xmlNewProp(nodeline, (const xmlChar*)ATTR_WIDTH,
                                (const xmlChar*)tmp);
                     lineWidth = arr;
@@ -5467,7 +5467,7 @@ void TextPage::dump(GBool blocks, GBool fullFontName) {
 
                 if (word->rot==0||word->rot==2) {
                     arr = yMax-yMin;
-                    sprintf(tmp, ATTR_NUMFORMAT, arr);
+                    snprintf(tmp, sizeof(tmp),ATTR_NUMFORMAT, arr);
                     xmlNewProp(nodeline, (const xmlChar*)ATTR_HEIGHT,
                                (const xmlChar*)tmp);
                     lineHeight = arr;
@@ -5475,16 +5475,16 @@ void TextPage::dump(GBool blocks, GBool fullFontName) {
 
                 if (word->rot==1||word->rot==3) {
                     arr = yMaxRot-yMinRot;
-                    sprintf(tmp, ATTR_NUMFORMAT, arr);
+                    snprintf(tmp, sizeof(tmp),ATTR_NUMFORMAT, arr);
                     xmlNewProp(nodeline, (const xmlChar*)ATTR_HEIGHT,
                                (const xmlChar*)tmp);
                     lineHeight = arr;
                 }
 
-                sprintf(tmp, ATTR_NUMFORMAT, minLineX);
+                snprintf(tmp, sizeof(tmp),ATTR_NUMFORMAT, minLineX);
                 xmlNewProp(nodeline, (const xmlChar*)ATTR_X,
                            (const xmlChar*)tmp);
-                sprintf(tmp, ATTR_NUMFORMAT, minLineY);
+                snprintf(tmp, sizeof(tmp),ATTR_NUMFORMAT, minLineY);
                 xmlNewProp(nodeline, (const xmlChar*)ATTR_Y,
                            (const xmlChar*)tmp);
 
@@ -5538,13 +5538,13 @@ void TextPage::dump(GBool blocks, GBool fullFontName) {
             double arr;
             if (word->rot==2) {
                 arr = fabs(xMaxRot-xMinRot);
-                sprintf(tmp, ATTR_NUMFORMAT, arr);
+                snprintf(tmp, sizeof(tmp),ATTR_NUMFORMAT, arr);
                 xmlNewProp(nodeline, (const xmlChar*)ATTR_WIDTH,
                            (const xmlChar*)tmp);
                 lineWidth = arr;
             } else {
                 arr = xMax-xMin;
-                sprintf(tmp, ATTR_NUMFORMAT, arr);
+                snprintf(tmp, sizeof(tmp),ATTR_NUMFORMAT, arr);
                 xmlNewProp(nodeline, (const xmlChar*)ATTR_WIDTH,
                            (const xmlChar*)tmp);
                 lineWidth = arr;
@@ -5552,7 +5552,7 @@ void TextPage::dump(GBool blocks, GBool fullFontName) {
 
             if (word->rot==0||word->rot==2) {
                 arr = yMax-yMin;
-                sprintf(tmp, ATTR_NUMFORMAT, arr);
+                snprintf(tmp, sizeof(tmp),ATTR_NUMFORMAT, arr);
                 xmlNewProp(nodeline, (const xmlChar*)ATTR_HEIGHT,
                            (const xmlChar*)tmp);
                 lineHeight = arr;
@@ -5560,7 +5560,7 @@ void TextPage::dump(GBool blocks, GBool fullFontName) {
 
             if (word->rot==1||word->rot==3) {
                 arr = yMaxRot-yMinRot;
-                sprintf(tmp, ATTR_NUMFORMAT, arr);
+                snprintf(tmp, sizeof(tmp),ATTR_NUMFORMAT, arr);
                 xmlNewProp(nodeline, (const xmlChar*)ATTR_HEIGHT,
                            (const xmlChar*)tmp);
                 lineHeight = arr;
@@ -5585,9 +5585,9 @@ void TextPage::dump(GBool blocks, GBool fullFontName) {
 //				xmlNewProp(nodeline, (const xmlChar*)ATTR_HIGHLIGHT,(const xmlChar*)"yes");
 //			}
 
-            sprintf(tmp, ATTR_NUMFORMAT, minLineX);
+            snprintf(tmp, sizeof(tmp),ATTR_NUMFORMAT, minLineX);
             xmlNewProp(nodeline, (const xmlChar*)ATTR_X, (const xmlChar*)tmp);
-            sprintf(tmp, ATTR_NUMFORMAT, minLineY);
+            snprintf(tmp, sizeof(tmp),ATTR_NUMFORMAT, minLineY);
             xmlNewProp(nodeline, (const xmlChar*)ATTR_Y, (const xmlChar*)tmp);
 
             if (word->fontSize > lineFontSize) {
@@ -5633,7 +5633,7 @@ void TextPage::dump(GBool blocks, GBool fullFontName) {
                     if (attrValue == NULL) {
                         // set the X attribute
                         if (lineX != 0) {
-                            sprintf(tmp, ATTR_NUMFORMAT, lineX);
+                            snprintf(tmp, sizeof(tmp),ATTR_NUMFORMAT, lineX);
                             xmlNewProp(nodeblocks, (const xmlChar*)ATTR_X, (const xmlChar*)tmp);
                         }
                     } else
@@ -5643,7 +5643,7 @@ void TextPage::dump(GBool blocks, GBool fullFontName) {
                     if (attrValue == NULL) {
                         // set the Y attribute
                         if (lineYmin != 0) {
-                            sprintf(tmp, ATTR_NUMFORMAT, lineYmin);
+                            snprintf(tmp, sizeof(tmp),ATTR_NUMFORMAT, lineYmin);
                             xmlNewProp(nodeblocks, (const xmlChar*)ATTR_Y, (const xmlChar*)tmp);
                         }
                     } else
@@ -5672,9 +5672,9 @@ void TextPage::dump(GBool blocks, GBool fullFontName) {
                         double blockWidth = std::abs((linePreviousX + linePreviousWidth) - blockX);
                         double blockHeight = std::abs((linePreviousYmin + linePreviousHeight) - blockY);
 
-                        sprintf(tmp, ATTR_NUMFORMAT, blockHeight);
+                        snprintf(tmp, sizeof(tmp),ATTR_NUMFORMAT, blockHeight);
                         xmlNewProp(nodeblocks, (const xmlChar*)ATTR_HEIGHT, (const xmlChar*)tmp);
-                        sprintf(tmp, ATTR_NUMFORMAT, blockWidth);
+                        snprintf(tmp, sizeof(tmp),ATTR_NUMFORMAT, blockWidth);
                         xmlNewProp(nodeblocks, (const xmlChar*)ATTR_WIDTH, (const xmlChar*)tmp);
 
                         // adding previous block to the page element
@@ -5695,11 +5695,11 @@ void TextPage::dump(GBool blocks, GBool fullFontName) {
 
                     // PL: new block X and Y
                     if (lineX != 0) {
-                        sprintf(tmp, ATTR_NUMFORMAT, lineX);
+                        snprintf(tmp, sizeof(tmp),ATTR_NUMFORMAT, lineX);
                         xmlNewProp(nodeblocks, (const xmlChar*)ATTR_X, (const xmlChar*)tmp);
                     }
                     if (lineYmin != 0) {
-                        sprintf(tmp, ATTR_NUMFORMAT, lineYmin);
+                        snprintf(tmp, sizeof(tmp),ATTR_NUMFORMAT, lineYmin);
                         xmlNewProp(nodeblocks, (const xmlChar*)ATTR_Y, (const xmlChar*)tmp);
                     }
                     numBlock = numBlock + 1;
@@ -5727,7 +5727,7 @@ void TextPage::dump(GBool blocks, GBool fullFontName) {
                                         xmlFree(attrValue);
                                     }
                                     double blockHeight = std::abs((linePreviousYmin + linePreviousHeight) - blockY);
-                                    sprintf(tmp, ATTR_NUMFORMAT, blockHeight);
+                                    snprintf(tmp, sizeof(tmp),ATTR_NUMFORMAT, blockHeight);
                                     xmlNewProp(nodeblocks, (const xmlChar*)ATTR_HEIGHT, (const xmlChar*)tmp);
                                 } else
                                     xmlFree(attrValue);
@@ -5742,7 +5742,7 @@ void TextPage::dump(GBool blocks, GBool fullFontName) {
                                         xmlFree(attrValue);
                                     }
                                     double blockWidth = std::abs((linePreviousX + linePreviousWidth) - blockX);
-                                    sprintf(tmp, ATTR_NUMFORMAT, blockWidth);
+                                    snprintf(tmp, sizeof(tmp),ATTR_NUMFORMAT, blockWidth);
                                     xmlNewProp(nodeblocks, (const xmlChar*)ATTR_WIDTH, (const xmlChar*)tmp);
                                 } else
                                     xmlFree(attrValue);
@@ -5770,9 +5770,9 @@ void TextPage::dump(GBool blocks, GBool fullFontName) {
                             double blockWidth = std::abs((linePreviousX + linePreviousWidth) - blockX);
                             double blockHeight = std::abs((linePreviousYmin + linePreviousHeight) - blockY);
 
-                            sprintf(tmp, ATTR_NUMFORMAT, blockHeight);
+                            snprintf(tmp, sizeof(tmp),ATTR_NUMFORMAT, blockHeight);
                             xmlNewProp(nodeblocks, (const xmlChar*)ATTR_HEIGHT, (const xmlChar*)tmp);
-                            sprintf(tmp, ATTR_NUMFORMAT, blockWidth);
+                            snprintf(tmp, sizeof(tmp),ATTR_NUMFORMAT, blockWidth);
                             xmlNewProp(nodeblocks, (const xmlChar*)ATTR_WIDTH, (const xmlChar*)tmp);
 
                             // adding previous block to the page element
@@ -5793,11 +5793,11 @@ void TextPage::dump(GBool blocks, GBool fullFontName) {
 
                         // PL: new block X and Y
                         if (lineX != 0) {
-                            sprintf(tmp, ATTR_NUMFORMAT, lineX);
+                            snprintf(tmp, sizeof(tmp),ATTR_NUMFORMAT, lineX);
                             xmlNewProp(nodeblocks, (const xmlChar*)ATTR_X, (const xmlChar*)tmp);
                         }
                         if (lineYmin != 0) {
-                            sprintf(tmp, ATTR_NUMFORMAT, lineYmin);
+                            snprintf(tmp, sizeof(tmp),ATTR_NUMFORMAT, lineYmin);
                             xmlNewProp(nodeblocks, (const xmlChar*)ATTR_Y, (const xmlChar*)tmp);
                         }
 
@@ -5834,13 +5834,13 @@ void TextPage::dump(GBool blocks, GBool fullFontName) {
         {
             xmlNodePtr spacingNode = xmlNewNode(NULL, (const xmlChar*)TAG_SPACING);
             spacingNode->type = XML_ELEMENT_NODE;
-            sprintf(tmp, ATTR_NUMFORMAT, (word->next->xMin - word->xMax));
+            snprintf(tmp, sizeof(tmp),ATTR_NUMFORMAT, (word->next->xMin - word->xMax));
             xmlNewProp(spacingNode, (const xmlChar*)ATTR_WIDTH,
                        (const xmlChar*)tmp);
-            sprintf(tmp, ATTR_NUMFORMAT, (word->yMin));
+            snprintf(tmp, sizeof(tmp),ATTR_NUMFORMAT, (word->yMin));
             xmlNewProp(spacingNode, (const xmlChar*)ATTR_Y,
                        (const xmlChar*)tmp);
-            sprintf(tmp, ATTR_NUMFORMAT, (word->xMax));
+            snprintf(tmp, sizeof(tmp),ATTR_NUMFORMAT, (word->xMax));
             xmlNewProp(spacingNode, (const xmlChar*)ATTR_X,
                        (const xmlChar*)tmp);
             
@@ -5874,13 +5874,13 @@ void TextPage::dump(GBool blocks, GBool fullFontName) {
         //xmlNewProp(node, (const xmlChar *) ATTR_SID,(const xmlChar*)listeImages[i]->getImageSid()->getCString());
 
 
-        sprintf(tmp, ATTR_NUMFORMAT, listeImages[i]->getXPositionImage());
+        snprintf(tmp, sizeof(tmp),ATTR_NUMFORMAT, listeImages[i]->getXPositionImage());
         xmlNewProp(printSpace, (const xmlChar *) ATTR_X, (const xmlChar *) tmp);
-        sprintf(tmp, ATTR_NUMFORMAT, listeImages[i]->getYPositionImage());
+        snprintf(tmp, sizeof(tmp),ATTR_NUMFORMAT, listeImages[i]->getYPositionImage());
         xmlNewProp(printSpace, (const xmlChar *) ATTR_Y, (const xmlChar *) tmp);
-        sprintf(tmp, ATTR_NUMFORMAT, listeImages[i]->getWidthImage());
+        snprintf(tmp, sizeof(tmp),ATTR_NUMFORMAT, listeImages[i]->getWidthImage());
         xmlNewProp(printSpace, (const xmlChar *) ATTR_WIDTH, (const xmlChar *) tmp);
-        sprintf(tmp, ATTR_NUMFORMAT, listeImages[i]->getHeightImage());
+        snprintf(tmp, sizeof(tmp),ATTR_NUMFORMAT, listeImages[i]->getHeightImage());
         xmlNewProp(printSpace, (const xmlChar *) ATTR_HEIGHT, (const xmlChar *) tmp);
 //			if (rotate){
 //				xmlNewProp(node,(const xmlChar*)ATTR_ROTATION,(const xmlChar*)sTRUE);
@@ -6047,19 +6047,19 @@ void TextPage::addImageInlineNode(xmlNodePtr nodeline,
                 xmlNewProp(nodeImageInline, (const xmlChar*)ATTR_SID,
                            (const xmlChar*)buildSID(num, listeImageInline[i]->getIdx(), id)->getCString());
                 delete id;
-                sprintf(tmp, ATTR_NUMFORMAT,
+                snprintf(tmp, sizeof(tmp),ATTR_NUMFORMAT,
                         listeImageInline[i]->getXPositionImage());
                 xmlNewProp(nodeImageInline, (const xmlChar*)ATTR_X,
                            (const xmlChar*)tmp);
-                sprintf(tmp, ATTR_NUMFORMAT,
+                snprintf(tmp, sizeof(tmp),ATTR_NUMFORMAT,
                         listeImageInline[i]->getYPositionImage());
                 xmlNewProp(nodeImageInline, (const xmlChar*)ATTR_Y,
                            (const xmlChar*)tmp);
-                sprintf(tmp, ATTR_NUMFORMAT,
+                snprintf(tmp, sizeof(tmp),ATTR_NUMFORMAT,
                         listeImageInline[i]->getWidthImage());
                 xmlNewProp(nodeImageInline, (const xmlChar*)ATTR_WIDTH,
                            (const xmlChar*)tmp);
-                sprintf(tmp, ATTR_NUMFORMAT,
+                snprintf(tmp, sizeof(tmp),ATTR_NUMFORMAT,
                         listeImageInline[i]->getHeightImage());
                 xmlNewProp(nodeImageInline, (const xmlChar*)ATTR_HEIGHT,
                            (const xmlChar*)tmp);
@@ -6091,20 +6091,20 @@ void TextPage::addImageInlineNode(xmlNodePtr nodeline,
                                        (const xmlChar*)ATTR_SID,
                                        (const xmlChar*)buildSID(num, listeImageInline[j]->getIdx(), id)->getCString());
                             delete id;
-                            sprintf(tmp, ATTR_NUMFORMAT,
+                            snprintf(tmp, sizeof(tmp),ATTR_NUMFORMAT,
                                     listeImageInline[j]->getXPositionImage());
                             xmlNewProp(nodeImageInline, (const xmlChar*)ATTR_X,
                                        (const xmlChar*)tmp);
-                            sprintf(tmp, ATTR_NUMFORMAT,
+                            snprintf(tmp, sizeof(tmp),ATTR_NUMFORMAT,
                                     listeImageInline[j]->getYPositionImage());
                             xmlNewProp(nodeImageInline, (const xmlChar*)ATTR_Y,
                                        (const xmlChar*)tmp);
-                            sprintf(tmp, ATTR_NUMFORMAT,
+                            snprintf(tmp, sizeof(tmp),ATTR_NUMFORMAT,
                                     listeImageInline[j]->getWidthImage());
                             xmlNewProp(nodeImageInline,
                                        (const xmlChar*)ATTR_WIDTH,
                                        (const xmlChar*)tmp);
-                            sprintf(tmp, ATTR_NUMFORMAT,
+                            snprintf(tmp, sizeof(tmp),ATTR_NUMFORMAT,
                                     listeImageInline[j]->getHeightImage());
                             xmlNewProp(nodeImageInline,
                                        (const xmlChar*)ATTR_HEIGHT,
