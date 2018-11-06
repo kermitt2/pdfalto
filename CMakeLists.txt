@@ -94,3 +94,48 @@ target_include_directories(pdfalto
         PUBLIC ${XPDF_BUILD_DIR}
         PUBLIC ${ICU_PATH}/common
         )
+
+# BUILD TRAIN GENERATOR
+set(SOURCE_FILES
+        src/AnnotsXrce.cc
+        src/AnnotsXrce.h
+        src/ConstantsUtils.cc
+        src/ConstantsUtils.h
+        src/ConstantsXMLALTO.cc
+        src/ConstantsXMLALTO.h
+        src/Parameters.cc
+        src/Parameters.h
+        src/PDFDocXrce.cc
+        src/PDFDocXrce.h
+        src/traingenerator.cc
+        src/DataGeneratorOutputDev.cc
+        src/DataGeneratorOutputDev.h
+        )
+
+add_executable(traingenerator ${SOURCE_FILES})
+
+if(${HAVE_PAPER_H})
+    target_link_libraries(traingenerator ${FREETYPE_LIBRARY} ${FREETYPE_OTHER_LIBS} zlib png xml2 xpdf goo fofi splash dl ${HAVE_PAPER_H})
+else()
+    target_link_libraries(traingenerator ${FREETYPE_LIBRARY} ${FREETYPE_OTHER_LIBS} zlib png xml2 xpdf goo fofi splash dl)
+endif()
+
+if(FREETYPE_INCLUDE_DIR_ft2build)
+    set(FREETYPE_INCLUDE_DIR ${FREETYPE_INCLUDE_DIR_ft2build})
+elseif(FREETYPE_INCLUDE_DIR_freetype)
+    set(FREETYPE_INCLUDE_DIR ${FREETYPE_INCLUDE_DIR_freetype})
+elseif(FREETYPE_INCLUDE_DIR_freetype_freetype)
+    set(FREETYPE_INCLUDE_DIR ${FREETYPE_INCLUDE_DIR_freetype_freetype})
+endif()
+message(STATUS "${FREETYPE_INCLUDE_DIR}")
+target_include_directories(traingenerator
+        PUBLIC /usr/local/opt/libxml2/include/libxml2
+        PUBLIC ${FREETYPE_INCLUDE_DIR}
+        PUBLIC image/png
+        PUBLIC image/zlib
+        PUBLIC ${XPDF_SUBDIR}
+        PUBLIC ${XPDF_SUBDIR}/goo
+        PUBLIC ${XPDF_SUBDIR}/fofi
+        PUBLIC ${XPDF_SUBDIR}/xpdf
+        PUBLIC ${XPDF_BUILD_DIR}
+        )
