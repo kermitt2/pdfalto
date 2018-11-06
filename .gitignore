@@ -19,3 +19,6 @@ Makefile
 *.pdf
 .DS_Store
 *.xml_data/
+traingenerator
+jeu/*
+*.cbp
