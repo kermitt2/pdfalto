@@ -3787,26 +3787,6 @@ int TextPage::getCharDirection(TextChar *ch) {
     return 0;
 }
 
-//int TextPage::assignPhysLayoutPositions(GList *columns) {
-//    assignLinePhysPositions(columns);
-//    return assignColumnPhysPositions(columns);
-//}
-
-void TextPage::computeLinePhysWidth(TextLine *line, UnicodeMap *uMap) {
-    char buf[8];
-    int n, i;
-
-    if (uMap->isUnicode()) {
-        line->pw = line->len;
-    } else {
-        line->pw = 0;
-        for (i = 0; i < line->len; ++i) {
-            n = uMap->mapUnicode(line->text[i], buf, sizeof(buf));
-            line->pw += n;
-        }
-    }
-}
-
 // Merge blk (rot != 0) into primaryTree (rot == 0).
 void TextPage::insertIntoTree(TextBlock *blk, TextBlock *primaryTree) {
     TextBlock *child;
@@ -3897,11 +3877,11 @@ void TextPage::dumpInReadingOrder(GBool blocks, GBool fullFontName) {
     TextColumn *col;
     TextParagraph *par;
     TextLine *line;
-    TextWord *word, *prvWord, *nextWord;
+    TextWord *word, *sWord, *nextWord;
     GList *columns;
     //GBool primaryLR;
 
-    int colIdx, parIdx, lineIdx, wordI, rot, n;
+    int colIdx, parIdx, lineIdx, wordI, wordJ, rot, n;
 
     UnicodeMap *uMap;
     TextFontStyleInfo *fontStyleInfo;
@@ -3978,8 +3958,7 @@ void TextPage::dumpInReadingOrder(GBool blocks, GBool fullFontName) {
                 for (wordI = 0; wordI < line->words->getLength(); ++wordI) {
 
                     word = (TextWord *)line->words->get(wordI);
-                    if(wordI > 0)
-                        prvWord = (TextWord *)line->words->get(wordI-1);
+
                     if(wordI < line->words->getLength() - 1)
                         nextWord = (TextWord *)line->words->get(wordI+1);
 
@@ -3996,7 +3975,7 @@ void TextPage::dumpInReadingOrder(GBool blocks, GBool fullFontName) {
                                                 colorMode != splashModeMono1;
                         int bitmapRowPad = 1;
                         //This
-                        SplashBitmap *bitmap = new SplashBitmap(400, 600, bitmapRowPad, colorMode,
+                        SplashBitmap *bitmap = new SplashBitmap(2000, 1000, bitmapRowPad, colorMode,
                                                                 colorMode != splashModeMono1, bitmapTopDown);
 
                         splash = new Splash(bitmap, vectorAntialias, &screenParams);
@@ -4009,71 +3988,24 @@ void TextPage::dumpInReadingOrder(GBool blocks, GBool fullFontName) {
 //        int render = state->getRender();
                         //if (needFontUpdate) {
                         //}
-                        int j =0;
                         int firstCharXmin = 0;
                         CharCode c;
-                        while(word->getLength() > j) {
-                            TextChar * wordchar = (TextChar *) word->chars->get(j);
-                            if(wordchar->isNonUnicodeGlyph)
-                                c = wordchar->charCode;
-                            if(j==0)
-                                firstCharXmin = wordchar->xMin;
-                            splash->fillChar((SplashCoord) (80 + wordchar->xMin - firstCharXmin), (SplashCoord) 80, wordchar->charCode,
-                                             wordchar->splashfont);
+                        for (wordJ = 0; wordJ < line->words->getLength(); ++wordJ) {
+                            sWord = (TextWord *)line->words->get(wordJ);
 
-                            //        SplashGlyphBitmap glyph;
-                            //        GBool makeGlyph = font->makeGlyph2(c, xFrac, yFrac, &glyph);
-                            //gather the glyphs
-                            //compute bouding box to setup screen params
+                            int j=0;
+                            while(sWord->getLength() > j) {
+                                TextChar *wordchar = (TextChar *) sWord->chars->get(j);
+                                if (wordchar->isNonUnicodeGlyph)
+                                    c = wordchar->charCode;
+                                if (j == 0 && wordJ == 0)
+                                    firstCharXmin = wordchar->xMin;
+                                splash->fillChar((SplashCoord) (80 + wordchar->xMin - firstCharXmin), (SplashCoord) 80,
+                                                 wordchar->charCode,
+                                                 wordchar->splashfont);
 
-                            //            if(parameters->getReadingOrder() == gTrue)
-                            //                text->getPageChars();
-                            //            else
-                            //                text->getPageWords();
-
-                            j++;
-                        }
-
-                        j = 0;
-                        while(nextWord->getLength() > j) {
-                            TextChar * wordchar = (TextChar *) nextWord->chars->get(j);
-                            if(wordchar->isNonUnicodeGlyph)
-                                c = wordchar->charCode;
-                            splash->fillChar((SplashCoord) (80 + wordchar->xMin - firstCharXmin), (SplashCoord) 80, wordchar->charCode,
-                                             wordchar->splashfont);
-
-                            //        SplashGlyphBitmap glyph;
-                            //        GBool makeGlyph = font->makeGlyph2(c, xFrac, yFrac, &glyph);
-                            //gather the glyphs
-                            //compute bouding box to setup screen params
-
-                            //            if(parameters->getReadingOrder() == gTrue)
-                            //                text->getPageChars();
-                            //            else
-                            //                text->getPageWords();
-
-                            j++;
-                        }
-
-                        j = 0;
-                        while(prvWord->getLength() > j) {
-                            TextChar * wordchar = (TextChar *) prvWord->chars->get(j);
-                            if(wordchar->isNonUnicodeGlyph)
-                                c = wordchar->charCode;
-                            splash->fillChar((SplashCoord) (80 + wordchar->xMin - firstCharXmin), (SplashCoord) 80, wordchar->charCode,
-                                             wordchar->splashfont);
-
-                            //        SplashGlyphBitmap glyph;
-                            //        GBool makeGlyph = font->makeGlyph2(c, xFrac, yFrac, &glyph);
-                            //gather the glyphs
-                            //compute bouding box to setup screen params
-
-                            //            if(parameters->getReadingOrder() == gTrue)
-                            //                text->getPageChars();
-                            //            else
-                            //                text->getPageWords();
-
-                            j++;
+                                j++;
+                            }
                         }
 
 
@@ -4123,94 +4055,6 @@ void TextPage::dumpInReadingOrder(GBool blocks, GBool fullFontName) {
         //(*outputFunc)(outputStream, eol, eolLen);
     }
     deleteGList(columns, TextColumn);
-}
-
-int TextPage::dumpFragment(Unicode *text, int len, UnicodeMap *uMap, GString *s) {
-    char lre[8], rle[8], popdf[8], buf[8];
-    int lreLen, rleLen, popdfLen, n;
-    int nCols, i, j, k;
-
-    nCols = 0;
-
-    // Unicode OK
-    if (uMap->isUnicode()) {
-
-        lreLen = uMap->mapUnicode(0x202a, lre, sizeof(lre));
-        rleLen = uMap->mapUnicode(0x202b, rle, sizeof(rle));
-        popdfLen = uMap->mapUnicode(0x202c, popdf, sizeof(popdf));
-
-        // IF primary direction is Left to Right
-        if (primaryLR) {
-
-            i = 0;
-            while (i < len) {
-                // output a left-to-right section
-                for (j = i; j < len && !unicodeTypeR(text[j]); ++j)
-                    ;
-                for (k = i; k < j; ++k) {
-                    n = uMap->mapUnicode(text[k], buf, sizeof(buf));
-                    s->append(buf, n);
-                    ++nCols;
-                }
-                i = j;
-                // output a right-to-left section
-                for (j = i; j < len && !unicodeTypeL(text[j]); ++j)
-                    ;
-                if (j > i) {
-                    s->append(rle, rleLen);
-                    for (k = j - 1; k >= i; --k) {
-                        n = uMap->mapUnicode(text[k], buf, sizeof(buf));
-                        s->append(buf, n);
-                        ++nCols;
-                    }
-                    s->append(popdf, popdfLen);
-                    i = j;
-                }
-            }
-
-        }
-            // ELSE primary direction is Right to Left
-        else {
-
-            s->append(rle, rleLen);
-            i = len - 1;
-            while (i >= 0) {
-                // output a right-to-left section
-                for (j = i; j >= 0 && !unicodeTypeL(text[j]); --j)
-                    ;
-                for (k = i; k > j; --k) {
-                    n = uMap->mapUnicode(text[k], buf, sizeof(buf));
-                    s->append(buf, n);
-                    ++nCols;
-                }
-                i = j;
-                // output a left-to-right section
-                for (j = i; j >= 0 && !unicodeTypeR(text[j]); --j)
-                    ;
-                if (j < i) {
-                    s->append(lre, lreLen);
-                    for (k = j + 1; k <= i; ++k) {
-                        n = uMap->mapUnicode(text[k], buf, sizeof(buf));
-                        s->append(buf, n);
-                        ++nCols;
-                    }
-                    s->append(popdf, popdfLen);
-                    i = j;
-                }
-            }
-            s->append(popdf, popdfLen);
-        }
-    }
-        // Unicode NOT OK
-    else {
-        for (i = 0; i < len; ++i) {
-            n = uMap->mapUnicode(text[i], buf, sizeof(buf));
-            s->append(buf, n);
-            nCols += n;
-        }
-    }
-
-    return nCols;
 }
 
 void TextPage::saveState(GfxState *state) {
