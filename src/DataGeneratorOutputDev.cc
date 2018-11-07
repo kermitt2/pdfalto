@@ -96,30 +96,6 @@ using namespace ConstantsUtils;
 // cause addChar to start a new word.
 #define minDupBreakOverlap 0.3
 
-// Maximum distance between baselines of two words on the same line,
-// e.g., distance between subscript or superscript and the primary
-// baseline, as a fraction of the font size.
-#define maxIntraLineDelta 0.5
-
-// Maximum distance value between the baseline of a word in a line
-// and the yMin of an other word in a other line
-#define maxSpacingWordsBetweenTwoLines 5
-
-// Maximum inter-word spacing, as a fraction of the font size.
-#define maxWordSpacing 1.5
-
-// Maximum horizontal spacing which will allow a word to be pulled
-// into a block.
-#define maxColSpacing 0.3
-
-// Max distance between baselines of two lines within a block, as a
-// fraction of the font size.
-#define maxLineSpacingDelta 1.5
-
-// Max difference in primary font sizes on two lines in the same
-// block.  Delta1 is used when examining new lines above and below the
-// current block.
-#define maxBlockFontSizeDelta1 0.05
 
 // Max difference in primary,secondary coordinates (as a fraction of
 // the font size) allowed for duplicated text (fake boldface, drop
@@ -197,56 +173,18 @@ using namespace ConstantsUtils;
 // between lines, start a new paragraph.
 #define paragraphFontSizeDelta 1
 
-// Spaces at the start of a line in physical layout mode are this wide
-// (as a multiple of font size).
-#define physLayoutSpaceWidth 0.33
-
 // In simple layout mode, lines are broken at gaps larger than this
 // value multiplied by font size.
 #define simpleLayoutGapThreshold 0.4
-
-// Table cells (TextColumns) are allowed to overlap by this much
-// in table layout mode (as a fraction of cell width or height).
-#define tableCellOverlapSlack 0.05
-
-// Primary axis delta which will cause a line break in raw mode
-// (as a fraction of font size).
-#define rawModeLineDelta 0.5
-
-// Secondary axis delta which will cause a word break in raw mode
-// (as a fraction of font size).
-#define rawModeWordSpacing 0.15
-
-// Secondary axis overlap which will cause a line break in raw mode
-// (as a fraction of font size).
-#define rawModeCharOverlap 0.2
 
 // Max spacing (as a multiple of font size) allowed between the end of
 // a line and a clipped character to be included in that line.
 #define clippedTextMaxWordSpace 0.5
 
-// Max width of underlines (in points).
-#define maxUnderlineWidth 3
-
-// Max horizontal distance between edge of word and start of underline
-// (as a fraction of font size).
-#define underlineSlack 0.2
-
-// Max vertical distance between baseline of word and start of
-// underline (as a fraction of font size).
-#define underlineBaselineSlack 0.2
-
-// Max distance between edge of text and edge of link border (as a
-// fraction of font size).
-#define hyperlinkSlack 0.2
-
 // Text is considered diagonal if abs(tan(angle)) > diagonalThreshold.
 // (Or 1/tan(angle) for 90/270 degrees.)
 #define diagonalThreshold 0.1
 
-// This value is used as the ascent when computing selection
-// rectangles, in order to work around flakey ascent values in fonts.
-#define selectionAscent 0.8
 
 //------------------------------------------------------------------------
 // TextFontInfo
@@ -3934,6 +3872,7 @@ void TextPage::dumpInReadingOrder(GBool blocks, GBool fullFontName) {
 
     GString *id;
 
+    int data_count = 0;
 
     for (colIdx = 0; colIdx < columns->getLength(); ++colIdx) {
         col = (TextColumn *)columns->get(colIdx);
@@ -3968,14 +3907,14 @@ void TextPage::dumpInReadingOrder(GBool blocks, GBool fullFontName) {
                         GBool bitmapTopDown = gTrue;
                         GBool allowAntialias = gTrue;
                         SplashColor paperColor;
-                        setupScreenParams(1240, 1754);
+                        setupScreenParams(128, 64);
                         paperColor[0] = paperColor[1] = paperColor[2] = 0xff;
                         GBool vectorAntialias = allowAntialias &&
                                                 globalParams->getVectorAntialias() &&
                                                 colorMode != splashModeMono1;
                         int bitmapRowPad = 1;
                         //This
-                        SplashBitmap *bitmap = new SplashBitmap(2000, 1000, bitmapRowPad, colorMode,
+                        SplashBitmap *bitmap = new SplashBitmap(512, 64, bitmapRowPad, colorMode,
                                                                 colorMode != splashModeMono1, bitmapTopDown);
 
                         splash = new Splash(bitmap, vectorAntialias, &screenParams);
@@ -4013,7 +3952,7 @@ void TextPage::dumpInReadingOrder(GBool blocks, GBool fullFontName) {
                         png_structp png;
                         png_infop pngInfo;
                         GString *pngFile;
-                        pngFile = GString::format("{0:s}-{1:06d}.png", "OEH_baso_heldu_onepage", c);
+                        pngFile = GString::format("e{0:s}-{1:02d}.png", to_string(data_count).c_str(), c);
                         if (!(f = fopen(pngFile->getCString(), "wb"))) {
                             exit(2);
                         }
@@ -4026,6 +3965,8 @@ void TextPage::dumpInReadingOrder(GBool blocks, GBool fullFontName) {
                         finishPNG(&png, &pngInfo);
 
                         fclose(f);
+
+                        data_count++;
 
                     }
 
