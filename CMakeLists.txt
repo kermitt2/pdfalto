@@ -115,9 +115,9 @@ set(SOURCE_FILES
 add_executable(traingenerator ${SOURCE_FILES})
 
 if(${HAVE_PAPER_H})
-    target_link_libraries(traingenerator ${FREETYPE_LIBRARY} ${FREETYPE_OTHER_LIBS} zlib png xml2 xpdf goo fofi splash dl ${HAVE_PAPER_H})
+    target_link_libraries(traingenerator ${FREETYPE_LIBRARY} ${FREETYPE_OTHER_LIBS} zlib png xml2 xpdf goo fofi splash ${ICU_PATH}/lib/libicuuc.a ${ICU_PATH}/lib/libicudata.a dl ${HAVE_PAPER_H})
 else()
-    target_link_libraries(traingenerator ${FREETYPE_LIBRARY} ${FREETYPE_OTHER_LIBS} zlib png xml2 xpdf goo fofi splash dl)
+    target_link_libraries(traingenerator ${FREETYPE_LIBRARY} ${FREETYPE_OTHER_LIBS} zlib png xml2 xpdf goo fofi splash ${ICU_PATH}/lib/libicuuc.a ${ICU_PATH}/lib/libicudata.a dl)
 endif()
 
 if(FREETYPE_INCLUDE_DIR_ft2build)
@@ -138,4 +138,5 @@ target_include_directories(traingenerator
         PUBLIC ${XPDF_SUBDIR}/fofi
         PUBLIC ${XPDF_SUBDIR}/xpdf
         PUBLIC ${XPDF_BUILD_DIR}
+        PUBLIC ${ICU_PATH}/common
         )

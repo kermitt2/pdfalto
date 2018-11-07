@@ -38,6 +38,7 @@ using namespace std;
 #include <splash/SplashFontEngine.h>
 #include <splash/SplashPath.h>
 #include <splash/Splash.h>
+#include <unicode/uchar.h>
 
 // number of Type 3 fonts to cache
 #define splashOutT3FontCacheSize 8
@@ -202,6 +203,8 @@ public:
     GfxState *state;
     Unicode c;
     CharCode charCode;
+
+    UBlockCode unicode_block;
     int charPos;
     int charLen;
     double xMin, yMin, xMax, yMax;

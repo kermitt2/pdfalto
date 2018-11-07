@@ -280,6 +280,7 @@ TextChar::TextChar(GfxState *stateA, Unicode cA, CharCode charCodeA, int charPos
     double t;
     state = stateA;
     c = cA;
+    unicode_block = ublock_getCode(cA);
     charCode = charCodeA;
     charPos = charPosA;
     charLen = charLenA;
@@ -546,7 +547,7 @@ int rotA, int dirA, GBool spaceAfterA, GfxState *state,
         ch = (TextChar *)charsA->get(rot >= 2 ? start + len - 1 - j : start + j);
         chars->append(ch);
 
-        if(ch->isNonUnicodeGlyph)
+        if(ch->isNonUnicodeGlyph || (ch->unicode_block != UBLOCK_LATIN_1_SUPPLEMENT && ch->unicode_block != UBLOCK_BASIC_LATIN))
             isNonUnicodeGlyph = gTrue;
 
         charPos[i] = ch->charPos;
