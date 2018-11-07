@@ -82,6 +82,8 @@ public:
 	 */
 	int getFilesCountLimit() {return filesCountLimit;}
 
+	int getCharCount() {return charCount;}
+
 	/** Modify the boolean which inform if the images are displayed
 	 * @param noImage <code>true</code> if the noImage option is not selected, <code>false</code> otherwise
 	 */
@@ -130,6 +132,8 @@ public:
 	void setFilesCountLimit(int count);
 	
 	void saveToXML(const char *fileName,int firstPage,int lastPage);
+
+	void setCharCount(int charCount);
 	
 private:
 
@@ -153,6 +157,8 @@ private:
 	GBool ocr;
 	/** the count limit of files */
 	int filesCountLimit;
+	/** number of characters to extract into bitmap */
+	int charCount;
   
 };
 

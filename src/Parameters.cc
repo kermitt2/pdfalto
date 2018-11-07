@@ -77,6 +77,12 @@ void Parameters::setOcr(GBool ocrA) {
 	unlockGlobalParams;
 }
 
+void Parameters::setCharCount(int charCountA) {
+	lockGlobalParams;
+	charCount = charCountA;
+	unlockGlobalParams;
+}
+
 void Parameters::saveToXML(const char *fileName,int firstPage,int lastPage){
 	char* tmp;
   	tmp=(char*)malloc(10*sizeof(char));

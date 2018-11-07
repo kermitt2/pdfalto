@@ -50,6 +50,7 @@ static const char cvsid[] = "$Revision: 1.4 $";
 static int firstPage = 1;
 static int lastPage = 0;
 static int filesCountLimit = 0;
+static int charCount = 5;
 static GBool physLayout = gTrue;
 static GBool verbose = gFalse;
 
@@ -83,6 +84,8 @@ static ArgDesc argDesc[] = {
                 "display pdf attributes"},
         {"-readingOrder", argFlag,     &readingOrder,  0,
                 "blocks follow the reading order"},
+        {"-charCount",       argInt,      &charCount,     0,
+                "number of characters in bitmap"},
         {"-fullFontName", argFlag,     &fullFontName,  0,
                 "fonts names are not normalized"},
         {"-opw",     argString,   ownerPassword,  sizeof(ownerPassword),
@@ -156,7 +159,7 @@ int main(int argc, char *argv[]) {
     // Parameters specifics to pdfalto
     parameters = new Parameters();
 
-
+    parameters->setCharCount(charCount);
 //    if(readingOrder){
         parameters->setReadingOrder(gTrue);
         cmd->append("-readingOrder ");

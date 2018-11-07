@@ -3927,26 +3927,45 @@ void TextPage::dumpInReadingOrder(GBool blocks, GBool fullFontName) {
 //        int render = state->getRender();
                         //if (needFontUpdate) {
                         //}
-                        int firstCharXmin = 0;
-                        CharCode c;
-                        for (wordJ = 0; wordJ < line->words->getLength(); ++wordJ) {
-                            sWord = (TextWord *)line->words->get(wordJ);
+                        int firstCharXmin = word->xMin;
+                        CharCode c = 0;
+                        int k = 0;
+                        int y = (int)(parameters->getCharCount()*0.5);
 
-                            int j=0;
+                        for (wordJ = wordI-1; wordJ >= 0; --wordJ) {
+                            sWord = (TextWord *)line->words->get(wordJ);
+                            int j = sWord->getLength() - 1 ;
+                            while(j > 0) {
+                                TextChar *wordchar = (TextChar *) sWord->chars->get(j);
+                                splash->fillChar((SplashCoord) (256 + wordchar->xMin - firstCharXmin), (SplashCoord) 50,
+                                                 wordchar->charCode,
+                                                 wordchar->splashfont);
+
+                                j--;
+                                k++;
+                                if(k >= y)
+                                    goto rightPart;
+                            }
+                        }
+                        rightPart:
+                        for (wordJ = wordI; wordJ < line->words->getLength(); ++wordJ) {
+                            sWord = (TextWord *)line->words->get(wordJ);
+                            int j = 0;
                             while(sWord->getLength() > j) {
                                 TextChar *wordchar = (TextChar *) sWord->chars->get(j);
                                 if (wordchar->isNonUnicodeGlyph)
                                     c = wordchar->charCode;
-                                if (j == 0 && wordJ == 0)
-                                    firstCharXmin = wordchar->xMin;
-                                splash->fillChar((SplashCoord) (80 + wordchar->xMin - firstCharXmin), (SplashCoord) 80,
+                                splash->fillChar((SplashCoord) (256 + wordchar->xMin - firstCharXmin), (SplashCoord) 50,
                                                  wordchar->charCode,
                                                  wordchar->splashfont);
 
                                 j++;
+                                k++;
+                                if(k >= parameters->getCharCount())
+                                    goto theEnd;
                             }
                         }
-
+                        theEnd:
 
                         FILE *f;
                         png_structp png;
