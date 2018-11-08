@@ -371,7 +371,7 @@ int rotA, int dirA, GBool spaceAfterA, GfxState *state,
 
     spaceAfter = spaceAfterA;
 
-    isNonUnicodeGlyph = gFalse;
+    containsNonUnicodeGlyph = gFalse;
 
     dir = dirA;
 
@@ -548,7 +548,7 @@ int rotA, int dirA, GBool spaceAfterA, GfxState *state,
         chars->append(ch);
 
         if(ch->isNonUnicodeGlyph || (ch->unicode_block != UBLOCK_LATIN_1_SUPPLEMENT && ch->unicode_block != UBLOCK_BASIC_LATIN))
-            isNonUnicodeGlyph = gTrue;
+            containsNonUnicodeGlyph = gTrue;
 
         charPos[i] = ch->charPos;
         if (i == len - 1) {
@@ -847,7 +847,7 @@ TextRawWord::TextRawWord(GfxState *state, double x0, double y0,
     colorG = colToDbl(rgb.g);
     colorB = colToDbl(rgb.b);
 
-    isNonUnicodeGlyph = gFalse;
+    containsNonUnicodeGlyph = gFalse;
 }
 
 TextRawWord::~TextRawWord() {
@@ -916,13 +916,16 @@ void TextRawWord::addChar(GfxState *state, double x, double y, double dx,
         charState->setCTM(state->getCTM()[0], state->getCTM()[1], state->getCTM()[2], state->getCTM()[3], state->getCTM()[4], state->getCTM()[5]);
         charState->setTextMat(state->getTextMat()[0], state->getTextMat()[1], state->getTextMat()[2], state->getTextMat()[3], state->getTextMat()[4], state->getTextMat()[5]);
         charState->setHorizScaling(state->getHorizScaling());
+        TextChar * ch = new TextChar(charState, u, charCodeA, charPosA, nBytes, xxMin, yyMin, xxMax, yyMax,
+                                     rotA, clipped,
+                                     state->getRender() == 3 || alpha < 0.001,
+                                     fontA, fontSizeA, splashFont,
+                                     colToDbl(rgb.r), colToDbl(rgb.g),
+                                     colToDbl(rgb.b), isNonUnicodeGlyph);
 
-        chars->append(new TextChar(charState, u, charCodeA, charPosA, nBytes, xxMin, yyMin, xxMax, yyMax,
-                                   rotA, clipped,
-                                   state->getRender() == 3 || alpha < 0.001,
-                                   fontA, fontSizeA, splashFont,
-                                   colToDbl(rgb.r), colToDbl(rgb.g),
-                                   colToDbl(rgb.b), isNonUnicodeGlyph));
+        if(isNonUnicodeGlyph|| (ch->unicode_block != UBLOCK_LATIN_1_SUPPLEMENT && ch->unicode_block != UBLOCK_BASIC_LATIN))
+            containsNonUnicodeGlyph = gTrue;
+        chars->append(ch);
         switch (rot) {
             case 0:
                 if (len == 0) {
@@ -1033,8 +1036,8 @@ GBool TextRawWord::overlap(TextRawWord *w2){
     return gFalse;
 }
 
-void IWord::setContainNonUnicodeGlyph(GBool containNonUnicodeGlyph) {
-    isNonUnicodeGlyph = containNonUnicodeGlyph;
+void IWord::setContainNonUnicodeGlyph(GBool containsNonUnicodeGlyphA) {
+    containsNonUnicodeGlyph = containsNonUnicodeGlyphA;
 }
 
 //------------------------------------------------------------------------
@@ -1512,8 +1515,6 @@ TextPage::TextPage(GBool verboseA, Catalog *catalog, xmlNodePtr node,
         namespaceURI = NULL;
     }
 
-    rawWords = NULL;
-    rawLastWord = NULL;
     fonts = new GList();
     lastFindXMin = lastFindYMin = 0;
     haveLastFind = gFalse;
@@ -1644,11 +1645,14 @@ void TextPage::clear() {
         deleteGList(chars, TextChar);
         chars = new GList();
     } else {
-        while (rawWords) {
-            word = rawWords;
-            rawWords = rawWords->next;
-            delete word;
-        }
+        if(words->getLength()>0)
+            deleteGList(words, TextRawWord);
+        words = new GList();
+//        while (rawWords) {
+//            word = rawWords;
+//            rawWords = rawWords->next;
+//            delete word;
+//        }
     }
 
     curRot = 0;
@@ -1669,8 +1673,8 @@ void TextPage::clear() {
     nest = 0;
     nTinyChars = 0;
 
-    rawWords = NULL;
-    rawLastWord = NULL;
+//    rawWords = NULL;
+//    rawLastWord = NULL;
     fonts = new GList();
 }
 
@@ -2131,8 +2135,6 @@ void TextPage::addCharToRawWord(GfxState *state, double x, double y, double dx,
         h1 /= uLen;
 
         for (i = 0; i < uLen; ++i) {
-            if(isNonUnicodeGlyph)
-                curWord->setContainNonUnicodeGlyph(isNonUnicodeGlyph);
             curWord->addChar(state, x1 + i * w1, y1 + i * h1, w1, h1, u[i], c, charPos, (overlap || sp < -minDupBreakOverlap * curWord->fontSize), curFont, curFontSize, splashFont, nBytes, curRot, isNonUnicodeGlyph);
         }
     }
@@ -2146,10 +2148,10 @@ void TextPage::addCharToRawWord(GfxState *state, double x, double y, double dx,
 void TextPage::addChar(GfxState *state, double x, double y, double dx,
                        double dy, CharCode c, int nBytes, Unicode *u, int uLen, SplashFont * splashFont, GBool isNonUnicodeGlyph) {
 
-//    if(parameters->getReadingOrder() == gTrue)
+    if(parameters->getReadingOrder() == gTrue)
         addCharToPageChars(state, x, y, dx, dy, c, nBytes, u, uLen, splashFont, isNonUnicodeGlyph);
-//    else
-//        addCharToRawWord(state, x, y, dx, dy, c, nBytes, u, uLen, splashFont, isNonUnicodeGlyph);
+    else
+        addCharToRawWord(state, x, y, dx, dy, c, nBytes, u, uLen, splashFont, isNonUnicodeGlyph);
 }
 
 void TextPage::endWord() {
@@ -2180,14 +2182,14 @@ void TextPage::addWord(TextRawWord *word) {
     }
 
 //    if(readingOrder) {
-//        words->append(word);
+        words->append(word);
 //    } else {
-        if (rawLastWord) {
-            rawLastWord->next = word;
-        } else {
-            rawWords = word;
-        }
-        rawLastWord = word;
+//        if (rawLastWord) {
+//            rawLastWord->next = word;
+//        } else {
+//            rawWords = word;
+//        }
+//        rawLastWord = word;
 //    }
 }
 
@@ -3811,6 +3813,7 @@ static SplashStrokeAdjustMode mapStrokeAdjustMode[3] = {
         splashStrokeAdjustCAD
 };
 
+int data_count = 0;
 void TextPage::dumpInReadingOrder(GBool blocks, GBool fullFontName) {
     TextBlock *tree;
     TextColumn *col;
@@ -3820,7 +3823,7 @@ void TextPage::dumpInReadingOrder(GBool blocks, GBool fullFontName) {
     GList *columns;
     //GBool primaryLR;
 
-    int colIdx, parIdx, lineIdx, wordI, wordJ, rot, n;
+    int colIdx, parIdx, lineIdx, wordId, wordJ, rot, n;
 
     UnicodeMap *uMap;
     TextFontStyleInfo *fontStyleInfo;
@@ -3852,28 +3855,8 @@ void TextPage::dumpInReadingOrder(GBool blocks, GBool fullFontName) {
     dumpColumns(columns);
 #endif
 
-    xmlNodePtr node = NULL;
-    xmlNodePtr nodeline = NULL;
-    xmlNodePtr nodeblocks = NULL;
-    xmlNodePtr nodeImageInline = NULL;
-
-    double previousWordBaseLine = 0;
-    double previousWordYmin = 0;
-    double previousWordYmax = 0;
-
-    // For TEXT tag attributes
-    double xMin = 0;
-    double yMin = 0;
-    double xMax = 0;
-    double yMax = 0;
-    double yMaxRot = 0;
-    double yMinRot = 0;
-    double xMaxRot = 0;
-    double xMinRot = 0;
-
     GString *id;
-
-    int data_count = 0;
+    GList* extChars = new GList();
 
     for (colIdx = 0; colIdx < columns->getLength(); ++colIdx) {
         col = (TextColumn *)columns->get(colIdx);
@@ -3895,15 +3878,15 @@ void TextPage::dumpInReadingOrder(GBool blocks, GBool fullFontName) {
                     --n;
                 }
 
-                for (wordI = 0; wordI < line->words->getLength(); ++wordI) {
+                for (wordId = 0; wordId < line->words->getLength(); ++wordId) {
 
-                    word = (TextWord *)line->words->get(wordI);
+                    word = (TextWord *) line->words->get(wordId);
 
-                    if(wordI < line->words->getLength() - 1)
-                        nextWord = (TextWord *)line->words->get(wordI+1);
+                    if (wordId < line->words->getLength() - 1)
+                        nextWord = (TextWord *) line->words->get(wordId + 1);
 
 
-                    if(word->containNonUnicodeGlyph()){
+                    if (word->containNonUnicodeGlyph()) {
                         SplashColorMode colorMode = splashModeRGB8;
                         GBool bitmapTopDown = gTrue;
                         GBool allowAntialias = gTrue;
@@ -3931,91 +3914,207 @@ void TextPage::dumpInReadingOrder(GBool blocks, GBool fullFontName) {
                         int firstCharXmin = word->xMin;
                         CharCode c = 0;
                         int k = 0;
-                        int y = (int)(parameters->getCharCount()*0.5);
+                        int y = (int) (parameters->getCharCount() * 0.5);
 
-                        for (wordJ = wordI-1; wordJ >= 0; --wordJ) {
-                            sWord = (TextWord *)line->words->get(wordJ);
-                            int j = sWord->getLength() - 1 ;
-                            while(j > 0) {
+
+                        for (wordJ = wordId - 1; wordJ >= 0; --wordJ) {
+                            sWord = (TextWord *) line->words->get(wordJ);
+                            int j = sWord->getLength() - 1;
+                            while (j > 0) {
                                 TextChar *wordchar = (TextChar *) sWord->chars->get(j);
-                                splash->fillChar((SplashCoord) (256 + wordchar->xMin - firstCharXmin), (SplashCoord) 50,
-                                                 wordchar->charCode,
-                                                 wordchar->splashfont);
 
+                                if (firstCharXmin <= wordchar->xMin)//means another line
+                                    goto rightPart;
+                                else if (wordchar->xMin < firstCharXmin)
+                                    firstCharXmin = wordchar->xMin;
                                 j--;
                                 k++;
-                                if(k >= y)
+
+                                extChars->append(wordchar);
+
+                                if (k >= y)
                                     goto rightPart;
                             }
                         }
                         rightPart:
-                        for (wordJ = wordI; wordJ < line->words->getLength(); ++wordJ) {
-                            sWord = (TextWord *)line->words->get(wordJ);
+                        for (wordJ = wordId; wordJ < line->words->getLength(); ++wordJ) {
+                            sWord = (TextWord *) line->words->get(wordJ);
                             int j = 0;
-                            while(sWord->getLength() > j) {
+                            while (sWord->getLength() > j) {
                                 TextChar *wordchar = (TextChar *) sWord->chars->get(j);
                                 if (wordchar->isNonUnicodeGlyph)
                                     c = wordchar->charCode;
-                                splash->fillChar((SplashCoord) (256 + wordchar->xMin - firstCharXmin), (SplashCoord) 50,
-                                                 wordchar->charCode,
-                                                 wordchar->splashfont);
-
+                                if (wordchar->xMin < word->xMin)//either in newline or not ordered
+                                    goto theEnd;
                                 j++;
                                 k++;
-                                if(k >= parameters->getCharCount())
+
+                                extChars->append(wordchar);
+
+                                if (k == parameters->getCharCount())
                                     goto theEnd;
                             }
                         }
                         theEnd:
 
-                        FILE *f;
-                        png_structp png;
-                        png_infop pngInfo;
-                        GString *pngFile;
-                        pngFile = GString::format("e{0:s}-{1:02d}.png", to_string(data_count).c_str(), c);
-                        if (!(f = fopen(pngFile->getCString(), "wb"))) {
-                            exit(2);
+                        if (k == parameters->getCharCount()) {
+                            for (int p = 0; p < extChars->getLength(); p++) {
+                                TextChar *wordchar = (TextChar *) extChars->get(p);
+                                splash->fillChar((SplashCoord) (80 + wordchar->xMin - firstCharXmin), (SplashCoord) 50,
+                                                 wordchar->charCode,
+                                                 wordchar->splashfont);
+                            }
+                            FILE *f;
+                            png_structp png;
+                            png_infop pngInfo;
+                            GString *pngFile;
+                            pngFile = GString::format("ro{0:s}-{1:02d}.png", GString::fromInt(data_count)->getCString(),
+                                                      c);
+                            if (!(f = fopen(pngFile->getCString(), "wb"))) {
+                                exit(2);
+                            }
+                            delete pngFile;
+                            double resolution = 500;
+                            setupPNG(&png, &pngInfo, f,
+                                     8, gFalse ? PNG_COLOR_TYPE_RGB_ALPHA : PNG_COLOR_TYPE_RGB,
+                                     resolution, bitmap);
+                            writePNGData(png, bitmap);
+                            finishPNG(&png, &pngInfo);
+
+                            fclose(f);
+
+                            data_count++;
                         }
-                        delete pngFile;
-                        double resolution = 500;
-                        setupPNG(&png, &pngInfo, f,
-                                 8, gFalse ? PNG_COLOR_TYPE_RGB_ALPHA : PNG_COLOR_TYPE_RGB,
-                                 resolution, bitmap);
-                        writePNGData(png, bitmap);
-                        finishPNG(&png, &pngInfo);
-
-                        fclose(f);
-
-                        data_count++;
-
                     }
-
-                    char* tmp;
-
-                    tmp=(char*)malloc(10*sizeof(char));
-
-                    fontStyleInfo = new TextFontStyleInfo;
-
-
-                    //AA : this is a naive heuristic ( regarding general typography cases ) super/sub script, wikipedia description is good
-                    // first is clear, second check is in case of firstword in line and superscript which is recurrent for declaring affiliations or even refs.
-                    if((word->base < previousWordBaseLine && word->yMax > previousWordYmin)|| (wordI == 0 && wordI < line->words->getLength() - 1 && word->base < nextWord->base && word->yMax > nextWord->yMin))
-                        fontStyleInfo->setIsSuperscript(gTrue);
-                    else if(((wordI > 0) && word->base > previousWordBaseLine && word->yMin > previousWordYmax ))
-                        fontStyleInfo->setIsSubscript(gTrue);
-
-                    previousWordBaseLine = word->base;
-                    previousWordYmin = word->yMin;
-                    previousWordYmax = word->yMax;
-
-                    free(tmp);
                 }
-
             }
         }
         //(*outputFunc)(outputStream, eol, eolLen);
     }
     deleteGList(columns, TextColumn);
+}
+
+void TextPage::dump(GBool blocks, GBool fullFontName) {
+
+    numText = 1;
+    numBlock = 1;
+    GList* extChars = new GList();
+    // Output the page in raw (content stream) order
+    int wordId = 0, wordJ;
+    for (wordId = 0; wordId < words->getLength(); wordId++) {
+        TextRawWord *word, *nextWord, *prvWord, *sWord;
+        word = (TextRawWord *) words->get(wordId);
+
+        if(wordId + 1 < words->getLength())
+            nextWord = (TextRawWord *) words->get(wordId + 1);
+        if(wordId != 0)
+            prvWord = (TextRawWord *) words->get(wordId-1);
+
+
+        if(word->containNonUnicodeGlyph()){
+
+            extChars = new GList();
+            SplashColorMode colorMode = splashModeRGB8;
+            GBool bitmapTopDown = gTrue;
+            GBool allowAntialias = gTrue;
+            SplashColor paperColor;
+            setupScreenParams(128, 64);
+            paperColor[0] = paperColor[1] = paperColor[2] = 0xff;
+            GBool vectorAntialias = allowAntialias &&
+                                    globalParams->getVectorAntialias() &&
+                                    colorMode != splashModeMono1;
+            int bitmapRowPad = 1;
+            //This
+            SplashBitmap *bitmap = new SplashBitmap(512, 64, bitmapRowPad, colorMode,
+                                                    colorMode != splashModeMono1, bitmapTopDown);
+
+            splash = new Splash(bitmap, vectorAntialias, &screenParams);
+            splash->setMinLineWidth(globalParams->getMinLineWidth());
+            splash->setStrokeAdjust(
+                    mapStrokeAdjustMode[globalParams->getStrokeAdjust()]);
+            splash->setEnablePathSimplification(
+                    globalParams->getEnablePathSimplification());
+            splash->clear(paperColor, 0);
+//        int render = state->getRender();
+            //if (needFontUpdate) {
+            //}
+            int firstCharXmin = word->xMin;
+            CharCode c = 0;
+            int k = 0;
+            int y = (int)(parameters->getCharCount()*0.5);
+
+            for (wordJ = wordId-1; wordJ >= 0; --wordJ) {
+                sWord = (TextRawWord *)words->get(wordJ);
+                int j = sWord->getLength() - 1 ;
+                while(j > 0) {
+                    TextChar *wordchar = (TextChar *) sWord->chars->get(j);
+
+                    if(firstCharXmin <= wordchar->xMin)//means another line
+                        goto rightPart;
+                    else if(wordchar->xMin < firstCharXmin)
+                        firstCharXmin = wordchar->xMin;
+                    j--;
+                    k++;
+
+                    extChars->append(wordchar);
+
+                    if(k >= y)
+                        goto rightPart;
+                }
+            }
+            rightPart:
+            for (wordJ = wordId; wordJ < words->getLength(); ++wordJ) {
+                sWord = (TextRawWord *)words->get(wordJ);
+                int j = 0;
+                while(sWord->getLength() > j) {
+                    TextChar *wordchar = (TextChar *) sWord->chars->get(j);
+                    if (wordchar->isNonUnicodeGlyph)
+                        c = wordchar->charCode;
+                    if(wordchar->xMin < word->xMin)//either in newline or not ordered
+                        goto theEnd;
+                    j++;
+                    k++;
+
+                    extChars->append(wordchar);
+
+                    if(k == parameters->getCharCount())
+                        goto theEnd;
+                }
+            }
+            theEnd:
+
+            if(k==parameters->getCharCount()) {
+                for (int p = 0; p < extChars->getLength(); p++) {
+                    TextChar *wordchar = (TextChar *) extChars->get(p);
+                    splash->fillChar((SplashCoord) (80 + wordchar->xMin - firstCharXmin), (SplashCoord) 50,
+                                     wordchar->charCode,
+                                     wordchar->splashfont);
+                }
+                FILE *f;
+                png_structp png;
+                png_infop pngInfo;
+                GString *pngFile;
+                pngFile = GString::format("so{0:s}-{1:02d}.png", GString::fromInt(data_count)->getCString(), c);
+                if (!(f = fopen(pngFile->getCString(), "wb"))) {
+                    exit(2);
+                }
+                delete pngFile;
+                double resolution = 500;
+                setupPNG(&png, &pngInfo, f,
+                         8, gFalse ? PNG_COLOR_TYPE_RGB_ALPHA : PNG_COLOR_TYPE_RGB,
+                         resolution, bitmap);
+                writePNGData(png, bitmap);
+                finishPNG(&png, &pngInfo);
+
+                fclose(f);
+
+                data_count++;
+            }
+        }
+        } // end FOR
+
+
+
 }
 
 void TextPage::saveState(GfxState *state) {
@@ -4364,11 +4463,11 @@ void DataGeneratorOutputDev::endPage() {
     text->configuration();
     if (parameters->getDisplayText()) {
 
-//            if (readingOrder) {
+            if (readingOrder) {
             text->dumpInReadingOrder(blocks, fullFontName);
-//        }
-//        else
-//            text->dump(blocks, fullFontName);
+        }
+        else
+            text->dump(blocks, fullFontName);
     }
 
     text->endPage(dataDir);
