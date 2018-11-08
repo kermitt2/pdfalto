@@ -160,10 +160,10 @@ int main(int argc, char *argv[]) {
     parameters = new Parameters();
 
     parameters->setCharCount(charCount);
-//    if(readingOrder){
+    if(readingOrder){
         parameters->setReadingOrder(gTrue);
         cmd->append("-readingOrder ");
-//    }
+    }
 
 
     parameters->setDisplayText(gTrue);

@@ -304,7 +304,7 @@ public:
     /** The value of the leading */
     float leading;
 
-    GBool isNonUnicodeGlyph;
+    GBool containsNonUnicodeGlyph;
 //public:
 
 
@@ -377,9 +377,9 @@ public:
 
     Unicode getStandardBaseChar(Unicode c);
 
-    void setContainNonUnicodeGlyph(GBool containNonUnicodeGlyph);
+    void setContainNonUnicodeGlyph(GBool containsNonUnicodeGlyphA);
 
-    GBool containNonUnicodeGlyph(){return isNonUnicodeGlyph;};
+    GBool containNonUnicodeGlyph(){return containsNonUnicodeGlyph;};
 };
 
 //------------------------------------------------------------------------
