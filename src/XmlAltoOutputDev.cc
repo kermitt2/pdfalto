@@ -992,7 +992,6 @@ TextRawWord::TextRawWord(GfxState *state, double x0, double y0,
     charPos = NULL;
     edge = NULL;
     len = size = 0;
-    next = NULL;
 
     GfxRGB rgb;
 
@@ -1744,8 +1743,8 @@ TextPage::TextPage(GBool verboseA, Catalog *catalog, xmlNodePtr node,
         namespaceURI = NULL;
     }
 
-    rawWords = NULL;
-    rawLastWord = NULL;
+//    rawWords = NULL;
+//    rawLastWord = NULL;
     fonts = new GList();
     lastFindXMin = lastFindYMin = 0;
     haveLastFind = gFalse;
@@ -2157,11 +2156,14 @@ void TextPage::clear() {
         deleteGList(chars, TextChar);
         chars = new GList();
     } else {
-        while (rawWords) {
-            word = rawWords;
-            rawWords = rawWords->next;
-            delete word;
-        }
+        if(words->getLength()>0)
+            deleteGList(words, TextRawWord);
+        words = new GList();
+//        while (rawWords) {
+//            word = rawWords;
+//            rawWords = rawWords->next;
+//            delete word;
+//        }
     }
 
     curRot = 0;
@@ -2182,8 +2184,8 @@ void TextPage::clear() {
     nest = 0;
     nTinyChars = 0;
 
-    rawWords = NULL;
-    rawLastWord = NULL;
+//    rawWords = NULL;
+//    rawLastWord = NULL;
     fonts = new GList();
 
     // Clear the vector which contain images inline objects
@@ -3008,14 +3010,14 @@ void TextPage::addWord(TextRawWord *word) {
     }
 
 //    if(readingOrder) {
-//        words->append(word);
+        words->append(word);
 //    } else {
-        if (rawLastWord) {
-            rawLastWord->next = word;
-        } else {
-            rawWords = word;
-        }
-        rawLastWord = word;
+//        if (rawLastWord) {
+//            rawLastWord->next = word;
+//        } else {
+//            rawWords = word;
+//        }
+//        rawLastWord = word;
 //    }
 }
 
@@ -5141,7 +5143,6 @@ void TextPage::dumpInReadingOrder(GBool blocks, GBool fullFontName) {
 void TextPage::dump(GBool blocks, GBool fullFontName) {
     UnicodeMap *uMap;
 
-    TextRawWord *word;
     TextFontStyleInfo *fontStyleInfo;
 
     GString *id;
@@ -5219,7 +5220,7 @@ void TextPage::dump(GBool blocks, GBool fullFontName) {
         delete id;
         numBlock = numBlock + 1;
     } else {
-        if (rawWords) {
+        if (words->getLength() > 0) {
             xmlAddChild(printSpace, nodeline);
         }
     }
@@ -5228,7 +5229,15 @@ void TextPage::dump(GBool blocks, GBool fullFontName) {
     minLineX = 999999999;
     minLineY = 999999999;
 
-    for (word = rawWords; word; word = word->next) {
+    int wordId = 0;
+    for (wordId = 0; wordId < words->getLength(); wordId++) {
+
+        TextRawWord *word, *nextWord, *prvWord;
+        word = (TextRawWord *) words->get(wordId);
+        if(wordId + 1 < words->getLength())
+            nextWord = (TextRawWord *) words->get(wordId + 1);
+        if(wordId != 0)
+            prvWord = (TextRawWord *) words->get(wordId-1);
 
         char* tmp;
 
@@ -5237,7 +5246,7 @@ void TextPage::dump(GBool blocks, GBool fullFontName) {
 
         //AA : this is a naive heuristic ( regarding general typography cases ) super/sub script, wikipedia description is good
         // first is clear, second check is in case of firstword in line and superscript which is recurrent for declaring affiliations or even refs.
-        if((word->base < previousWordBaseLine && word->yMax > previousWordYmin) || (firstword && word->next && word->base < word->next->base && word->yMax > word->next->yMin))
+        if((word->base < previousWordBaseLine && word->yMax > previousWordYmin) || (firstword && nextWord && word->base < nextWord->base && word->yMax > nextWord->yMin))
             fontStyleInfo->setIsSuperscript(gTrue);
         else if((!firstword && word->base > previousWordBaseLine && word->yMin > previousWordYmax ))
             fontStyleInfo->setIsSubscript(gTrue);
@@ -5293,9 +5302,9 @@ void TextPage::dump(GBool blocks, GBool fullFontName) {
                 xxMax = word->xMax;
                 yyMin = word->yMin;
                 yyMax = word->yMax;
-                if (word->next) {
-                    xxMinNext = word->next->xMin;
-                    yyMinNext = word->next->yMin;
+                if (nextWord) {
+                    xxMinNext = nextWord->xMin;
+                    yyMinNext = nextWord->yMin;
                 }
                 break;
 
@@ -5304,9 +5313,9 @@ void TextPage::dump(GBool blocks, GBool fullFontName) {
                 xxMax = word->yMax;
                 yyMin = word->xMax;
                 yyMax = word->xMin;
-                if (word->next) {
-                    xxMinNext = word->next->yMin;
-                    yyMinNext = word->next->xMax;
+                if (nextWord) {
+                    xxMinNext = nextWord->yMin;
+                    yyMinNext = nextWord->xMax;
                 }
                 break;
 
@@ -5315,9 +5324,9 @@ void TextPage::dump(GBool blocks, GBool fullFontName) {
                 xxMax = word->xMin;
                 yyMin = word->yMax;
                 yyMax = word->yMin;
-                if (word->next) {
-                    xxMinNext = word->next->xMax;
-                    yyMinNext = word->next->yMax;
+                if (nextWord) {
+                    xxMinNext = nextWord->xMax;
+                    yyMinNext = nextWord->yMax;
                 }
                 break;
 
@@ -5326,9 +5335,9 @@ void TextPage::dump(GBool blocks, GBool fullFontName) {
                 xxMax = word->yMin;
                 yyMin = word->xMax;
                 yyMax = word->xMin;
-                if (word->next) {
-                    xxMinNext = word->next->yMax;
-                    yyMinNext = word->next->xMax;
+                if (nextWord) {
+                    xxMinNext = nextWord->yMax;
+                    yyMinNext = nextWord->xMax;
                 }
                 break;
         }
@@ -5409,13 +5418,13 @@ void TextPage::dump(GBool blocks, GBool fullFontName) {
         //		-      or IF the difference between the base of current word and the base next word is superior to maxIntraLineDelta * lineFontSize
         //		- and IF the xMax current word ++ maxWordSpacing * lineFontSize is superior to the xMin next word.
         //		HD 24/07/09 ?? - or if the font size of the current word is far different from the next word
-        if (word->next && (word->rot==word->next->rot) && (
+        if (nextWord && (word->rot==nextWord->rot) && (
                 (
-                        (fabs(word->base - word->next->baseYmin) < maxSpacingWordsBetweenTwoLines) ||
-                        (fabs(word->next->base - word->base) < maxIntraLineDelta * min(lineFontSize,word->next->fontSize) ) ||
-                                (word->next->yMax > word->yMin && word->next->base < word->base)
+                        (fabs(word->base - nextWord->baseYmin) < maxSpacingWordsBetweenTwoLines) ||
+                        (fabs(nextWord->base - word->base) < maxIntraLineDelta * min(lineFontSize,nextWord->fontSize) ) ||
+                                (nextWord->yMax > word->yMin && nextWord->base < word->base)
                 )
-                && (word->next->xMin <= word->xMax + maxWordSpacing * lineFontSize)
+                && (nextWord->xMin <= word->xMax + maxWordSpacing * lineFontSize)
         )
                 ) {
 
@@ -5425,26 +5434,26 @@ void TextPage::dump(GBool blocks, GBool fullFontName) {
             //			xMax word is superior to xMin next word and the difference between the base of current word and the next word is superior to maxIntraLineDelta*lineFontSize
             //			xMin next word is superior to xMax word + maxWordSpacing * lineFontSize
             //THEN if one of these tests is true, the line is finish
-            if (( (rotation==-1) ? ((word->base < word->next->yMin)
-                                    && (word->yMin < word->next->yMin)) : (word->rot==0
+            if (( (rotation==-1) ? ((word->base < nextWord->yMin)
+                                    && (word->yMin < nextWord->yMin)) : (word->rot==0
                                                                            ||word->rot==1) ? ((word->base < yyMinNext) && (yyMin
                                                                                                                               < yyMinNext)) : ((word->base > yyMinNext) && (yyMin
-                                                                                                                                                                         > yyMinNext)) ) || ( (rotation==-1) ? (word->next->xMin
+                                                                                                                                                                         > yyMinNext)) ) || ( (rotation==-1) ? (nextWord->xMin
                                                                                                                                                                                                                 < word->xMin) : (word->rot==0) ? (xxMinNext < xxMin)
                                                                                                                                                                                                                                                : (word->rot==1 ? xxMinNext > xxMin
                                                                                                                                                                                                                                                                : (word->rot==2 ? xxMinNext > xxMin : xxMinNext
                                                                                                                                                                                                                                                                                                      < xxMin) ) )
-                || ( (rotation==-1) ? (word->next->xMin<word->xMax)
-                                      && (fabs(word->next->base-word->base)
+                || ( (rotation==-1) ? (nextWord->xMin<word->xMax)
+                                      && (fabs(nextWord->base-word->base)
                                           >maxIntraLineDelta*lineFontSize)
                                     : (word->rot==0||word->rot==3) ? ( (xxMinNext<xxMax)
-                                                                       && (fabs(word->next->base-word->base)
+                                                                       && (fabs(nextWord->base-word->base)
                                                                            >maxIntraLineDelta*lineFontSize) )
                                                                    : ( (xxMinNext > xxMax)
-                                                                       && (fabs(word->next->base
+                                                                       && (fabs(nextWord->base
                                                                                 -word->base)
                                                                            >maxIntraLineDelta*lineFontSize) ))
-                || ( (rotation==-1) ? (word->next->xMin > word->xMax
+                || ( (rotation==-1) ? (nextWord->xMin > word->xMax
                                                           + maxWordSpacing * lineFontSize) : (word->rot==0
                                                                                               ||word->rot==3) ? (xxMinNext > xxMax
                                                                                                                              + maxWordSpacing * lineFontSize) : (xxMinNext
@@ -5508,7 +5517,7 @@ void TextPage::dump(GBool blocks, GBool fullFontName) {
                     addImageInlineNode(nodeline, nodeImageInline, tmp, word);
                 }
 
-                if (word->next) {
+                if (nextWord) {
                     firstword = 1;
                     if (blocks) {
                         lineFinish = gTrue;
@@ -5600,7 +5609,7 @@ void TextPage::dump(GBool blocks, GBool fullFontName) {
             minLineY = 99999999;
             minLineX = 99999999;
 
-            if (word->next) {
+            if (nextWord) {
                 if (blocks) {
                     lineFinish = gTrue;
                 } else {
@@ -5618,8 +5627,8 @@ void TextPage::dump(GBool blocks, GBool fullFontName) {
         if ( (blocks && lineFinish) || (blocks && endPage)) {
             // IF it's the first line
             if (linePreviousX == 0) {
-                if (word->next) {
-                    if (word->next->xMin > (lineX + lineWidth)
+                if (nextWord) {
+                    if (nextWord->xMin > (lineX + lineWidth)
                                            + (maxColSpacing * lineFontSize)) {
                         newBlock = gTrue;
                     }
@@ -5830,11 +5839,11 @@ void TextPage::dump(GBool blocks, GBool fullFontName) {
             nodeline->type = XML_ELEMENT_NODE;
         }
 
-        if(xmlChildElementCount(nodeline) > 0 && word->next && word->spaceAfter)
+        if(xmlChildElementCount(nodeline) > 0 && nextWord && word->spaceAfter)
         {
             xmlNodePtr spacingNode = xmlNewNode(NULL, (const xmlChar*)TAG_SPACING);
             spacingNode->type = XML_ELEMENT_NODE;
-            snprintf(tmp, sizeof(tmp),ATTR_NUMFORMAT, (word->next->xMin - word->xMax));
+            snprintf(tmp, sizeof(tmp),ATTR_NUMFORMAT, (nextWord->xMin - word->xMax));
             xmlNewProp(spacingNode, (const xmlChar*)ATTR_WIDTH,
                        (const xmlChar*)tmp);
             snprintf(tmp, sizeof(tmp),ATTR_NUMFORMAT, (word->yMin));
@@ -5899,7 +5908,7 @@ void TextPage::dump(GBool blocks, GBool fullFontName) {
         xmlAddChild(printSpace, node);
         free(tmp);
     }
-    delete word;
+
     uMap->decRefCnt();
 }
 

@@ -741,9 +741,6 @@ public:
     int indexmin;
     int indexmax;
 
-    /** The next word in line */
-    TextRawWord *next;
-
     friend class TextPage;
 };
 
@@ -1208,7 +1205,7 @@ public:
 
     TextFontInfo * getCurrentFont();
 
-    TextRawWord * getRawWords(){ return rawWords;}
+//    TextRawWord * getRawWords(){ return rawWords;}
 
 private:
 
@@ -1369,9 +1366,9 @@ private:
     /** The list of words */
     GList *words;
     /** The list of words, in raw order (only if rawOrder is set) */
-    TextRawWord *rawWords;
+    //TextRawWord *rawWords;
     /** The last word on rawWords list */
-    TextRawWord *rawLastWord;
+    //TextRawWord *rawLastWord;
     /** All fonts info objects used on this page <code>TextFontInfo</code> */
     GList *fonts;
     /** The <b>x</b> value coordinate of the last "find" result */
