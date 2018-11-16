@@ -7436,15 +7436,17 @@ XmlAltoOutputDev::~XmlAltoOutputDev() {
     }
 
     void XmlAltoOutputDev::endActualText(GfxState *state) {
-
-        SplashCoord mat[6];
-        mat[0] = (SplashCoord)curstate[0];
-        mat[1] = (SplashCoord)curstate[1];
-        mat[2] = (SplashCoord)curstate[2];
-        mat[3] = (SplashCoord)curstate[3];
-        mat[4] = (SplashCoord)curstate[4];
-        mat[5] = (SplashCoord)curstate[5];
-        SplashFont* splashFont = getSplashFont(state, mat);
+        SplashFont *splashFont = NULL;
+        if(parameters->getOcr()==gTrue) {
+            SplashCoord mat[6];
+            mat[0] = (SplashCoord) curstate[0];
+            mat[1] = (SplashCoord) curstate[1];
+            mat[2] = (SplashCoord) curstate[2];
+            mat[3] = (SplashCoord) curstate[3];
+            mat[4] = (SplashCoord) curstate[4];
+            mat[5] = (SplashCoord) curstate[5];
+            splashFont = getSplashFont(state, mat);
+        }
         text->endActualText(state, splashFont);
     }
 
@@ -8368,39 +8370,41 @@ void XmlAltoOutputDev::drawChar(GfxState *state, double x, double y, double dx,
 
     SplashFont* splashFont = NULL;
 
-
-    SplashCoord mat[6];
-    mat[0] = (SplashCoord)(curstate[0] );
-    mat[1] = (SplashCoord)(curstate[1] );
-    mat[2] = (SplashCoord)(curstate[2] );
-    mat[3] = (SplashCoord)(curstate[3] );
-    mat[4] = (SplashCoord)(curstate[4] );
-    mat[5] = (SplashCoord)(curstate[5] );
-    splashFont = getSplashFont(state, mat);
-    if((uLen == 0  || ((u[0] == (Unicode)0 || u[0] < (Unicode)32) && uLen == 1 ))) {//&& globalParams->getApplyOCR())
-        // as a first iteration for dictionnaries, placing a placeholder, which means creating a map based on the font-code mapping to unicode from : https://unicode.org/charts/PDF/U2B00.pdf
-        GString *fontName = new GString();
-        if(state->getFont()->getName()) { //AA : Here if fontName is NULL is problematic
-            fontName = state->getFont()->getName()->copy();
-            fontName = fontName->lowerCase();
-        }
-        GString *fontName_charcode = fontName->append(to_string(c).c_str());// for performance and simplicity only appending is done
-        if (globalParams->getPrintCommands()) {
-            printf("ToBeOCRISEChar: x=%.2f y=%.2f c=%3d=0x%02x='%c' u=%3d fontName=%s \n",
-                   (double) x, (double) y, c, c, c, u[0], fontName->getCString());
-        }
-        // do map every char to a unicode, depending on charcode and font name
-        Unicode mapped_unicode = unicode_map->lookupInt(fontName_charcode);
-        if(!mapped_unicode){
-            mapped_unicode = placeholders[0];//no special need for random
-            if( placeholders.size() > 1 ) {
-                placeholders.erase(placeholders.begin());
+    if(parameters->getOcr() == gTrue) {
+        SplashCoord mat[6];
+        mat[0] = (SplashCoord) (curstate[0]);
+        mat[1] = (SplashCoord) (curstate[1]);
+        mat[2] = (SplashCoord) (curstate[2]);
+        mat[3] = (SplashCoord) (curstate[3]);
+        mat[4] = (SplashCoord) (curstate[4]);
+        mat[5] = (SplashCoord) (curstate[5]);
+        splashFont = getSplashFont(state, mat);
+        if ((uLen == 0 || ((u[0] == (Unicode) 0 || u[0] < (Unicode) 32) && uLen == 1))) {//&& globalParams->getApplyOCR())
+            // as a first iteration for dictionnaries, placing a placeholder, which means creating a map based on the font-code mapping to unicode from : https://unicode.org/charts/PDF/U2B00.pdf
+            GString *fontName = new GString();
+            if (state->getFont()->getName()) { //AA : Here if fontName is NULL is problematic
+                fontName = state->getFont()->getName()->copy();
+                fontName = fontName->lowerCase();
             }
-            unicode_map->add(fontName_charcode, mapped_unicode);
+            GString *fontName_charcode = fontName->append(
+                    to_string(c).c_str());// for performance and simplicity only appending is done
+            if (globalParams->getPrintCommands()) {
+                printf("ToBeOCRISEChar: x=%.2f y=%.2f c=%3d=0x%02x='%c' u=%3d fontName=%s \n",
+                       (double) x, (double) y, c, c, c, u[0], fontName->getCString());
+            }
+            // do map every char to a unicode, depending on charcode and font name
+            Unicode mapped_unicode = unicode_map->lookupInt(fontName_charcode);
+            if (!mapped_unicode) {
+                mapped_unicode = placeholders[0];//no special need for random
+                if (placeholders.size() > 1) {
+                    placeholders.erase(placeholders.begin());
+                }
+                unicode_map->add(fontName_charcode, mapped_unicode);
+            }
+            u[0] = mapped_unicode;
+            uLen = 1;
+            isNonUnicodeGlyph = gTrue;
         }
-        u[0] = mapped_unicode;
-        uLen=1;
-        isNonUnicodeGlyph = gTrue;
     }
     text->addChar(state, x, y, dx, dy, c, nBytes, u, uLen, splashFont, isNonUnicodeGlyph);
 }

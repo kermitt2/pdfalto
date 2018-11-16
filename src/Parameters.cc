@@ -71,6 +71,12 @@ void Parameters::setReadingOrder(GBool readingOrders) {
   unlockGlobalParams;
 }
 
+void Parameters::setOcr(GBool ocrA) {
+	lockGlobalParams;
+	ocr = ocrA;
+	unlockGlobalParams;
+}
+
 void Parameters::saveToXML(const char *fileName,int firstPage,int lastPage){
 	char* tmp;
   	tmp=(char*)malloc(10*sizeof(char));

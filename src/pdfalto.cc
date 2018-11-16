@@ -66,6 +66,7 @@ static GBool fullFontName = gFalse;
 static GBool noImageInline = gFalse;
 static GBool annots = gFalse;
 static GBool readingOrder = gFalse;
+static GBool ocr = gFalse;
 
 static char ownerPassword[33] = "\001";
 static char userPassword[33] = "\001";
@@ -97,6 +98,8 @@ static ArgDesc argDesc[] = {
                 "add blocks informations whithin the structure"},
         {"-readingOrder", argFlag,     &readingOrder,  0,
                 "blocks follow the reading order"},
+        {"-ocr", argFlag,     &ocr,  0,
+                "recognises all characters that are missing from unicode."},
         {"-fullFontName", argFlag,     &fullFontName,  0,
                 "fonts names are not normalized"},
         {"-nsURI", argString,     namespaceUri,  sizeof(namespaceUri),
@@ -243,6 +246,11 @@ int main(int argc, char *argv[]) {
     if(readingOrder){
         parameters->setReadingOrder(gTrue);
         cmd->append("-readingOrder ");
+    }
+
+    if(ocr){
+        parameters->setOcr(gTrue);
+        cmd->append("-ocr ");
     }
 
     if(fullFontName){

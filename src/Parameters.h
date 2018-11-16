@@ -72,6 +72,11 @@ public:
 	 */
 	GBool getReadingOrder() {return readingOrder;}
 
+	/** Return a boolean which inform if OCR should be applied to recognize non unicode glyphs
+	 * @return <code>true</code> if the ocr option is selected, <code>false</code> otherwise
+	 */
+	GBool getOcr() {return ocr;}
+
 	/** Return the limit of files to be extracted.
 	 * @return <code>true</code> if the readingOrder option is selected, <code>false</code> otherwise
 	 */
@@ -117,6 +122,11 @@ public:
 	 */	
 	void setReadingOrder(GBool readingOrders);
 
+	/** Modifiy the boolean which inform ocr should be applied or not
+	 * @param readingOrder <code>true</code> if the readingOrder option is selected, <code>false</code> otherwise
+	 */
+	void setOcr(GBool ocrA);
+
 	void setFilesCountLimit(int count);
 	
 	void saveToXML(const char *fileName,int firstPage,int lastPage);
@@ -139,6 +149,8 @@ private:
 	GBool imageInline;
 	/** PL: The value of the readingOrder option */
 	GBool readingOrder;
+	/** The value of ocr option */
+	GBool ocr;
 	/** the count limit of files */
 	int filesCountLimit;
   
