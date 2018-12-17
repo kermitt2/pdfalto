@@ -3917,15 +3917,6 @@ TextBlock *TextPage::split(GList *charsA, int rot) {
 
     // compute the minimum allowed vertical gap size
     // (this is a horizontal gap threshold for rot=1,3
-//    if (control.mode == textOutTableLayout) {
-//        vertGapThreshold = vertGapThresholdTableMax
-//                           + vertGapThresholdTableSlope * nLines;
-//        if (vertGapThreshold < vertGapThresholdTableMin) {
-//            vertGapThreshold = vertGapThresholdTableMin;
-//        }
-//    } else if (control.mode == textOutSimpleLayout) {
-//        vertGapThreshold = simpleLayoutGapThreshold;
-//    } else {
     vertGapThreshold = vertGapThresholdMax + vertGapThresholdSlope * nLines;
     if (vertGapThreshold < vertGapThresholdMin) {
         vertGapThreshold = vertGapThresholdMin;
@@ -3934,9 +3925,6 @@ TextBlock *TextPage::split(GList *charsA, int rot) {
     vertGapThreshold = vertGapThreshold * avgFontSize;
 
     // compute the minimum allowed chunk width
-//    if (control.mode == textOutTableLayout) {
-//        minChunk = 0;
-//    } else {
     minChunk = vertSplitChunkThreshold * avgFontSize;
     //}
 
@@ -4964,10 +4952,6 @@ void TextPage::dumpInReadingOrder(GBool blocks, GBool fullFontName) {
     columns = buildColumns(tree, primaryLR);
     delete tree;
     unrotateChars(chars, rot);
-//    if (control.html) {
-//        rotateUnderlinesAndLinks(rot);
-//        generateUnderlinesAndLinks(columns);
-//    }
 #if 0 //~debug
     dumpColumns(columns);
 #endif
