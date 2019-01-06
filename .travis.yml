@@ -35,24 +35,24 @@ before_install:
     fi
 
 before_script:
-  curl -sLO http://download.icu-project.org/files/icu4c/62.1/icu4c-62_1-src.tgz;
-  tar zxvf icu4c-62_1-src.tgz;
-  cd icu/source;
-  chmod +x runConfigureICU configure install-sh;
-  if [ "$TRAVIS_OS_NAME" = "linux" ]; then ./runConfigureICU Linux --enable-static --disable-shared; fi
-  if [ "$TRAVIS_OS_NAME" = "osx" ]; then ./runConfigureICU MacOSX --enable-static --disable-shared; fi
-  make;
-  sudo make install; 
-  icu-config --version;
+  - curl -sLO http://download.icu-project.org/files/icu4c/62.1/icu4c-62_1-src.tgz;
+  - tar zxvf icu4c-62_1-src.tgz;
+  - cd icu/source;
+  - chmod +x runConfigureICU configure install-sh;
+  - if [ "$TRAVIS_OS_NAME" = "linux" ]; then ./runConfigureICU Linux --enable-static --disable-shared; fi
+  - if [ "$TRAVIS_OS_NAME" = "osx" ]; then ./runConfigureICU MacOSX --enable-static --disable-shared; fi
+  - make;
+  - sudo make install; 
+  - icu-config --version;
 
 script:
-  cd icu/source;
-  export ICU_LD_FLAGS=`icu-config --ldflags`;
-  export CGO_LDFLAGS="${CGO_LDFLAGS} ${ICU_LD_FLAGS}";
-  t=$(pwd);
-  cd ../..;
-  cmake -DICU_PATH=$t;
-  make;
+  - cd icu/source;
+  - export ICU_LD_FLAGS=`icu-config --ldflags`;
+  - export CGO_LDFLAGS="${CGO_LDFLAGS} ${ICU_LD_FLAGS}";
+  - t=$(pwd);
+  - cd ../..;
+  - cmake -DICU_PATH=$t;
+  - make;
 
 notifications:
   email: true
