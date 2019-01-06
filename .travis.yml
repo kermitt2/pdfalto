@@ -15,7 +15,7 @@ matrix:
         - MATRIX_EVAL="CC=gcc-4.9 && CXX=g++-4.9"     
 
 dist: trusty
-sudo: required
+sudo: true
 language:
   - cpp
 compiler:
