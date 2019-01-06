@@ -35,7 +35,7 @@ before_install:
 install:
   - if [ "$TRAVIS_OS_NAME" = "linux" ]; then
       sudo apt-get install -qq cmake libxml2-dev libmotif-dev build-essential;
-      gcc -v && g++ -v && && make --version && cmake --version
+      gcc -v && g++ -v && make --version && cmake --version
       curl -sLO http://download.icu-project.org/files/icu4c/62.1/icu4c-62_1-src.tgz;
       tar zxvf icu4c-62_1-src.tgz;
       cd icu/source;
