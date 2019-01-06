@@ -6,20 +6,20 @@ matrix:
           sources:
             - ubuntu-toolchain-r-test
           packages:
-            - g++-7
+            - g++-4.9
       env:
-        - MATRIX_EVAL="CC=gcc-7 && CXX=g++-7"
+         - MATRIX_EVAL="CC=gcc-4.9 && CXX=g++-4.9"
     - os: osx
       osx_image: xcode8
       env:
-        - MATRIX_EVAL="brew install gcc && CC=gcc-7 && CXX=g++-7"     
-
-sudo: true
-
-language: cpp
-compiler: gcc
+        - MATRIX_EVAL="CC=gcc-4.9 && CXX=g++-4.9"     
 
 dist: trusty
+sudo: required
+language:
+  - cpp
+compiler:
+  - gcc
 
 before_install:
   - eval "${MATRIX_EVAL}"
@@ -35,6 +35,7 @@ before_install:
 install:
   - if [ "$TRAVIS_OS_NAME" = "linux" ]; then
       sudo apt-get install -qq cmake libxml2-dev libmotif-dev build-essential;
+      gcc -v && g++ -v && && make --version && cmake --version
       curl -sLO http://download.icu-project.org/files/icu4c/62.1/icu4c-62_1-src.tgz;
       tar zxvf icu4c-62_1-src.tgz;
       cd icu/source;
