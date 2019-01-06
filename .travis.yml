@@ -44,14 +44,13 @@ before_script:
   - make;
   - sudo make install; 
   - icu-config --version;
-
-script:
-  - cd icu/source;
   - export ICU_LD_FLAGS=`icu-config --ldflags`;
   - export CGO_LDFLAGS="${CGO_LDFLAGS} ${ICU_LD_FLAGS}";
-  - t=$(pwd);
-  - cd ../..;
-  - cmake -DICU_PATH=$t;
+  - export MY_DICU_PATH=$(pwd)  
+  - cd ../..;  
+
+script:
+  - cmake -DICU_PATH="${MY_DICU_PATH}";
   - make;
 
 notifications:
