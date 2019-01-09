@@ -5203,6 +5203,9 @@ void TextPage::dump(GBool blocks, GBool fullFontName) {
     double linePreviousHeight = 0;
     double linePreviousFontSize = 0;
 
+    double minBlockX = 0;
+    double maxBlockLineWidth = 0;
+
     // Get the output encoding
     if (!(uMap = globalParams->getTextEncoding())) {
         return;
@@ -5223,6 +5226,9 @@ void TextPage::dump(GBool blocks, GBool fullFontName) {
 
     TextParagraph *paragraph = new TextParagraph;
     paragraph->setLines(parLines);
+
+    minBlockX = 999999999;
+    maxBlockLineWidth = 0;
 
     xMin = yMin = xMax = yMax = 0;
     minLineX = 999999999;
@@ -5540,14 +5546,18 @@ void TextPage::dump(GBool blocks, GBool fullFontName) {
                 if (paragraph != NULL) {
                     // get block X and Y
                     if (paragraph->getXMin() == 0) {
-                        if (lineX != 0)
+                        if (lineX != 0  && minBlockX > lineX) {
+                            minBlockX = lineX;
                             paragraph->setXMin(lineX);
+                        }
                     }
                     if (paragraph->getYMin() == 0) {
                         if (lineYmin != 0)
                             paragraph->setYMin(lineYmin);
                     }
                 }
+                if(maxBlockLineWidth < lineWidth)
+                    maxBlockLineWidth = lineWidth;
                 parLines->append(line);
             } else {
                 if (newBlock) {
@@ -5556,10 +5566,10 @@ void TextPage::dump(GBool blocks, GBool fullFontName) {
                         // get block X and Y
                         double blockX = 0;
                         double blockY = 0;
-                        if(paragraph->getXMin() != 0) {
+                        if (paragraph->getXMin() != 0) {
                             blockX = paragraph->getXMin();
                         }
-                        if(paragraph->getYMin() != 0){
+                        if (paragraph->getYMin() != 0) {
                             blockY = paragraph->getYMin();
                         }
 
@@ -5567,7 +5577,7 @@ void TextPage::dump(GBool blocks, GBool fullFontName) {
                         double blockHeight = std::abs((linePreviousYmin + linePreviousHeight) - blockY);
 
                         paragraph->setYMax(paragraph->getYMin() + blockHeight);
-                        paragraph->setXMax(paragraph->getXMax() + blockWidth);
+                        paragraph->setXMax(paragraph->getXMin() + maxBlockLineWidth);
 
                         // adding previous block to the page element
                         paragraphs->append(paragraph);
@@ -5577,11 +5587,18 @@ void TextPage::dump(GBool blocks, GBool fullFontName) {
                     parLines = new GList();
                     paragraph->setLines(parLines);
 
-                    if (lineX != 0)
-                        paragraph->setXMin(lineX);
+                    minBlockX = 999999999;
+                    maxBlockLineWidth = 0;
 
+                    if (lineX != 0 && minBlockX > lineX) {
+                        minBlockX = lineX;
+                        paragraph->setXMin(lineX);
+                    }
                     if (lineYmin != 0)
                         paragraph->setYMin(lineYmin);
+
+                    if(maxBlockLineWidth < lineWidth)
+                        maxBlockLineWidth = lineWidth;
 
                     parLines->append(line);
                     newBlock = gFalse;
@@ -5603,11 +5620,19 @@ void TextPage::dump(GBool blocks, GBool fullFontName) {
                                 }
                                 if (paragraph->getXMax() == 0) {
                                     double blockX = paragraph->getXMin();
-                                    double blockWidth = std::abs((linePreviousX + linePreviousWidth) - blockX);
-                                    paragraph->setXMax(blockX + blockWidth);
+                                    //double blockWidth = std::abs((linePreviousX + linePreviousWidth) - blockX);
+                                    paragraph->setXMax(blockX + maxBlockLineWidth);
                                 }
                             }
                         }
+
+                        if (lineX != 0 && minBlockX > lineX) {
+                            minBlockX = lineX;
+                            paragraph->setXMin(lineX);
+                        }
+
+                        if(maxBlockLineWidth < lineWidth)
+                            maxBlockLineWidth = lineWidth;
 
                         parLines->append(line);
                     } else {
@@ -5615,10 +5640,10 @@ void TextPage::dump(GBool blocks, GBool fullFontName) {
                         if (paragraph != NULL) {
                             // get block X and Y
 
-                            double blockWidth = std::abs((linePreviousX + linePreviousWidth) - paragraph->getXMin());
+                            //double blockWidth = std::abs((linePreviousX + linePreviousWidth) - paragraph->getXMin());
                             double blockHeight = std::abs((linePreviousYmin + linePreviousHeight) - paragraph->getYMin());
 
-                            paragraph->setXMax(paragraph->getXMin() + blockWidth);
+                            paragraph->setXMax(paragraph->getXMin() + maxBlockLineWidth);
                             paragraph->setYMax(paragraph->getYMin() + blockHeight);
 
                             // adding previous block to the page element
@@ -5629,13 +5654,20 @@ void TextPage::dump(GBool blocks, GBool fullFontName) {
                         parLines = new GList();
                         paragraph->setLines(parLines);
 
+                        minBlockX = 999999999;
+                        maxBlockLineWidth = 0;
+
                         // PL: new block X and Y
-                        if (lineX != 0) {
+                        if (lineX != 0 && minBlockX > lineX) {
+                            minBlockX = lineX;
                             paragraph->setXMin(lineX);
                         }
                         if (lineYmin != 0) {
                             paragraph->setYMin(lineYmin);
                         }
+
+                        if(maxBlockLineWidth < lineWidth)
+                            maxBlockLineWidth = lineWidth;
 
                         parLines->append(line);
                     }
@@ -5648,6 +5680,11 @@ void TextPage::dump(GBool blocks, GBool fullFontName) {
                     paragraphs->append(paragraph);
                 }
             }
+
+            if(minLineX < minBlockX)
+                minBlockX = minLineX;
+            if(lineWidth > maxBlockLineWidth)
+                maxBlockLineWidth = lineWidth;
 
             // We save informations about the future previous line
             linePreviousX = lineX;
