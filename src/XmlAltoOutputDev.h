@@ -751,7 +751,7 @@ public:
 
 class TextLine {
 public:
-
+    TextLine();
     TextLine(GList *wordsA, double xMinA, double yMinA,
              double xMaxA, double yMaxA, double fontSizeA);
     ~TextLine();
@@ -766,6 +766,12 @@ public:
     int getLength() { return len; }
     double getEdge(int idx) { return edge[idx]; }
 
+    void setXMin(double xMinA) { xMin = xMinA; }
+    void setYMin(double yMinA) { yMin = yMinA; }
+    void setXMax(double xMaxA) { xMax = xMaxA; }
+    void setYMax(double yMaxA) { yMax = yMaxA; }
+    void setWords(GList *wordsA) { words = wordsA; }
+    void setFontSize(double fontSizeA) { fontSize = fontSizeA; }
 private:
 
     static int cmpX(const void *p1, const void *p2);
@@ -798,7 +804,7 @@ private:
 
 class TextParagraph {
 public:
-
+    TextParagraph();
     TextParagraph(GList *linesA, GBool dropCapA);
     ~TextParagraph();
 
@@ -811,6 +817,11 @@ public:
     double getYMin() { return yMin; }
     double getXMax() { return xMax; }
     double getYMax() { return yMax; }
+    void setXMin(double xMinA) { xMin = xMinA; }
+    void setYMin(double yMinA) { yMin = yMinA; }
+    void setXMax(double xMaxA) { xMax = xMaxA; }
+    void setYMax(double yMaxA) { yMax = yMaxA; }
+    void setLines(GList *linesA) { lines = linesA; }
 
 private:
 
@@ -1083,7 +1094,7 @@ public:
      * @param yMaxRot The y value maximum coordinate of the left bottom corner word box (used for rotation 1 and 3)
      * @param xMinRot The x value minimum coordinate of the left bottom corner word box (used for rotation 1 and 3)
      * @param xMaxRot The x value maximum coordinate of the left bottom corner word box (used for rotation 1 and 3) */
-    void addAttributsNode(xmlNodePtr node, IWord *word, double &xMaxi, double &yMaxi, double &yMinRot,double &yMaxRot, double &xMinRot, double &xMaxRot, TextFontStyleInfo *fontStyleInfo, UnicodeMap *uMap, GBool fullFontName);
+    void addAttributsNode(xmlNodePtr node, IWord *word, TextFontStyleInfo *fontStyleInfo, UnicodeMap *uMap, GBool fullFontName);
 
     /** Add the type attribute to TOKEN node for the reading order
      * @param node The current TOKEN node
