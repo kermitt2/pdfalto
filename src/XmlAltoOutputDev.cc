@@ -5158,7 +5158,7 @@ void TextPage::dumpInReadingOrder(GBool blocks, GBool fullFontName) {
 }
 
 void TextPage::dump(GBool blocks, GBool fullFontName) {
-    GList *paragraphs = new GList(); //these are blocks in alto schema
+    paragraphs = new GList(); //these are blocks in alto schema
 
     UnicodeMap *uMap;
 
@@ -5573,14 +5573,17 @@ void TextPage::dump(GBool blocks, GBool fullFontName) {
                             blockY = paragraph->getYMin();
                         }
 
-                        double blockWidth = std::abs((linePreviousX + linePreviousWidth) - blockX);
+                        //double blockWidth = std::abs((linePreviousX + linePreviousWidth) - blockX);
                         double blockHeight = std::abs((linePreviousYmin + linePreviousHeight) - blockY);
 
                         paragraph->setYMax(paragraph->getYMin() + blockHeight);
                         paragraph->setXMax(paragraph->getXMin() + maxBlockLineWidth);
 
                         // adding previous block to the page element
-                        paragraphs->append(paragraph);
+                        if(readingOrder)
+                            lastBlockInserted = addBlockChildReadingOrder(paragraph, lastBlockInserted);
+                        else
+                            paragraphs->append(paragraph);
                     }
 
                     paragraph = new TextParagraph;
@@ -5647,6 +5650,9 @@ void TextPage::dump(GBool blocks, GBool fullFontName) {
                             paragraph->setYMax(paragraph->getYMin() + blockHeight);
 
                             // adding previous block to the page element
+                            if(readingOrder)
+                                lastBlockInserted = addBlockChildReadingOrder(paragraph, lastBlockInserted);
+                            else
                                 paragraphs->append(paragraph);
                         }
 
@@ -5677,7 +5683,11 @@ void TextPage::dump(GBool blocks, GBool fullFontName) {
                 endPage = gFalse;
 
                 if (paragraph != NULL) {
-                    paragraphs->append(paragraph);
+                    if(readingOrder)
+                        lastBlockInserted = addBlockChildReadingOrder(paragraph, lastBlockInserted);
+                    else
+                        paragraphs->append(paragraph);
+                    lastBlockInserted = gFalse;
                 }
             }
 
@@ -5927,7 +5937,7 @@ void TextPage::dump(GBool blocks, GBool fullFontName) {
 }
 
 // PL: Insert a block in the page's block list according to the reading order
-GBool TextPage::addBlockChildReadingOrder(xmlNodePtr nodeblock, GBool lastInserted) {
+GBool TextPage::addBlockChildReadingOrder(TextParagraph * block, GBool lastInserted) {
 
     // if Y_pos of the block to be inserted is less than Y_pos of the existing block
     // (i.e. block is located above)
@@ -5940,71 +5950,31 @@ GBool TextPage::addBlockChildReadingOrder(xmlNodePtr nodeblock, GBool lastInsert
     xmlNode *cur_node = NULL;
     GBool notInserted = gTrue;
     // we get the first child of the current page node
-    unsigned long nbChildren = xmlChildElementCount(printSpace);
+    unsigned long nbChildren = paragraphs->getLength();
     if (nbChildren > 0) {
-        xmlNodePtr previousPageItem = NULL;
-
         // coordinates of the block to be inserted
-        double blockX = 0;
-        xmlChar *attrValue = xmlGetProp(nodeblock, (const xmlChar *) ATTR_X);
-        if (attrValue != NULL) {
-            blockX = atof((const char *) attrValue);
-            xmlFree(attrValue);
-        }
+        double blockX = block->getXMin();
 
-        double blockY = 0;
-        attrValue = xmlGetProp(nodeblock, (const xmlChar *) ATTR_Y);
-        if (attrValue != NULL) {
-            blockY = atof((const char *) attrValue);
-            xmlFree(attrValue);
-        }
+        double blockY = block->getYMin();
 
-        double blockHeight = 0;
-        attrValue = xmlGetProp(nodeblock, (const xmlChar *) ATTR_HEIGHT);
-        if (attrValue != NULL) {
-            blockHeight = atof((const char *) attrValue);
-            xmlFree(attrValue);
-        }
+        double blockHeight = block->getYMax() - block->getYMin();
 
-        double blockWidth = 0;
-        attrValue = xmlGetProp(nodeblock, (const xmlChar *) ATTR_WIDTH);
-        if (attrValue != NULL) {
-            // set the width attribute
-            blockWidth = atof((const char *) attrValue);
-            xmlFree(attrValue);
-        }
+        double blockWidth = block->getXMax() - block->getXMin();
 
 //cout << "to be inserted: " << nodeblock->name << ", X: " << blockX << ", Y: " << blockY << ", H: " << blockHeight << ", W: " << blockWidth << endl;
 
-        xmlNodePtr firstPageItem = xmlFirstElementChild(printSpace);
+        TextParagraph * par;
         // we get all the block nodes in the XML tree corresponding to the page
-        for (cur_node = firstPageItem; cur_node && notInserted; cur_node = cur_node->next) {
-            if ((cur_node->type == XML_ELEMENT_NODE) && (strcmp((const char *) cur_node->name, TAG_BLOCK) == 0)) {
-                //cout << "node type: Element, name: " << cur_node->name << endl;
-
-                double currentY = 0;
-                attrValue = xmlGetProp(cur_node, (const xmlChar *) ATTR_Y);
-                if (attrValue != NULL) {
-                    currentY = atof((const char *) attrValue);
-                    xmlFree(attrValue);
-                }
+        for (int i = 0; i <= paragraphs->getLength()-1 && notInserted; i++) {
+            par = (TextParagraph *) paragraphs->get(i);
+                double currentY = par->getYMin();
 
                 if (currentY < blockY)
                     continue;
 
-                double currentX = 0;
-                attrValue = xmlGetProp(cur_node, (const xmlChar *) ATTR_X);
-                if (attrValue != NULL) {
-                    currentX = atof((const char *) attrValue);
-                    xmlFree(attrValue);
-                }
+                double currentX = par->getXMin();
 
-                double currentWidth = 0;
-                attrValue = xmlGetProp(cur_node, (const xmlChar *) ATTR_WIDTH);
-                if (attrValue != NULL) {
-                    currentWidth = atof((const char *) attrValue);
-                    xmlFree(attrValue);
-                }
+                double currentWidth = par->getXMax() - par->getXMin();
 
                 if (blockY < currentY) {
                     if (blockY + blockHeight < currentY) {
@@ -6014,7 +5984,7 @@ GBool TextPage::addBlockChildReadingOrder(xmlNodePtr nodeblock, GBool lastInsert
                             ((blockX + blockWidth > currentX + currentWidth) && (blockX + blockWidth > currentX)) ||
                             lastInserted) {
                             // we can insert the block before the current block
-                            xmlNodePtr result = xmlAddPrevSibling(cur_node, nodeblock);
+                            paragraphs->insert(i, block);
                             notInserted = false;
                         }
                     }
@@ -6033,12 +6003,12 @@ GBool TextPage::addBlockChildReadingOrder(xmlNodePtr nodeblock, GBool lastInsert
 					xmlNodePtr result = xmlAddPrevSibling(cur_node, nodeblock);
 					notInserted = false;
 				}*/
-            }
+            //}
         }
     }
 
     if (notInserted) {
-        xmlAddChild(printSpace, nodeblock);
+        paragraphs->append(block);
 //cout << "append" << endl;
         return gFalse;
     } else {
