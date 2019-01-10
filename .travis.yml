@@ -1,64 +1,57 @@
-os:
-  - linux
-  - osx
-osx_image: xcode8.3
-
-sudo: true
-
-language: cpp
-compiler: gcc
+matrix:
+  include:    
+    - os: linux
+      addons:
+        apt:
+          sources:
+            - ubuntu-toolchain-r-test
+            - llvm-toolchain-precise-3.6
+          packages:
+            - clang-3.6
+      env:
+        - MATRIX_EVAL="CC=clang-3.6 && CXX=clang++-3.6"
+    - os: osx
+      osx_image: xcode8.3
 
 dist: trusty
+sudo: true
+language:
+  - cpp
+compiler:
+  - clang
 
 before_install:
+  - eval "${MATRIX_EVAL}"
   - git submodule update --init --recursive;
   - if [ "$TRAVIS_OS_NAME" = "linux" ]; then
-      sudo add-apt-repository ppa:ubuntu-toolchain-r/test -y;
       sudo add-apt-repository ppa:beineri/opt-qt571-trusty -y;
-    fi
-  - if [ "$TRAVIS_OS_NAME" = "linux" ]; then
       sudo apt-get update -qq;
+      sudo apt-get install -qq cmake libxml2-dev libmotif-dev build-essential;    
     fi
   - if [ "$TRAVIS_OS_NAME" = "osx" ]; then
       brew update;
+      brew install openmotif;
+      brew install libxml2;
     fi
 
-install:
-  - if [ "$TRAVIS_OS_NAME" = "linux" ]; then
-      sudo apt-get install -qq cmake libxml2-dev libmotif-dev build-essential;
-      curl -sLO http://download.icu-project.org/files/icu4c/62.1/icu4c-62_1-src.tgz;
-      tar zxvf icu4c-62_1-src.tgz;
-      cd icu/source;
-      chmod +x runConfigureICU configure install-sh;
-      ./runConfigureICU Linux  --enable-static --disable-shared;
-      make;
-      sudo make install;
-      icu-config --version;
-      export ICU_LD_FLAGS=`icu-config --ldflags`;
-      export CGO_LDFLAGS="${CGO_LDFLAGS} ${ICU_LD_FLAGS}";
-      t=$(pwd);
-      cd ../..;
-      cmake -DICU_PATH=$t;
-      make;
-    fi
-  - if [ "$TRAVIS_OS_NAME" = "osx" ]; then
-     brew install openmotif;
-     brew install libxml2;
-     curl -sLO http://download.icu-project.org/files/icu4c/62.1/icu4c-62_1-src.tgz;
-     tar zxvf icu4c-62_1-src.tgz;
-     cd icu/source;
-     chmod +x runConfigureICU configure install-sh;
-     ./runConfigureICU MacOSX  --enable-static --disable-shared;
-     make;
-     sudo make install;
-     icu-config --version;
-     export ICU_LD_FLAGS=`icu-config --ldflags`;
-     export CGO_LDFLAGS="${CGO_LDFLAGS} ${ICU_LD_FLAGS}";
-     t=$(pwd);
-     cd ../..;
-     cmake -DICU_PATH=$t;
-     make;
-    fi
+before_script:
+  - curl -sLO http://download.icu-project.org/files/icu4c/62.1/icu4c-62_1-src.tgz;
+  - tar zxvf icu4c-62_1-src.tgz;
+  - cd icu/source;
+  - chmod +x runConfigureICU configure install-sh;
+  - if [ "$TRAVIS_OS_NAME" = "linux" ]; then ./runConfigureICU Linux --enable-static --disable-shared; fi
+  - if [ "$TRAVIS_OS_NAME" = "osx" ]; then ./runConfigureICU MacOSX --enable-static --disable-shared; fi
+  - make;
+  - sudo make install; 
+  - icu-config --version;
+  - export ICU_LD_FLAGS=`icu-config --ldflags`;
+  - export CGO_LDFLAGS="${CGO_LDFLAGS} ${ICU_LD_FLAGS}";
+  - export MY_DICU_PATH=$(pwd)  
+  - cd ../..;  
+
+script:
+  - cmake -DICU_PATH="${MY_DICU_PATH}";
+  - make;
 
 notifications:
   email: true
