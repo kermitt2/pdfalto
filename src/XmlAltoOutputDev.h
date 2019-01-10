@@ -1068,7 +1068,7 @@ public:
      * an existing node (value is true) or append top the list (value is false)
      * @return true the node is the inserted before an existing node, false if it is append to the list
      */
-    GBool addBlockChildReadingOrder(TextParagraph* block, GBool lastInserted);
+    GBool addBlockInReadingOrder(TextParagraph* block, GBool lastInserted);
 
     /** Add a specific TOKEN tag in the current line when we meet an image inline.
      * This TOKEN tag is empty and it has five attributes which are : x, y, width,
@@ -1206,7 +1206,7 @@ public:
     /** The list of all recognized font styles*/
     vector<TextFontStyleInfo*> fontStyles;
 
-    GList *paragraphs;
+    GList *blocks;
 
     // clamp to uint8
     static inline int clamp (int x)
@@ -1763,7 +1763,7 @@ private:
 /** To make text in reading order */
     GBool readingOrder;
     /** To know if the blocks option is selected */
-    GBool blocks;
+    GBool useBlocks;
     /** To know if the fullFontName option is selected */
     GBool fullFontName;
     /** To know if the noImageInline option is selected */

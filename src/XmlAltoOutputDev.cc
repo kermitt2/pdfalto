@@ -4904,7 +4904,7 @@ void TextPage::insertColumnIntoTree(TextBlock *column, TextBlock *tree) {
 }
 
 
-void TextPage::dumpInReadingOrder(GBool blocks, GBool fullFontName) {
+void TextPage::dumpInReadingOrder(GBool useBlocks, GBool fullFontName) {
     TextBlock *tree;
     TextColumn *col;
     TextParagraph *par;
@@ -4962,7 +4962,7 @@ void TextPage::dumpInReadingOrder(GBool blocks, GBool fullFontName) {
         col = (TextColumn *) columns->get(colIdx);
         for (parIdx = 0; parIdx < col->paragraphs->getLength(); ++parIdx) {
 
-            if (blocks) {
+            if (useBlocks) {
                 nodeblocks = xmlNewNode(NULL, (const xmlChar *) TAG_BLOCK);
                 nodeblocks->type = XML_ELEMENT_NODE;
 
@@ -5101,7 +5101,7 @@ void TextPage::dumpInReadingOrder(GBool blocks, GBool fullFontName) {
                     free(tmp);
                 }
 
-                if (blocks)
+                if (useBlocks)
                     xmlAddChild(nodeblocks, nodeline);
                 else xmlAddChild(printSpace, nodeline);
             }
@@ -5157,8 +5157,8 @@ void TextPage::dumpInReadingOrder(GBool blocks, GBool fullFontName) {
     }
 }
 
-void TextPage::dump(GBool blocks, GBool fullFontName) {
-    paragraphs = new GList(); //these are blocks in alto schema
+void TextPage::dump(GBool useBlocks, GBool fullFontName) {
+    blocks = new GList(); //these are blocks in alto schema
 
     UnicodeMap *uMap;
 
@@ -5460,7 +5460,7 @@ void TextPage::dump(GBool blocks, GBool fullFontName) {
 
                 if (nextWord != NULL) {
                     firstword = 1;
-                    if (blocks) {
+                    if (useBlocks) {
                         lineFinish = gTrue;
                     } else {
                         // new line
@@ -5509,7 +5509,7 @@ void TextPage::dump(GBool blocks, GBool fullFontName) {
             line->setFontSize(lineFontSize);
 
             if (nextWord != NULL) {
-                if (blocks) {
+                if (useBlocks) {
                     lineFinish = gTrue;
                 } else {
                     // new line
@@ -5531,7 +5531,7 @@ void TextPage::dump(GBool blocks, GBool fullFontName) {
 
         // IF block option is selected
         // IF it's the end of line or the end of page
-        if ((blocks && lineFinish) || (blocks && endPage)) {
+        if ((useBlocks && lineFinish) || (useBlocks && endPage)) {
             // IF it's the first line
             if (linePreviousX == 0) {
                 if (nextWord != NULL) {
@@ -5581,9 +5581,9 @@ void TextPage::dump(GBool blocks, GBool fullFontName) {
 
                         // adding previous block to the page element
                         if(readingOrder)
-                            lastBlockInserted = addBlockChildReadingOrder(paragraph, lastBlockInserted);
+                            lastBlockInserted = addBlockInReadingOrder(paragraph, lastBlockInserted);
                         else
-                            paragraphs->append(paragraph);
+                            blocks->append(paragraph);
                     }
 
                     paragraph = new TextParagraph;
@@ -5651,9 +5651,9 @@ void TextPage::dump(GBool blocks, GBool fullFontName) {
 
                             // adding previous block to the page element
                             if(readingOrder)
-                                lastBlockInserted = addBlockChildReadingOrder(paragraph, lastBlockInserted);
+                                lastBlockInserted = addBlockInReadingOrder(paragraph, lastBlockInserted);
                             else
-                                paragraphs->append(paragraph);
+                                blocks->append(paragraph);
                         }
 
                         paragraph = new TextParagraph;
@@ -5684,9 +5684,9 @@ void TextPage::dump(GBool blocks, GBool fullFontName) {
 
                 if (paragraph != NULL) {
                     if(readingOrder)
-                        lastBlockInserted = addBlockChildReadingOrder(paragraph, lastBlockInserted);
+                        lastBlockInserted = addBlockInReadingOrder(paragraph, lastBlockInserted);
                     else
-                        paragraphs->append(paragraph);
+                        blocks->append(paragraph);
                     lastBlockInserted = gFalse;
                 }
             }
@@ -5722,7 +5722,6 @@ void TextPage::dump(GBool blocks, GBool fullFontName) {
     xmlNodePtr nodeblocks = NULL;
     xmlNodePtr nodeImageInline = NULL;
 
-
     TextParagraph *par;
     TextLine *line1;
     TextWord *word;
@@ -5734,10 +5733,10 @@ void TextPage::dump(GBool blocks, GBool fullFontName) {
     printSpace->type = XML_ELEMENT_NODE;
     xmlAddChild(page, printSpace);
 
-    for (parIdx = 0; parIdx < paragraphs->getLength(); parIdx++) {
-        par = (TextParagraph *) paragraphs->get(parIdx);
+    for (parIdx = 0; parIdx < blocks->getLength(); parIdx++) {
+        par = (TextParagraph *) blocks->get(parIdx);
 
-        if (blocks) {
+        if (useBlocks) {
             nodeblocks = xmlNewNode(NULL, (const xmlChar *) TAG_BLOCK);
             nodeblocks->type = XML_ELEMENT_NODE;
 
@@ -5925,7 +5924,7 @@ void TextPage::dump(GBool blocks, GBool fullFontName) {
                 free(tmp);
             }
 
-            if (blocks)
+            if (useBlocks)
                 xmlAddChild(nodeblocks, nodeline);
             else xmlAddChild(printSpace, nodeline);
         }
@@ -5937,8 +5936,7 @@ void TextPage::dump(GBool blocks, GBool fullFontName) {
 }
 
 // PL: Insert a block in the page's block list according to the reading order
-GBool TextPage::addBlockChildReadingOrder(TextParagraph * block, GBool lastInserted) {
-
+GBool TextPage::addBlockInReadingOrder(TextParagraph * block, GBool lastInserted) {
     // if Y_pos of the block to be inserted is less than Y_pos of the existing block
     // (i.e. block is located above)
     // and, in case of vertical overlap,
@@ -5946,27 +5944,23 @@ GBool TextPage::addBlockChildReadingOrder(TextParagraph * block, GBool lastInser
     // (i.e. block is on the left and the surfaces of the block are not overlaping -
     // 2 columns case)
     // then the block order is before the existing block
-
-    xmlNode *cur_node = NULL;
     GBool notInserted = gTrue;
     // we get the first child of the current page node
-    unsigned long nbChildren = paragraphs->getLength();
+    unsigned long nbChildren = blocks->getLength();
     if (nbChildren > 0) {
         // coordinates of the block to be inserted
         double blockX = block->getXMin();
-
         double blockY = block->getYMin();
 
         double blockHeight = block->getYMax() - block->getYMin();
-
         double blockWidth = block->getXMax() - block->getXMin();
 
 //cout << "to be inserted: " << nodeblock->name << ", X: " << blockX << ", Y: " << blockY << ", H: " << blockHeight << ", W: " << blockWidth << endl;
 
         TextParagraph * par;
         // we get all the block nodes in the XML tree corresponding to the page
-        for (int i = 0; i <= paragraphs->getLength()-1 && notInserted; i++) {
-            par = (TextParagraph *) paragraphs->get(i);
+        for (int i = 0; i <= blocks->getLength()-1 && notInserted; i++) {
+            par = (TextParagraph *) blocks->get(i);
                 double currentY = par->getYMin();
 
                 if (currentY < blockY)
@@ -5984,7 +5978,7 @@ GBool TextPage::addBlockChildReadingOrder(TextParagraph * block, GBool lastInser
                             ((blockX + blockWidth > currentX + currentWidth) && (blockX + blockWidth > currentX)) ||
                             lastInserted) {
                             // we can insert the block before the current block
-                            paragraphs->insert(i, block);
+                            blocks->insert(i, block);
                             notInserted = false;
                         }
                     }
@@ -6008,7 +6002,7 @@ GBool TextPage::addBlockChildReadingOrder(TextParagraph * block, GBool lastInser
     }
 
     if (notInserted) {
-        paragraphs->append(block);
+        blocks->append(block);
 //cout << "append" << endl;
         return gFalse;
     } else {
@@ -7168,7 +7162,7 @@ XmlAltoOutputDev::XmlAltoOutputDev(GString *fileName, GString *fileNamePdf,
     myCatalog = catalog;
     UnicodeMap *uMap;
 
-    blocks = parameters->getDisplayBlocks();
+    useBlocks = parameters->getDisplayBlocks();
     fullFontName = parameters->getFullFontName();
     noImageInline = parameters->getImageInline();
 
@@ -7736,9 +7730,9 @@ void XmlAltoOutputDev::endPage() {
     text->configuration();
     if (parameters->getDisplayText()) {
 //        if (readingOrder) {
-//            text->dumpInReadingOrder(blocks, fullFontName);
+//            text->dumpInReadingOrder(useBlocks, fullFontName);
 //        } else
-        text->dump(blocks, fullFontName);
+        text->dump(useBlocks, fullFontName);
     }
 
     text->endPage(dataDir);
