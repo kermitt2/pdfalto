@@ -14,6 +14,8 @@ set ( ZLIB_SUBDIR ${CMAKE_CURRENT_SOURCE_DIR}/libs/image/zlib)
 
 set ( ICU_LIB_SUBDIR ${CMAKE_CURRENT_SOURCE_DIR}/libs/icu)
 
+set ( XML_LIB_SUBDIR ${CMAKE_CURRENT_SOURCE_DIR}/libs/libxml)
+
 set(FREETYPE_INCLUDE_DIR_ft2build ${CMAKE_CURRENT_SOURCE_DIR}/libs/freetype/include)
 set(FREETYPE_INCLUDE_DIR_freetype_freetype ${CMAKE_CURRENT_SOURCE_DIR}/libs/freetype/include)
 
@@ -64,11 +66,11 @@ add_executable(pdfalto ${SOURCE_FILES})
 if(${HAVE_PAPER_H})
     target_link_libraries(pdfalto png xml2 splash xpdf goo fofi ${ICUUC_LIB} ${ICUDATA_LIB} ${FREETYPE_LIBRARY} dl ${HAVE_PAPER_H})
 else()
-    target_link_libraries(pdfalto png xml2 splash xpdf goo fofi ${ICUUC_LIB} ${ICUDATA_LIB} ${FREETYPE_LIBRARY} dl)
+    target_link_libraries(pdfalto png ${XML_LIB_SUBDIR}/libxml2.a splash xpdf goo fofi ${ICUUC_LIB} ${ICUDATA_LIB} ${FREETYPE_LIBRARY} dl)
 endif()
 
 target_include_directories(pdfalto
-        PUBLIC /usr/include/libxml2
+        PUBLIC ${XML_LIB_SUBDIR}/include
         PUBLIC ${FREETYPE_INCLUDE_DIR_ft2build}
         PUBLIC libs/image/png
         PUBLIC libs/image/zlib
