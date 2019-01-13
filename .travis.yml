@@ -8,6 +8,7 @@ matrix:
             - llvm-toolchain-precise-3.6
           packages:
             - clang-3.6
+            - cmake
       env:
         - MATRIX_EVAL="CC=clang-3.6 && CXX=clang++-3.6"
     - os: osx
