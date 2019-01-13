@@ -31,8 +31,8 @@ before_install:
   - if [ "$TRAVIS_OS_NAME" = "osx" ]; then
       brew update;
       brew install openmotif;
-      brew install libxml2;
-      brew install cmake;
+      brew upgrade libxml2;
+      brew upgrade cmake;
     fi
 
 script:
