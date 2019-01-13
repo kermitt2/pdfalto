@@ -22,6 +22,7 @@ compiler:
 
 before_install:
   - eval "${MATRIX_EVAL}"
+  - gcc -v && g++ -v && cmake --version
   - git submodule update --init --recursive;
   - if [ "$TRAVIS_OS_NAME" = "linux" ]; then
       sudo add-apt-repository ppa:beineri/opt-qt571-trusty -y;
