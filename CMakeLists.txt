@@ -23,16 +23,22 @@ set ( ICU_PATH ${CMAKE_CURRENT_SOURCE_DIR}/libs/icu)
 
 if (APPLE)
     set ( XML_LIBRARY ${XML_LIB_SUBDIR}/mac/libxml2.a)
+    set ( PNG_LIBRARY ${PNG_SUBDIR}/mac/libpng.a)
+    set ( ZLIB_LIBRARY ${ZLIB_SUBDIR}/mac/libzlib.a)
     set ( FREETYPE_LIBRARY ${CMAKE_CURRENT_SOURCE_DIR}/libs/freetype/mac/libfreetype.a)
     set ( ICUUC_LIB ${CMAKE_CURRENT_SOURCE_DIR}/libs/icu/mac/libicuuc.a)
     set ( ICUDATA_LIB ${CMAKE_CURRENT_SOURCE_DIR}/libs/icu/mac/libicudata.a)
 elseif (UNIX)
     set ( XML_LIBRARY ${XML_LIB_SUBDIR}/linux/libxml2.a)
+    set ( PNG_LIBRARY ${PNG_SUBDIR}/linux/libpng.a)
+    set ( ZLIB_LIBRARY ${ZLIB_SUBDIR}/linux/libzlib.a)
     set ( FREETYPE_LIBRARY ${CMAKE_CURRENT_SOURCE_DIR}/libs/freetype/linux/libfreetype.a)
     set ( ICUUC_LIB ${CMAKE_CURRENT_SOURCE_DIR}/libs/icu/linux/libicuuc.a)
     set ( ICUDATA_LIB ${CMAKE_CURRENT_SOURCE_DIR}/libs/icu/linux/libicudata.a)
 elseif (MSVC)
     set ( XML_LIBRARY ${XML_LIB_SUBDIR}/windows/libxml2.a)
+    set ( PNG_LIBRARY ${PNG_SUBDIR}/windows/libpng.a)
+    set ( ZLIB_LIBRARY ${ZLIB_SUBDIR}/windows/libzlib.a)
     set ( FREETYPE_LIBRARY ${CMAKE_CURRENT_SOURCE_DIR}/libs/freetype/windows/libfreetype.a)
     set ( ICUUC_LIB ${CMAKE_CURRENT_SOURCE_DIR}/libs/icu/windows/libsicuuc.a)
     set ( ICUDATA_LIB ${CMAKE_CURRENT_SOURCE_DIR}/libs/icu/windows/libsicudata.a)
@@ -40,11 +46,6 @@ endif ()
 
 
 set(XPDF_BUILD_DIR ${XPDF_SUBDIR}/build)
-
-include_directories("libs/image/png")
-
-add_subdirectory(libs/image/zlib)
-add_subdirectory(libs/image/png)
 
 add_subdirectory(${XPDF_SUBDIR})
 
@@ -67,16 +68,16 @@ set(SOURCE_FILES
 add_executable(pdfalto ${SOURCE_FILES})
 
 if(${HAVE_PAPER_H})
-    target_link_libraries(pdfalto ${PNG_SUBDIR}/libpng.a ${ZLIB_SUBDIR}/libzlib.a ${XML_LIBRARY} splash xpdf goo fofi ${ICUUC_LIB} ${ICUDATA_LIB} ${FREETYPE_LIBRARY} dl ${HAVE_PAPER_H})
+    target_link_libraries(pdfalto ${PNG_LIBRARY} ${ZLIB_LIBRARY} ${XML_LIBRARY} splash xpdf goo fofi ${ICUUC_LIB} ${ICUDATA_LIB} ${FREETYPE_LIBRARY} dl ${HAVE_PAPER_H})
 else()
-    target_link_libraries(pdfalto ${PNG_SUBDIR}/libpng.a ${ZLIB_SUBDIR}/libzlib.a ${XML_LIBRARY} splash xpdf goo fofi ${ICUUC_LIB} ${ICUDATA_LIB} ${FREETYPE_LIBRARY} dl)
+    target_link_libraries(pdfalto ${PNG_LIBRARY} ${ZLIB_LIBRARY} ${XML_LIBRARY} splash xpdf goo fofi ${ICUUC_LIB} ${ICUDATA_LIB} ${FREETYPE_LIBRARY} dl)
 endif()
 
 target_include_directories(pdfalto
         PUBLIC ${XML_LIB_SUBDIR}/include
         PUBLIC ${FREETYPE_INCLUDE_DIR_ft2build}
-        PUBLIC libs/image/png
-        PUBLIC libs/image/zlib
+        PUBLIC ${PNG_SUBDIR}/src
+        PUBLIC ${ZLIB_SUBDIR}/src
         PUBLIC ${XPDF_SUBDIR}
         PUBLIC ${XPDF_SUBDIR}/goo
         PUBLIC ${XPDF_SUBDIR}/fofi

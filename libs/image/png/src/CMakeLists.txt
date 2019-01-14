@@ -3,7 +3,7 @@ project(png)
 
 set(CMAKE_CXX_STANDARD 98)
 
-get_filename_component(PARENT_DIR ${CMAKE_CURRENT_SOURCE_DIR} PATH)
+get_filename_component(PARENT_DIR .. PATH)
 set ( ZLIB_SUBDIR ${PARENT_DIR}/zlib)
 
 set(PNG_SOURCE_FILES
