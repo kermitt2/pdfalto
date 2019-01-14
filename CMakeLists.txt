@@ -22,17 +22,20 @@ set(FREETYPE_INCLUDE_DIR_freetype_freetype ${CMAKE_CURRENT_SOURCE_DIR}/libs/free
 set ( ICU_PATH ${CMAKE_CURRENT_SOURCE_DIR}/libs/icu)
 
 if (APPLE)
+    set ( XML_LIBRARY ${XML_LIB_SUBDIR}/mac/libxml2.a)
     set ( FREETYPE_LIBRARY ${CMAKE_CURRENT_SOURCE_DIR}/libs/freetype/mac/libfreetype.a)
     set ( ICUUC_LIB ${CMAKE_CURRENT_SOURCE_DIR}/libs/icu/mac/libicuuc.a)
     set ( ICUDATA_LIB ${CMAKE_CURRENT_SOURCE_DIR}/libs/icu/mac/libicudata.a)
 elseif (UNIX)
+    set ( XML_LIBRARY ${XML_LIB_SUBDIR}/linux/libxml2.a)
     set ( FREETYPE_LIBRARY ${CMAKE_CURRENT_SOURCE_DIR}/libs/freetype/linux/libfreetype.a)
     set ( ICUUC_LIB ${CMAKE_CURRENT_SOURCE_DIR}/libs/icu/linux/libicuuc.a)
     set ( ICUDATA_LIB ${CMAKE_CURRENT_SOURCE_DIR}/libs/icu/linux/libicudata.a)
 elseif (MSVC)
+    set ( XML_LIBRARY ${XML_LIB_SUBDIR}/windows/libxml2.a)
     set ( FREETYPE_LIBRARY ${CMAKE_CURRENT_SOURCE_DIR}/libs/freetype/windows/libfreetype.a)
-    set ( ICUUC_LIB ${CMAKE_CURRENT_SOURCE_DIR}/libs/icu/windows/libicuuc.a)
-    set ( ICUDATA_LIB ${CMAKE_CURRENT_SOURCE_DIR}/libs/icu/windows/libicudata.a)
+    set ( ICUUC_LIB ${CMAKE_CURRENT_SOURCE_DIR}/libs/icu/windows/libsicuuc.a)
+    set ( ICUDATA_LIB ${CMAKE_CURRENT_SOURCE_DIR}/libs/icu/windows/libsicudata.a)
 endif ()
 
 
@@ -64,9 +67,9 @@ set(SOURCE_FILES
 add_executable(pdfalto ${SOURCE_FILES})
 
 if(${HAVE_PAPER_H})
-    target_link_libraries(pdfalto png xml2 splash xpdf goo fofi ${ICUUC_LIB} ${ICUDATA_LIB} ${FREETYPE_LIBRARY} dl ${HAVE_PAPER_H})
+    target_link_libraries(pdfalto ${PNG_SUBDIR}/libpng.a ${ZLIB_SUBDIR}/libzlib.a ${XML_LIBRARY} splash xpdf goo fofi ${ICUUC_LIB} ${ICUDATA_LIB} ${FREETYPE_LIBRARY} dl ${HAVE_PAPER_H})
 else()
-    target_link_libraries(pdfalto png ${XML_LIB_SUBDIR}/libxml2.a splash xpdf goo fofi ${ICUUC_LIB} ${ICUDATA_LIB} ${FREETYPE_LIBRARY} dl)
+    target_link_libraries(pdfalto ${PNG_SUBDIR}/libpng.a ${ZLIB_SUBDIR}/libzlib.a ${XML_LIBRARY} splash xpdf goo fofi ${ICUUC_LIB} ${ICUDATA_LIB} ${FREETYPE_LIBRARY} dl)
 endif()
 
 target_include_directories(pdfalto

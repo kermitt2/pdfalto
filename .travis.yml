@@ -26,12 +26,10 @@ before_install:
   - if [ "$TRAVIS_OS_NAME" = "linux" ]; then
       sudo add-apt-repository ppa:beineri/opt-qt571-trusty -y;
       sudo apt-get update -qq;
-      sudo apt-get install -qq cmake libxml2-dev libmotif-dev build-essential;    
+      sudo apt-get install -qq cmake build-essential;
     fi
   - if [ "$TRAVIS_OS_NAME" = "osx" ]; then
       brew update;
-      brew install openmotif;
-      brew upgrade libxml2;
       brew upgrade cmake;
     fi
 
