@@ -337,7 +337,7 @@ public:
      * @param idImage The id of current image
      * @param href The image href
      * @param idx The absolute object index in the stream */
-    Image(double xPosition, double yPosition, double width, double height, GString* id, GString* sid, GString *href, GString* clipZone, GBool isInline);
+    Image(double xPosition, double yPosition, double width, double height, GString* id, GString* sid, GString *href, GString* clipZone, GBool isInline, double rotation, GString* type);
 
     /** Destructor
      */
@@ -368,6 +368,14 @@ public:
      *  @return The href of this image */
     GString* getHrefImage(){return hrefImage;}
 
+    /** Get the double of this image
+     *  @return The double of this image */
+    double getRotation(){return rotation;}
+
+    /** Get the type of this image
+     *  @return The type of this image */
+    GString* getType(){return type;}
+
     /** Get the href of this image
      *  @return The href of this image */
     GBool isImageInline(){return isInline;}
@@ -397,6 +405,14 @@ public:
      *  @param href The new href value of this image */
     void setHrefImage(GString *href){hrefImage = href;}
 
+    /** Modify the rotation of this image
+     *  @param href The new rotation value of this image */
+    void setRotation(double rotationA){rotation = rotationA;}
+
+    /** Modify the type of this image
+     *  @param href The new type of this image */
+    void setType(GString *typeA){type = typeA;}
+
 private:
 
     /** The absolute object index in the stream **/
@@ -409,6 +425,8 @@ private:
     double widthImage;
     /** The height value of the image */
     double heightImage;
+    /** The rotation value of the image */
+    double rotation;
     /** The id word which precede this image */
     GString* imageId;
     /** The id current image */
@@ -417,6 +435,8 @@ private:
     GString* clipZone;
     /** The path current image */
     GString* hrefImage;
+    /** the type of illustration like photo, map, drawing, chart, ... */
+    GString* type;
 
     GBool isInline;
 
@@ -1332,10 +1352,6 @@ private:
 
     /** The directory name which contain all data */
     GString *dataDirectory;
-    /** The rel position for writting files */
-    GString *RelfileName;
-    /** For XML ref with xi:include */
-    GString *ImgfileName;
 
     /**   */
 
@@ -1743,12 +1759,6 @@ private:
     xmlNodePtr docMetadataRoot;
 
     Catalog *myCatalog;
-
-
-    /** The XML document for vectorials instructions */
-    xmlDocPtr  vecdoc;
-    /** The root vectorials instructions node */
-    xmlNodePtr vecroot;
 
     /** Need to close the output file? (only if outputStream is a FILE*) */
     GBool needClose;

@@ -108,7 +108,7 @@ namespace ConstantsXMLALTO {
 	const char *ATTR_X = "HPOS";
 	const char *ATTR_Y = "VPOS";
 	
-	const char *ATTR_ROTATION = "rotation";
+	const char *ATTR_ROTATION = "ROTATION";
 	const char *ATTR_ANGLE = "angle";
 	
 	// Attributs about font informations
@@ -155,7 +155,7 @@ namespace ConstantsXMLALTO {
 	const char *ATTR_Y3 = "y3";
 	
 	// This attribute gives the reading order : right->left (value 0) or left->right (value 1)
-	const char *ATTR_TYPE = "type";
+	const char *ATTR_TYPE = "TYPE";
 	
 	const char *YES = "yes";
 	const char *NO = "no";

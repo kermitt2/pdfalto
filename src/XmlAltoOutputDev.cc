@@ -373,7 +373,7 @@ ImageInline::~ImageInline() {
 //------------------------------------------------------------------------
 
 Image::Image(double xPosition, double yPosition, double width,
-             double height, GString *id, GString *sid, GString *href, GString *clipzone, GBool isinline) {
+             double height, GString *id, GString *sid, GString *href, GString *clipzone, GBool isinline, double rotationA, GString* typeA) {
     xPositionImage = xPosition;
     yPositionImage = yPosition;
     widthImage = width;
@@ -383,6 +383,8 @@ Image::Image(double xPosition, double yPosition, double width,
     hrefImage = href;
     clipZone = clipzone;
     isInline = isinline;
+    type = typeA;
+    rotation = rotationA;
 }
 
 Image::~Image() {
@@ -1779,8 +1781,15 @@ TextPage::TextPage(GBool verboseA, Catalog *catalog, xmlNodePtr node,
     haveLastFind = gFalse;
 
     if (parameters->getDisplayImage()) {
-        RelfileName = new GString(dir);
-        ImgfileName = new GString(base);
+        GString *cp;
+        cp = dir->copy();
+        for (int i = 0; i < cp->getLength(); i++) {
+            if (cp->getChar(i) == ' ') {
+                cp->del(i);
+                cp->insert(i, "%20");
+            }
+        }
+        dataDirectory = new GString(cp);
     }
 
 }
@@ -2003,169 +2012,6 @@ void TextPage::configuration() {
 void TextPage::endPage(GString *dataDir) {
     if (curWord) {
         endWord();
-    }
-
-    if (parameters->getDisplayImage()) {
-
-        xmlNodePtr xiinclude = NULL;
-        xmlNsPtr xiNs = NULL;
-
-        GString *relname = new GString(RelfileName);
-        relname->append("-");
-        relname->append(GString::fromInt(num));
-        relname->append(EXTENSION_SVG);
-
-        GString *refname = new GString(ImgfileName);
-        refname->append("-");
-        refname->append(GString::fromInt(num));
-        refname->append(EXTENSION_SVG);
-
-        xiNs = xmlNewNs(NULL, (const xmlChar *) XI_URI, (const xmlChar *) XI_PREFIX);
-        if (xiNs) {
-            xiinclude = xmlNewNode(xiNs, (const xmlChar *) XI_INCLUDE);
-            xiNs = xmlNewNs(xiinclude, (const xmlChar *) XI_URI,
-                            (const xmlChar *) XI_PREFIX);
-            xmlSetNs(xiinclude, xiNs);
-            if (cutter) {
-                // Change the relative path of vectorials images when all pages are cutted
-                GString *imageName = new GString("image");
-                imageName->append("-");
-                imageName->append(GString::fromInt(num));
-                imageName->append(EXTENSION_SVG);
-                // ID: 1850760
-                GString *cp;
-                cp = refname->copy();
-                for (int i = 0; i < cp->getLength(); i++) {
-                    if (cp->getChar(i) == ' ') {
-                        cp->del(i);
-                        cp->insert(i, "%20");
-                    }
-                }
-//				printf("%s\n",imageName->getCString());
-                xmlNewProp(xiinclude, (const xmlChar *) ATTR_HREF,
-                           (const xmlChar *) cp->getCString());
-                delete imageName;
-                delete cp;
-            } else {
-                // ID: 1850760
-                GString *cp;
-                cp = refname->copy();
-                for (int i = 0; i < cp->getLength(); i++) {
-                    if (cp->getChar(i) == ' ') {
-                        cp->del(i);
-                        cp->insert(i, "%20");
-                    }
-                }
-//				printf("%s\n",cp->getCString());
-                xmlNewProp(xiinclude, (const xmlChar *) ATTR_HREF,
-                           (const xmlChar *) cp->getCString());
-                delete cp;
-            }
-
-            if (namespaceURI) {
-                xmlNewNs(xiinclude, (const xmlChar *) namespaceURI->getCString(),
-                         NULL);
-            }
-            xmlAddChild(page, xiinclude);
-        } else {
-            fprintf(stderr, "namespace %s : impossible creation\n", XI_PREFIX);
-        }
-
-        // Save the file for example with relname 'p_06.xml_data/image-27.vec'
-        if (!xmlSaveFile(relname->getCString(), vecdoc)) {
-            //error(errIO,-1, "Couldn't open file '%s'", relname->getCString());
-        }
-
-        delete refname;
-        delete relname;
-    }
-    xmlFreeDoc(vecdoc);
-
-    // PL: here we look at the blocks order
-    /*if (readingOrder) {
-		cout  << endl << "new page" << endl;
-		xmlNode *cur_node = NULL;
-		// we get the first child of the current page node
-		unsigned long nbChildren = xmlChildElementCount(page);
-		if (nbChildren > 0) {
-			xmlNodePtr firstPageItem = xmlFirstElementChild(page);
-			// we get all the block nodes in the XML tree corresponding to the page
-			for (cur_node = firstPageItem; cur_node; cur_node = cur_node->next) {
-	        	if ( (cur_node->type == XML_ELEMENT_NODE) && (strcmp((const char*)cur_node->name, TAG_BLOCK) ==0) ) {
-	        		cout << "node type: Element, name: " << cur_node->name << endl;
-					// if a block is located in the layout above another block and
-					// there is not overlapping surface on the x axis between the blocks
-					// we can swap the blocks
-	        		double currentMinX = 0;
-					double currentMinY = 0;
-					double currentMaxX = 0;
-					double currentMaxY = 0;
-
-					xmlChar *attrValue = xmlGetProp(cur_node, (const xmlChar*)ATTR_X);
-					if (attrValue != NULL) {
-						cout << "X: " << attrValue << endl;
-						xmlFree(attrValue);
-					}
-
-					attrValue = xmlGetProp(cur_node, (const xmlChar*)ATTR_Y);
-					if (attrValue != NULL) {
-						cout << "Y:" << attrValue << endl;
-						xmlFree(attrValue);
-					}
-
-					attrValue = xmlGetProp(cur_node, (const xmlChar*)ATTR_HEIGHT);
-					if (attrValue != NULL) {
-						cout << "height: " << attrValue << endl;
-						xmlFree(attrValue);
-					}
-
-					attrValue = xmlGetProp(cur_node, (const xmlChar*)ATTR_WIDTH);
-					if (attrValue != NULL) {
-						cout << "width: " << attrValue << endl;
-						xmlFree(attrValue);
-					}
-
-					xmlAttrPtr attX = xmlHasProp(cur_node, (const xmlChar*)ATTR_X);
-					xmlAttrPtr attY = xmlHasProp(cur_node, (const xmlChar*)ATTR_Y);
-					xmlAttrPtr attHeight = xmlHasProp(cur_node, (const xmlChar*)ATTR_HEIGHT);
-					xmlAttrPtr attWidth = xmlHasProp(cur_node, (const xmlChar*)ATTR_WIDTH);
-	        	}
-	        }
-	    }
-	}*/
-
-    // IF cutter is ok we build the file name for all pages separately
-    // and save all files in the data directory
-    if (cutter) {
-        dataDirectory = new GString(dataDir);
-        GString *pageFile = new GString(dataDirectory);
-        pageFile->append("/pageNum-");
-        pageFile->append(GString::fromInt(num));
-        pageFile->append(EXTENSION_XML);
-
-        if (!xmlSaveFile(pageFile->getCString(), docPage)) {
-
-            //	error(-1, "Couldn't open file '%s'", pageFile->getCString());
-        }
-
-        // Add in the principal file XML all pages as a tag xi:include
-        xmlNodePtr nodeXiInclude = NULL;
-        xmlNsPtr nsXi = xmlNewNs(NULL, (const xmlChar *) XI_URI,
-                                 (const xmlChar *) XI_PREFIX);
-        if (nsXi) {
-            nodeXiInclude = xmlNewNode(nsXi, (const xmlChar *) XI_INCLUDE);
-            nsXi = xmlNewNs(nodeXiInclude, (const xmlChar *) XI_URI,
-                            (const xmlChar *) XI_PREFIX);
-            xmlSetNs(nodeXiInclude, nsXi);
-            xmlNewProp(nodeXiInclude, (const xmlChar *) ATTR_HREF,
-                       (const xmlChar *) pageFile->getCString());
-            if (namespaceURI) {
-                xmlNewNs(nodeXiInclude,
-                         (const xmlChar *) namespaceURI->getCString(), NULL);
-            }
-            xmlAddChild(root, nodeXiInclude);
-        }
-        delete pageFile;
     }
     highlightedObject.clear();
     underlineObject.clear();
@@ -3130,7 +2976,9 @@ void TextPage::addAttributsNode(xmlNodePtr node, IWord *word, TextFontStyleInfo 
         text[i] = ((TextChar *) word->chars->get(i))->c;
     }
     dumpFragment(text, word->len, uMap, stringTemp);
-    printf("token : %s\n", stringTemp->getCString());
+    if (verbose) {
+        printf("token : %s\n", stringTemp->getCString());
+    }
 
     gfree(text);
 
@@ -5024,7 +4872,7 @@ void TextPage::dumpInReadingOrder(GBool useBlocks, GBool fullFontName) {
 //                    }
 
                     // Add next images inline whithin the current line if the noImageInline option is not selected
-                    if (!parameters->getImageInline()) {
+                    if (parameters->getImageInline()) {
                         if (indiceImage != -1) {
                             int nb = listeImageInline.size();
                             for (; indiceImage < nb; indiceImage++) {
@@ -5119,10 +4967,6 @@ void TextPage::dumpInReadingOrder(GBool useBlocks, GBool fullFontName) {
         char *tmp;
 
         tmp = (char *) malloc(10 * sizeof(char));
-
-        printSpace = xmlNewNode(NULL, (const xmlChar *) TAG_PRINTSPACE);
-        printSpace->type = XML_ELEMENT_NODE;
-        xmlAddChild(page, printSpace);
         node = xmlNewNode(NULL, (const xmlChar *) TAG_IMAGE);
         xmlNewProp(node, (const xmlChar *) ATTR_ID, (const xmlChar *) listeImages[i]->getImageId()->getCString());
 
@@ -5131,24 +4975,28 @@ void TextPage::dumpInReadingOrder(GBool useBlocks, GBool fullFontName) {
 
 
         snprintf(tmp, sizeof(tmp), ATTR_NUMFORMAT, listeImages[i]->getXPositionImage());
-        xmlNewProp(printSpace, (const xmlChar *) ATTR_X, (const xmlChar *) tmp);
+        xmlNewProp(node, (const xmlChar *) ATTR_X, (const xmlChar *) tmp);
         snprintf(tmp, sizeof(tmp), ATTR_NUMFORMAT, listeImages[i]->getYPositionImage());
-        xmlNewProp(printSpace, (const xmlChar *) ATTR_Y, (const xmlChar *) tmp);
+        xmlNewProp(node, (const xmlChar *) ATTR_Y, (const xmlChar *) tmp);
         snprintf(tmp, sizeof(tmp), ATTR_NUMFORMAT, listeImages[i]->getWidthImage());
-        xmlNewProp(printSpace, (const xmlChar *) ATTR_WIDTH, (const xmlChar *) tmp);
+        xmlNewProp(node, (const xmlChar *) ATTR_WIDTH, (const xmlChar *) tmp);
         snprintf(tmp, sizeof(tmp), ATTR_NUMFORMAT, listeImages[i]->getHeightImage());
-        xmlNewProp(printSpace, (const xmlChar *) ATTR_HEIGHT, (const xmlChar *) tmp);
-//			if (rotate){
-//				xmlNewProp(node,(const xmlChar*)ATTR_ROTATION,(const xmlChar*)sTRUE);
-//			}
-//			else{
-//				xmlNewProp(node,(const xmlChar*)ATTR_ROTATION,(const xmlChar*)sFALSE);
-//			}
+        xmlNewProp(node, (const xmlChar *) ATTR_HEIGHT, (const xmlChar *) tmp);
+
+        if (listeImages[i]->getRotation() > 0){
+            xmlNewProp(node,(const xmlChar*)ATTR_ROTATION,(const xmlChar*)sTRUE);
+        }
+        else{
+            xmlNewProp(node,(const xmlChar*)ATTR_ROTATION,(const xmlChar*)sFALSE);
+        }
 //        if (listeImages[i]->isImageInline()) {
 //            xmlNewProp(node, (const xmlChar *) ATTR_INLINE, (const xmlChar *) sTRUE);
 //        }
         xmlNewProp(node, (const xmlChar *) ATTR_HREF,
                    (const xmlChar *) listeImages[i]->getHrefImage()->getCString());
+
+        xmlNewProp(node, (const xmlChar *) ATTR_TYPE,
+                   (const xmlChar *) listeImages[i]->getType()->getCString());
 
         xmlNewProp(node, (const xmlChar *) ATTR_CLIPZONE,
                    (const xmlChar *) listeImages[i]->getClipZone()->getCString());
@@ -5837,7 +5685,7 @@ void TextPage::dump(GBool useBlocks, GBool fullFontName) {
 //                    }
 
                 // Add next images inline whithin the current line if the noImageInline option is not selected
-                if (!parameters->getImageInline()) {
+                if (parameters->getImageInline()) {
                     if (indiceImage != -1) {
                         int nb = listeImageInline.size();
                         for (; indiceImage < nb; indiceImage++) {
@@ -5932,6 +5780,104 @@ void TextPage::dump(GBool useBlocks, GBool fullFontName) {
         xmlAddChild(printSpace, nodeblocks);
     }
 
+    int imageCount = listeImages.size();
+    for (int i = 0; i < imageCount; ++i) {
+
+        char *tmp;
+
+        tmp = (char *) malloc(10 * sizeof(char));
+
+        node = xmlNewNode(NULL, (const xmlChar *) TAG_IMAGE);
+        xmlNewProp(node, (const xmlChar *) ATTR_ID, (const xmlChar *) listeImages[i]->getImageId()->getCString());
+
+
+        //xmlNewProp(node, (const xmlChar *) ATTR_SID,(const xmlChar*)listeImages[i]->getImageSid()->getCString());
+
+
+        snprintf(tmp, sizeof(tmp), ATTR_NUMFORMAT, listeImages[i]->getXPositionImage());
+        xmlNewProp(node, (const xmlChar *) ATTR_X, (const xmlChar *) tmp);
+        snprintf(tmp, sizeof(tmp), ATTR_NUMFORMAT, listeImages[i]->getYPositionImage());
+        xmlNewProp(node, (const xmlChar *) ATTR_Y, (const xmlChar *) tmp);
+        snprintf(tmp, sizeof(tmp), ATTR_NUMFORMAT, listeImages[i]->getWidthImage());
+        xmlNewProp(node, (const xmlChar *) ATTR_WIDTH, (const xmlChar *) tmp);
+        snprintf(tmp, sizeof(tmp), ATTR_NUMFORMAT, listeImages[i]->getHeightImage());
+        xmlNewProp(node, (const xmlChar *) ATTR_HEIGHT, (const xmlChar *) tmp);
+
+        if (listeImages[i]->getRotation() > 0){
+            xmlNewProp(node,(const xmlChar*)ATTR_ROTATION,(const xmlChar*)sTRUE);
+        }
+        else{
+            xmlNewProp(node,(const xmlChar*)ATTR_ROTATION,(const xmlChar*)sFALSE);
+        }
+//        if (listeImages[i]->isImageInline()) {
+//            xmlNewProp(node, (const xmlChar *) ATTR_INLINE, (const xmlChar *) sTRUE);
+//        }
+        xmlNewProp(node, (const xmlChar *) ATTR_HREF,
+                   (const xmlChar *) listeImages[i]->getHrefImage()->getCString());
+
+        xmlNewProp(node, (const xmlChar *) ATTR_TYPE,
+                   (const xmlChar *) listeImages[i]->getType()->getCString());
+        if (verbose) {
+            xmlNewProp(node, (const xmlChar *) ATTR_CLIPZONE,
+                       (const xmlChar *) listeImages[i]->getClipZone()->getCString());
+        }
+        xmlAddChild(printSpace, node);
+        free(tmp);
+    }
+
+
+    if (parameters->getDisplayImage()) {
+        GString *sid = new GString("p");
+        GBool isInline = false;
+        sid = buildSID(getPageNumber(), getIdx(), sid);
+
+        GString *relname = new GString(dataDirectory);
+        relname->append("-");
+        relname->append(GString::fromInt(num));
+        relname->append(EXTENSION_SVG);
+        char *tmp;
+
+        tmp = (char *) malloc(10 * sizeof(char));
+
+        node = xmlNewNode(NULL, (const xmlChar *) TAG_IMAGE);
+        xmlNewProp(node, (const xmlChar *) ATTR_ID,
+                   (const xmlChar *) sid->getCString());
+
+        //xmlNewProp(node, (const xmlChar *) ATTR_SID,(const xmlChar*)listeImages[i]->getImageSid()->getCString());
+
+        double x = 0 , y = 0, h = 0, w = 0, r =0;
+        snprintf(tmp, sizeof(tmp), ATTR_NUMFORMAT, x);
+        xmlNewProp(node, (const xmlChar *) ATTR_X, (const xmlChar *) tmp);
+        snprintf(tmp, sizeof(tmp), ATTR_NUMFORMAT, y);
+        xmlNewProp(node, (const xmlChar *) ATTR_Y, (const xmlChar *) tmp);
+        snprintf(tmp, sizeof(tmp), ATTR_NUMFORMAT, w);
+        xmlNewProp(node, (const xmlChar *) ATTR_WIDTH, (const xmlChar *) tmp);
+        snprintf(tmp, sizeof(tmp), ATTR_NUMFORMAT, h);
+        xmlNewProp(node, (const xmlChar *) ATTR_HEIGHT, (const xmlChar *) tmp);
+
+        if (r > 0) {
+            xmlNewProp(node, (const xmlChar *) ATTR_ROTATION, (const xmlChar *) sTRUE);
+        } else {
+            xmlNewProp(node, (const xmlChar *) ATTR_ROTATION, (const xmlChar *) sFALSE);
+        }
+//        if (listeImages[i]->isImageInline()) {
+//            xmlNewProp(node, (const xmlChar *) ATTR_INLINE, (const xmlChar *) sTRUE);
+//        }
+        xmlNewProp(node, (const xmlChar *) ATTR_HREF,
+                   (const xmlChar *) relname->getCString());
+
+        xmlNewProp(node, (const xmlChar *) ATTR_TYPE,
+                   (const xmlChar *) "svg");
+        xmlAddChild(printSpace, node);
+        free(tmp);
+
+        // Save the file for example with relname 'p_06.xml_data/image-27.vec'
+        if (!xmlSaveFile(relname->getCString(), vecdoc)) {
+            //error(errIO,-1, "Couldn't open file '%s'", relname->getCString());
+        }
+        xmlFreeDoc(vecdoc);
+    }
+
     uMap->decRefCnt();
 }
 
@@ -5974,13 +5920,14 @@ GBool TextPage::addBlockInReadingOrder(TextParagraph * block, GBool lastInserted
                     if (blockY + blockHeight < currentY) {
                         // we don't have any vertical overlap
                         // check the X-pos, the block cannot be on the right of the current block
-                        if ((blockX < currentX + currentWidth) ||
+                        if ((blockX < currentX + currentWidth) || // if no large intra line, merge block lines
                             ((blockX + blockWidth > currentX + currentWidth) && (blockX + blockWidth > currentX)) ||
                             lastInserted) {
                             // we can insert the block before the current block
-                            blocks->insert(i, block);
+                            blocks->insert(i, block);// be ware , the order can be the opposite if next block in next column..
                             notInserted = false;
                         }
+
                     }
 
                     // we have vertical overlap, check position on X axis
@@ -6327,23 +6274,25 @@ void TextPage::doPath(GfxPath *path, GfxState *state, GString *gattributes) {
 
     xmlNodePtr groupNode = NULL;
 
-    // GROUP tag
-    groupNode = xmlNewNode(NULL, (const xmlChar *) TAG_GROUP);
-    xmlAddChild(vecroot, groupNode);
+    if (parameters->getDisplayImage()) {
+        // GROUP tag
+        groupNode = xmlNewNode(NULL, (const xmlChar *) TAG_GROUP);
+        xmlAddChild(vecroot, groupNode);
 
-    GString *id;
-    id = new GString("p");
-    xmlNewProp(groupNode, (const xmlChar *) ATTR_SID, (const xmlChar *) buildSID(num, getIdx(), id)->getCString());
-    delete id;
+        xmlNewProp(groupNode, (const xmlChar *) ATTR_STYLE,
+                   (const xmlChar *) gattributes->getCString());
 
-    xmlNewProp(groupNode, (const xmlChar *) ATTR_STYLE,
-               (const xmlChar *) gattributes->getCString());
 
-    id = new GString("p");
-    xmlNewProp(groupNode, (const xmlChar *) ATTR_CLIPZONE,
-               (const xmlChar *) buildIdClipZone(num, idCur, id)->getCString());
-    delete id;
-    createPath(path, state, groupNode);
+        GString *id = new GString("p"), *sid = new GString("p"), *clipZone = new GString("p");
+        GBool isInline = false;
+        id = buildIdImage(getPageNumber(), numImage, id);
+        sid = buildSID(getPageNumber(), getIdx(), sid);
+        clipZone = buildIdClipZone(getPageNumber(), idCur, clipZone);
+
+        xmlNewProp(groupNode, (const xmlChar *) ATTR_SVGID, (const xmlChar *) sid->getCString());
+        xmlNewProp(groupNode, (const xmlChar *) ATTR_IDCLIPZONE, (const xmlChar *) clipZone->getCString());
+        createPath(path, state, groupNode);
+    }
 }
 
 void TextPage::createPath(GfxPath *path, GfxState *state, xmlNodePtr groupNode) {
@@ -6470,22 +6419,23 @@ void TextPage::clip(GfxState *state) {
 //	if (idx>10000){
 //		return;
 //	}
+    if (parameters->getDisplayImage()) {
 
-    // CLIP tag
-    gnode = xmlNewNode(NULL, (const xmlChar *) TAG_CLIPPATH);
-    xmlAddChild(vecroot, gnode);
+        // CLIP tag
+        gnode = xmlNewNode(NULL, (const xmlChar *) TAG_CLIPPATH);
+        xmlAddChild(vecroot, gnode);
 
-    GString *id;
-    id = new GString("p");
-    xmlNewProp(gnode, (const xmlChar *) ATTR_SVGID, (const xmlChar *) buildSID(num, getIdx(), id)->getCString());
-    delete id;
+        GString *id = new GString("p"), *sid = new GString("p"), *clipZone = new GString("p");
+        GBool isInline = false;
+        id = buildIdImage(getPageNumber(), numImage, id);
+        sid = buildSID(getPageNumber(), getIdx(), sid);
+        clipZone = buildIdClipZone(getPageNumber(), idCur, clipZone);
 
-    id = new GString("p");
-    xmlNewProp(gnode, (const xmlChar *) ATTR_IDCLIPZONE,
-               (const xmlChar *) buildIdClipZone(num, idClip, id)->getCString());
-    delete id;
-    //   	free(tmp);
-    doPathForClip(state->getPath(), state, gnode);
+        xmlNewProp(gnode, (const xmlChar *) ATTR_SVGID, (const xmlChar *) sid->getCString());
+        xmlNewProp(gnode, (const xmlChar *) ATTR_IDCLIPZONE, (const xmlChar *) clipZone->getCString());
+        //   	free(tmp);
+        doPathForClip(state->getPath(), state, gnode);
+    }
 }
 
 void TextPage::eoClip(GfxState *state) {
@@ -6498,28 +6448,27 @@ void TextPage::eoClip(GfxState *state) {
 
     // Increment the absolute object index
     idx++;
+    if (parameters->getDisplayImage()) {
+        // CLIP tag
+        gnode = xmlNewNode(NULL, (const xmlChar *) TAG_CLIPPATH);
+        xmlAddChild(vecroot, gnode);
 
-    // CLIP tag
-    gnode = xmlNewNode(NULL, (const xmlChar *) TAG_CLIPPATH);
-    xmlAddChild(vecroot, gnode);
+        GString *id = new GString("p"), *sid = new GString("p"), *clipZone = new GString("p");
+        GBool isInline = false;
+        id = buildIdImage(getPageNumber(), numImage, id);
+        sid = buildSID(getPageNumber(), getIdx(), sid);
+        clipZone = buildIdClipZone(getPageNumber(), idCur, clipZone);
 
-    GString *id;
-    id = new GString("p");
-    xmlNewProp(gnode, (const xmlChar *) ATTR_SVGID, (const xmlChar *) buildSID(num, getIdx(), id)->getCString());
-    delete id;
+        xmlNewProp(gnode, (const xmlChar *) ATTR_SVGID, (const xmlChar *) sid->getCString());
+        xmlNewProp(gnode, (const xmlChar *) ATTR_IDCLIPZONE, (const xmlChar *) clipZone->getCString());
 
-    id = new GString("p");
-    xmlNewProp(gnode, (const xmlChar *) ATTR_IDCLIPZONE,
-               (const xmlChar *) buildIdClipZone(num, idClip, id)->getCString());
-    delete id;
-
-    xmlNewProp(gnode, (const xmlChar *) ATTR_EVENODD, (const xmlChar *) sTRUE);
-    //   	free(tmp);
-    doPathForClip(state->getPath(), state, gnode);
+        xmlNewProp(gnode, (const xmlChar *) ATTR_EVENODD, (const xmlChar *) sTRUE);
+        //   	free(tmp);
+        doPathForClip(state->getPath(), state, gnode);
+    }
 }
 
 void TextPage::clipToStrokePath(GfxState *state) {
-
     idClip++;
     idCur = idClip;
 
@@ -6529,24 +6478,25 @@ void TextPage::clipToStrokePath(GfxState *state) {
     // Increment the absolute object index
     idx++;
 
-    // CLIP tag
-    gnode = xmlNewNode(NULL, (const xmlChar *) TAG_CLIPPATH);
-    xmlAddChild(vecroot, gnode);
+    if (parameters->getDisplayImage()) {
+        // CLIP tag
+        gnode = xmlNewNode(NULL, (const xmlChar *) TAG_CLIPPATH);
+        xmlAddChild(vecroot, gnode);
 
-    GString *id;
-    id = new GString("p");
-    xmlNewProp(gnode, (const xmlChar *) ATTR_SVGID, (const xmlChar *) buildSID(num, getIdx(), id)->getCString());
-    delete id;
+        GString *id = new GString("p"), *sid = new GString("p"), *clipZone = new GString("p");
+        GBool isInline = false;
+        id = buildIdImage(getPageNumber(), numImage, id);
+        sid = buildSID(getPageNumber(), getIdx(), sid);
+        clipZone = buildIdClipZone(getPageNumber(), idCur, clipZone);
 
-    id = new GString("p");
-    xmlNewProp(gnode, (const xmlChar *) ATTR_IDCLIPZONE,
-               (const xmlChar *) buildIdClipZone(num, idClip, id)->getCString());
-    delete id;
+        xmlNewProp(gnode, (const xmlChar *) ATTR_SVGID, (const xmlChar *) sid->getCString());
+        xmlNewProp(gnode, (const xmlChar *) ATTR_IDCLIPZONE, (const xmlChar *) clipZone->getCString());
 
-    xmlNewProp(gnode, (const xmlChar *) ATTR_EVENODD, (const xmlChar *) sTRUE);
-    //   	free(tmp);
-    doPathForClip(state->getPath(), state, gnode);
+        xmlNewProp(gnode, (const xmlChar *) ATTR_EVENODD, (const xmlChar *) sTRUE);
+        //   	free(tmp);
+        doPathForClip(state->getPath(), state, gnode);
 
+    }
 }
 
 //// Draw the image mask
@@ -6764,11 +6714,11 @@ const char *TextPage::drawImageOrMask(GfxState *state, Object *ref, Stream *str,
         y1 = y2;
         y2 = temp;
     }
-    GString *relname = new GString(RelfileName);
+    GString *relname = new GString(dataDirectory);
     relname->append("-");
     relname->append(GString::fromInt(imageIndex));
 
-    GString *refname = new GString(ImgfileName);
+    GString *refname = new GString(dataDirectory);
     refname->append("-");
     refname->append(GString::fromInt(imageIndex));
 
@@ -6976,7 +6926,7 @@ const char *TextPage::drawImageOrMask(GfxState *state, Object *ref, Stream *str,
         }
 
     }
-    if (!inlineImg || (inlineImg && parameters->getImageInline())) {
+    if (!inlineImg) {
         GString *id = new GString("p"), *sid = new GString("p"), *clipZone = new GString("p");
         GBool isInline = false;
         id = buildIdImage(getPageNumber(), numImage, id);
@@ -6989,13 +6939,13 @@ const char *TextPage::drawImageOrMask(GfxState *state, Object *ref, Stream *str,
             isInline = true;
         }
 
-        listeImages.push_back(new Image(x0, y0, w0, h0, id, sid, refname, clipZone, isInline));
+        listeImages.push_back(new Image(x0, y0, w0, h0, id, sid, refname, clipZone, isInline, 0 , new GString("image")));
 //        delete sid;
 //        delete id;
 //        delete clipZone;
     }
 
-    if (inlineImg && !parameters->getImageInline()) {
+    if (inlineImg && parameters->getImageInline()) {
         listeImageInline.push_back(new ImageInline(x0, y0, w0, h0, getIdWORD(), imageIndex, refname, getIdx()));
     }
 
@@ -7124,9 +7074,7 @@ XmlAltoOutputDev::XmlAltoOutputDev(GString *fileName, GString *fileNamePdf,
     //rawOrder = 1;
     ok = gTrue;
     doc = NULL;
-    vecdoc = NULL;
     docroot = NULL;
-    vecroot = NULL;
     verbose = verboseA;
     GString *imgDirName;
     Catalog *myCatalog;
@@ -7177,7 +7125,7 @@ XmlAltoOutputDev::XmlAltoOutputDev(GString *fileName, GString *fileNamePdf,
     myfilename = new GString(fileName);
 
     dataDir = new GString(fileName);
-    dataDir->append("_data");
+    dataDir->append(NAME_DATA_DIR);
 
     imgDirName = new GString(dataDir);
 
@@ -7322,17 +7270,6 @@ XmlAltoOutputDev::XmlAltoOutputDev(GString *fileName, GString *fileNamePdf,
                       (const xmlChar *) xmlEncodeEntitiesReentrant(nodeSoftwareName->doc,
                                                                    (const xmlChar *) PDFALTO_VERSION));
     xmlAddChild(nodeProcessingSoftware, nodeSoftwareVersion);
-
-
-    // The file of vectorials instructions
-    vecdoc = xmlNewDoc((const xmlChar *) VERSION);
-    vecdoc->encoding = xmlStrdup((const xmlChar *) ENCODING_UTF8);
-    vecroot = xmlNewNode(NULL, (const xmlChar *) TAG_VECTORIALINSTRUCTIONS);
-
-    xmlDocSetRootElement(vecdoc, vecroot);
-
-    xmlNewProp(vecroot, (const xmlChar *) "file",
-               (const xmlChar *) fileName->getCString());
 
     needClose = gFalse;
 
