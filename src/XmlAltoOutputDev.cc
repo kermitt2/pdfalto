@@ -5428,7 +5428,7 @@ void TextPage::dump(GBool useBlocks, GBool fullFontName) {
 
                         // adding previous block to the page element
                         if(readingOrder)
-                            lastBlockInserted = addBlockInReadingOrder(paragraph, lastBlockInserted);
+                            lastBlockInserted = addBlockInReadingOrder(paragraph, lineFontSize, lastBlockInserted);
                         else
                             blocks->append(paragraph);
                     }
@@ -5498,7 +5498,7 @@ void TextPage::dump(GBool useBlocks, GBool fullFontName) {
 
                             // adding previous block to the page element
                             if(readingOrder)
-                                lastBlockInserted = addBlockInReadingOrder(paragraph, lastBlockInserted);
+                                lastBlockInserted = addBlockInReadingOrder(paragraph, lineFontSize, lastBlockInserted);
                             else
                                 blocks->append(paragraph);
                         }
@@ -5531,7 +5531,7 @@ void TextPage::dump(GBool useBlocks, GBool fullFontName) {
 
                 if (paragraph != NULL) {
                     if(readingOrder)
-                        lastBlockInserted = addBlockInReadingOrder(paragraph, lastBlockInserted);
+                        lastBlockInserted = addBlockInReadingOrder(paragraph, lineFontSize, lastBlockInserted);
                     else
                         blocks->append(paragraph);
                     lastBlockInserted = gFalse;
@@ -5881,7 +5881,7 @@ void TextPage::dump(GBool useBlocks, GBool fullFontName) {
 }
 
 // PL: Insert a block in the page's block list according to the reading order
-GBool TextPage::addBlockInReadingOrder(TextParagraph * block, GBool lastInserted) {
+GBool TextPage::addBlockInReadingOrder(TextParagraph * block, double fontSize, GBool lastInserted) {
     // if Y_pos of the block to be inserted is less than Y_pos of the existing block
     // (i.e. block is located above)
     // and, in case of vertical overlap,
@@ -5890,6 +5890,9 @@ GBool TextPage::addBlockInReadingOrder(TextParagraph * block, GBool lastInserted
     // 2 columns case)
     // then the block order is before the existing block
     GBool notInserted = gTrue;
+    int indexLowerBlock = 0, insertIndex= 0;
+    GBool firstLowerBlock = gFalse;
+    GBool noVerticalOverlap = gTrue;
     // we get the first child of the current page node
     unsigned long nbChildren = blocks->getLength();
     if (nbChildren > 0) {
@@ -5906,45 +5909,63 @@ GBool TextPage::addBlockInReadingOrder(TextParagraph * block, GBool lastInserted
         // we get all the block nodes in the XML tree corresponding to the page
         for (int i = 0; i <= blocks->getLength()-1 && notInserted; i++) {
             par = (TextParagraph *) blocks->get(i);
-                double currentY = par->getYMin();
+            double currentY = par->getYMin();
 
-                if (currentY < blockY)
-                    continue;
+            double currentX = par->getXMin();
 
-                double currentX = par->getXMin();
+            double currentWidth = par->getXMax() - par->getXMin();
+            double currentHeight = par->getYMax() - par->getXMin();
 
-                double currentWidth = par->getXMax() - par->getXMin();
+            if(currentY <= blockY && currentY + currentHeight >= blockY ||
+               blockY + blockHeight > currentY && blockY + blockHeight < currentY + currentHeight){
+                noVerticalOverlap = gFalse;
+            }
 
-                if (blockY < currentY) {
-                    if (blockY + blockHeight < currentY) {
-                        // we don't have any vertical overlap
-                        // check the X-pos, the block cannot be on the right of the current block
-                        if ((blockX < currentX + currentWidth) || // if no large intra line, merge block lines
-                            ((blockX + blockWidth > currentX + currentWidth) && (blockX + blockWidth > currentX)) ||
-                            lastInserted) {
-                            // we can insert the block before the current block
-                            blocks->insert(i, block);// be ware , the order can be the opposite if next block in next column..
-                            notInserted = false;
-                        }
+            if (currentY < blockY)
+                continue;
 
+            if (blockY < currentY) {
+                if (blockY + blockHeight < currentY) {
+
+                    if(!notInserted)
+                        continue;
+                    // we keep the first block under it, if no overlap put it above
+                    if(!firstLowerBlock) {
+                        indexLowerBlock = i;
+                        firstLowerBlock = gTrue;
                     }
+                    // we don't have any vertical overlap
+                    // check the X-pos, the block cannot be on the right of the current block
+                    // check if the
+                    if ((blockX <= currentX + currentWidth && blockX >= currentX) ||
+                        (blockX <= currentX + currentWidth && blockX + blockWidth > currentX)||
+                        blockX < currentX + currentWidth +fontSize * maxColSpacing
+                        ) {
+                        // we can insert the block before the current block
+                        insertIndex = i;
+                        notInserted = false;
+                    }
+                } else
+                    noVerticalOverlap = gFalse;
+            }
+                // we have vertical overlap, check position on X axis
 
-                    // we have vertical overlap, check position on X axis
-
-                    /*double currentHeight = 0;
-					attrValue = xmlGetProp(cur_node, (const xmlChar*)ATTR_HEIGHT);
-					if (attrValue != NULL) {
-						currentHeight = atof((const char*)attrValue);
-						xmlFree(attrValue);
-					}*/
-                }
-                /*if (notInserted && (blockX + blockWidth < currentX)) {
-					// does not work for multi column sections one after the other
-					xmlNodePtr result = xmlAddPrevSibling(cur_node, nodeblock);
-					notInserted = false;
-				}*/
-            //}
+                /*double currentHeight = 0;
+                attrValue = xmlGetProp(cur_node, (const xmlChar*)ATTR_HEIGHT);
+                if (attrValue != NULL) {
+                    currentHeight = atof((const char*)attrValue);
+                    xmlFree(attrValue);
+                }*/
         }
+        if(noVerticalOverlap && firstLowerBlock){
+            insertIndex = indexLowerBlock;
+            notInserted = false;
+        }
+            /*if (notInserted && (blockX + blockWidth < currentX)) {
+                // does not work for multi column sections one after the other
+                xmlNodePtr result = xmlAddPrevSibling(cur_node, nodeblock);
+                notInserted = false;
+            }*/
     }
 
     if (notInserted) {
@@ -5952,6 +5973,7 @@ GBool TextPage::addBlockInReadingOrder(TextParagraph * block, GBool lastInserted
 //cout << "append" << endl;
         return gFalse;
     } else {
+        blocks->insert(insertIndex, block);// be ware , the order can be the opposite if next block in next column..
 //cout << "prev inserted" << endl;
         return gTrue;
     }
