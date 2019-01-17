@@ -4,19 +4,7 @@ namespace ConstantsXMLALTO {
 	// All tags ALTO XML dialect
 	const char *TAG_ALTO = "alto";
 
-	const char *ALTO_URI = "http://www.loc.gov/standards/alto/ns-v3#";
-
-	const char *XLINK_PREFIX = "xlink";
-
-	const char *XLINK_URI = "http://www.w3.org/1999/xlink";
-
-	const char *XSI_PREFIX = "xsi";
-
-	const char *XSI_URI = "http://www.w3.org/2001/XMLSchema-instance";
-
-    const char *SCHEMA_LOCATION_ATTR_NAME = "schemaLocation";
-
-    const char *SCHEMA_LOCATION_URI = "http://www.loc.gov/standards/alto/alto-v2.0.xsd";
+	const char *ALTO_URI = "http://www.loc.gov/standards/alto/v3/alto.xsd";
 
 	const char *TAG_DESCRIPTION = "Description";
     const char *TAG_MEASUREMENTUNIT = "MeasurementUnit";

@@ -7168,15 +7168,6 @@ XmlAltoOutputDev::XmlAltoOutputDev(GString *fileName, GString *fileNamePdf,
                              NULL);
     xmlSetNs(docroot, nsXi);
 
-    nsXi = xmlNewNs(docroot, (const xmlChar *) XLINK_URI,
-                    (const xmlChar *) XLINK_PREFIX);
-
-    nsXi = xmlNewNs(docroot, (const xmlChar *) XSI_URI,
-                    (const xmlChar *) XSI_PREFIX);
-
-    xmlNewNsProp(docroot, nsXi, (const xmlChar *) SCHEMA_LOCATION_ATTR_NAME,
-                 (const xmlChar *) SCHEMA_LOCATION_URI);
-
     // The namespace DS to add at the DOCUMENT tag
     if (nsURI) {
         xmlNewNs(docroot, (const xmlChar *) nsURI->getCString(), NULL);
