@@ -2924,6 +2924,9 @@ void TextPage::addAttributTypeReadingOrder(xmlNodePtr node, char *tmp,
 void TextPage::addAttributsNodeVerbose(xmlNodePtr node, char *tmp,
                                        IWord *word) {
 
+    GString *id = new GString("p");
+    xmlNewProp(node, (const xmlChar *) ATTR_SID, (const xmlChar *) buildSID(num, word->getIdx(), id)->getCString());
+    delete id;
     sprintf(tmp, "%d", word->rot);
     xmlNewProp(node, (const xmlChar *) ATTR_ROTATION, (const xmlChar *) tmp);
     sprintf(tmp, "%d", word->angle);
@@ -2954,10 +2957,6 @@ void TextPage::addAttributsNode(xmlNodePtr node, IWord *word, TextFontStyleInfo 
 
     GString *id;
     GString *stringTemp;
-
-    id = new GString("p");
-    xmlNewProp(node, (const xmlChar *) ATTR_SID, (const xmlChar *) buildSID(num, word->getIdx(), id)->getCString());
-    delete id;
 
     id = new GString("p");
     xmlNewProp(node, (const xmlChar *) ATTR_ID, (const xmlChar *) buildIdToken(num, numToken, id)->getCString());
@@ -3070,9 +3069,9 @@ void TextPage::addAttributsNode(xmlNodePtr node, IWord *word, TextFontStyleInfo 
 
     snprintf(tmp, sizeof(tmp), ATTR_NUMFORMAT, word->yMin);
     xmlNewProp(node, (const xmlChar *) ATTR_Y, (const xmlChar *) tmp);
-
-    snprintf(tmp, sizeof(tmp), ATTR_NUMFORMAT, word->base);
-    xmlNewProp(node, (const xmlChar *) ATTR_BASE, (const xmlChar *) tmp);
+//
+//    snprintf(tmp, sizeof(tmp), ATTR_NUMFORMAT, word->base);
+//    xmlNewProp(node, (const xmlChar *) ATTR_BASE, (const xmlChar *) tmp);
 
     snprintf(tmp, sizeof(tmp), ATTR_NUMFORMAT, word->xMax - word->xMin);
     xmlNewProp(node, (const xmlChar *) ATTR_WIDTH, (const xmlChar *) tmp);
