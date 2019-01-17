@@ -34,6 +34,7 @@ General usage is as follow:
   -nsURI <string>        : add the specified namespace URI
   -opw <string>          : owner password (for encrypted files)
   -upw <string>          : user password (for encrypted files)
+  -filesLimit <int>      : limit of asset files be extracted to the value specified
   -q                     : don't print any messages or errors
   -v                     : print version info
   -h                     : print usage information
@@ -41,6 +42,7 @@ General usage is as follow:
   --help                 : print usage information
   -?                     : print usage information
   --saveconf <string>    : save all command line parameters in the specified XML <file>
+  -ocr                   : recognises all characters that are missing from unicode, or replace with placeholder to flag it.
 ```
 
 In addition to the [ALTO](https://github.com/altoxml/documentation/wiki) file describing the PDF content, the following files are generated:
