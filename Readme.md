@@ -10,8 +10,8 @@ The latest (non-)stable version is *0.2*.
 
 # Requirements
 
-clang 3.6 or gcc 4.9
-cmake 3.12.0
+* clang 3.6 or gcc 4.9
+* cmake 3.12.0
 
 # Usage
 
@@ -121,10 +121,6 @@ The executable `pdfalto` is generated in the root directory. Additionally, this 
 See the issue tracker and future work :
 
 1. Text like containing block element characters (https://unicode.org/charts/PDF/U2B00.pdf) might be placeholders for unknown characters unicodes instead of what you expect when you are extracting text. This is because the actual characters are glyphs that are embedded in the PDF document. The only way to access the text is to use OCR. This may be a future enhancement.
-
-# Unicode mapping configuration
-
-In order to fix unicode mapping for some characters (especially greek letters), a configuration mapping files are provided under the directory `xpdfrc`, and could be used from xpdf by adding the `-config <absolute path to xpdfrc file>`.
 
 # Contributors
 
