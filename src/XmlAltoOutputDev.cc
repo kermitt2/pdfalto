@@ -2004,7 +2004,6 @@ void TextPage::configuration() {
     }
     if (!readingOrder) {
         primaryRot = 0;
-        primaryLR = gTrue;
     }
 }
 
@@ -2970,10 +2969,11 @@ void TextPage::addAttributsNode(xmlNodePtr node, IWord *word, TextFontStyleInfo 
         xmlNewProp(node, (const xmlChar *) ATTR_HIGHLIGHT, (const xmlChar *) "yes");
     }
     Unicode *text = NULL;
-    text = (Unicode *) grealloc(text, word->size * sizeof(Unicode));
+    text = (Unicode *) grealloc(text, word->len * sizeof(Unicode));
     for (int i = 0; i < word->len; i++) {
         text[i] = ((TextChar *) word->chars->get(i))->c;
     }
+    primaryLR = checkPrimaryLR(word->chars);
     dumpFragment(text, word->len, uMap, stringTemp);
     if (verbose) {
         printf("token : %s\n", stringTemp->getCString());
