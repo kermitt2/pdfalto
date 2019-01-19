@@ -5957,7 +5957,7 @@ GBool TextPage::addBlockInReadingOrder(TextParagraph * block, double fontSize, G
                     xmlFree(attrValue);
                 }*/
         }
-        if(noVerticalOverlap && firstLowerBlock){
+        if((lastInserted || noVerticalOverlap) && firstLowerBlock){
             insertIndex = indexLowerBlock;
             notInserted = false;
         }
