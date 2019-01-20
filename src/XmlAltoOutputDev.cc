@@ -7326,13 +7326,13 @@ void XmlAltoOutputDev::endActualText(GfxState *state) {
     SplashFont *splashFont = NULL;
     if (parameters->getOcr() == gTrue) {
         SplashCoord mat[6];
-        mat[0] = (SplashCoord) curstate[0];
-        mat[1] = (SplashCoord) curstate[1];
-        mat[2] = (SplashCoord) curstate[2];
-        mat[3] = (SplashCoord) curstate[3];
-        mat[4] = (SplashCoord) curstate[4];
-        mat[5] = (SplashCoord) curstate[5];
-        splashFont = getSplashFont(state, mat);
+//        mat[0] = (SplashCoord) curstate[0];
+//        mat[1] = (SplashCoord) curstate[1];
+//        mat[2] = (SplashCoord) curstate[2];
+//        mat[3] = (SplashCoord) curstate[3];
+//        mat[4] = (SplashCoord) curstate[4];
+//        mat[5] = (SplashCoord) curstate[5];
+        //splashFont = getSplashFont(state, mat);
     }
     text->endActualText(state, splashFont);
 }
@@ -8266,13 +8266,13 @@ void XmlAltoOutputDev::drawChar(GfxState *state, double x, double y, double dx,
 
     if (parameters->getOcr() == gTrue) {
         SplashCoord mat[6];
-        mat[0] = (SplashCoord) (curstate[0]);
-        mat[1] = (SplashCoord) (curstate[1]);
-        mat[2] = (SplashCoord) (curstate[2]);
-        mat[3] = (SplashCoord) (curstate[3]);
-        mat[4] = (SplashCoord) (curstate[4]);
-        mat[5] = (SplashCoord) (curstate[5]);
-        splashFont = getSplashFont(state, mat);
+//        mat[0] = (SplashCoord) (curstate[0]);
+//        mat[1] = (SplashCoord) (curstate[1]);
+//        mat[2] = (SplashCoord) (curstate[2]);
+//        mat[3] = (SplashCoord) (curstate[3]);
+//        mat[4] = (SplashCoord) (curstate[4]);
+//        mat[5] = (SplashCoord) (curstate[5]);
+        //splashFont = getSplashFont(state, mat);
         if ((uLen == 0 ||
              ((u[0] == (Unicode) 0 || u[0] < (Unicode) 32) && uLen == 1))) {//&& globalParams->getApplyOCR())
             // as a first iteration for dictionnaries, placing a placeholder, which means creating a map based on the font-code mapping to unicode from : https://unicode.org/charts/PDF/U2B00.pdf
