@@ -19,6 +19,9 @@ set ( XML_LIB_SUBDIR ${CMAKE_CURRENT_SOURCE_DIR}/libs/libxml)
 set(FREETYPE_INCLUDE_DIR_ft2build ${CMAKE_CURRENT_SOURCE_DIR}/libs/freetype/include)
 set(FREETYPE_INCLUDE_DIR_freetype_freetype ${CMAKE_CURRENT_SOURCE_DIR}/libs/freetype/include)
 
+set(PNG_INCLUDE_DIRS ${PNG_SUBDIR}/src)
+set(PNG_FOUND TRUE)
+
 set ( ICU_PATH ${CMAKE_CURRENT_SOURCE_DIR}/libs/icu)
 
 if (APPLE)
@@ -48,7 +51,6 @@ elseif (UNIX)
     set ( ICUUC_LIB ${CMAKE_CURRENT_SOURCE_DIR}/libs/icu/linux/libicuuc.a)
     set ( ICUDATA_LIB ${CMAKE_CURRENT_SOURCE_DIR}/libs/icu/linux/libicudata.a)
 endif ()
-
 
 set(XPDF_BUILD_DIR ${XPDF_SUBDIR}/build)
 
@@ -81,7 +83,7 @@ endif()
 target_include_directories(pdfalto
         PUBLIC ${XML_LIB_SUBDIR}/include
         PUBLIC ${FREETYPE_INCLUDE_DIR_ft2build}
-        PUBLIC ${PNG_SUBDIR}/src
+        PUBLIC ${PNG_INCLUDE_DIRS}
         PUBLIC ${ZLIB_SUBDIR}/src
         PUBLIC ${XPDF_SUBDIR}
         PUBLIC ${XPDF_SUBDIR}/goo
