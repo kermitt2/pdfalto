@@ -19,6 +19,7 @@ set ( XML_LIB_SUBDIR ${CMAKE_CURRENT_SOURCE_DIR}/libs/libxml)
 set(FREETYPE_INCLUDE_DIR_ft2build ${CMAKE_CURRENT_SOURCE_DIR}/libs/freetype/include)
 set(FREETYPE_INCLUDE_DIR_freetype_freetype ${CMAKE_CURRENT_SOURCE_DIR}/libs/freetype/include)
 
+include_directories("${ZLIB_SUBDIR}/src")
 set(PNG_INCLUDE_DIRS ${PNG_SUBDIR}/src)
 set(PNG_FOUND TRUE)
 
