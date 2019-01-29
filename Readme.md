@@ -58,7 +58,10 @@ In addition to the [ALTO](https://github.com/altoxml/documentation/wiki) file de
 # Dependencies
 All dependencies are provided as static libraries corresponding to each operating system.
 
+Dependencies can be recompiled by running this [script](https://github.com/kermitt2/pdfalto/blob/master/install_deps.sh)
+
 See [compiling dependencies procedures](Dependencies_INSTALL.md) for further details.
+##### Known issues ([issue 41](https://github.com/kermitt2/pdfalto/issues/41)) might occur whille building, in this case you'll need to compile the dependencies before build pdflato.
 # Build
 
 * NOTE for windows : it's recommended to use Cygwin and install standard libraries (either for cland or gcc)
