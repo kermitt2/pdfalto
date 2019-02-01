@@ -29,7 +29,7 @@ if (APPLE)
     message("Using macos settings.")
     #set(CMAKE_CXX_STANDARD_LIBRARIES "-static-compiler-rt -static-libc++")
     set ( XML_LIBRARY ${XML_LIB_SUBDIR}/mac/libxml2.a)
-    set ( PNG_LIBRARY ${PNG_SUBDIR}/mac/libpng.a)
+    set ( PNG_LIBRARIES ${PNG_SUBDIR}/mac/libpng.a)
     set ( ZLIB_LIBRARY ${ZLIB_SUBDIR}/mac/libzlib.a)
     set ( FREETYPE_LIBRARY ${CMAKE_CURRENT_SOURCE_DIR}/libs/freetype/mac/libfreetype.a)
     set ( ICUUC_LIB ${CMAKE_CURRENT_SOURCE_DIR}/libs/icu/mac/libicuuc.a)
@@ -76,9 +76,9 @@ set(SOURCE_FILES
 add_executable(pdfalto ${SOURCE_FILES})
 
 if(${HAVE_PAPER_H})
-    target_link_libraries(pdfalto ${PNG_LIBRARY} ${ZLIB_LIBRARY} ${XML_LIBRARY} splash xpdf goo fofi ${ICUUC_LIB} ${ICUDATA_LIB} ${FREETYPE_LIBRARY} dl ${HAVE_PAPER_H})
+        target_link_libraries(pdfalto ${PNG_LIBRARIES} ${ZLIB_LIBRARY} ${XML_LIBRARY} splash xpdf goo fofi ${ICUUC_LIB} ${ICUDATA_LIB} ${FREETYPE_LIBRARY} dl ${HAVE_PAPER_H})
 else()
-    target_link_libraries(pdfalto ${PNG_LIBRARY} ${ZLIB_LIBRARY} ${XML_LIBRARY} splash xpdf goo fofi ${ICUUC_LIB} ${ICUDATA_LIB} ${FREETYPE_LIBRARY} dl)
+    target_link_libraries(pdfalto ${PNG_LIBRARIES} ${ZLIB_LIBRARY} ${XML_LIBRARY} splash xpdf goo fofi ${ICUUC_LIB} ${ICUDATA_LIB} ${FREETYPE_LIBRARY} dl)
 endif()
 
 target_include_directories(pdfalto
