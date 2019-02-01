@@ -47,7 +47,7 @@ echo 'Installing libxml2.'
 rm -f libxml2-2.9.8.tar.gz
 wget $LIBXML_URI
 
-tar xjvf libxml2-2.9.8.tar.gz
+tar xvf libxml2-2.9.8.tar.gz
 
 cd libxml2-2.9.8
 
@@ -70,7 +70,7 @@ rm -f freetype-2.9
 
 wget $FREETYPE_URI
 
-tar xjvf freetype-2.9.tar.gz
+tar xvf freetype-2.9.tar.gz
 
 cd freetype-2.9
 
@@ -91,7 +91,7 @@ rm -f icu4c-62_1-src
 
 wget $ICU_URI
 
-tar xjvf icu4c-62_1-src.tgz
+tar xvf icu4c-62_1-src.tgz
 
 cd icu/source && mkdir lib && mkdir bin
 
