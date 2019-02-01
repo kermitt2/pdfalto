@@ -1830,6 +1830,8 @@ private:
     SplashFont * getSplashFont(GfxState *state, SplashCoord *matrix);
 
     SplashPath *convertPath(GfxState *state, GfxPath *path, GBool dropEmptySubpaths);
+
+    bool isUTF8(Unicode *u, int uLen);
 };
 
 #endif
