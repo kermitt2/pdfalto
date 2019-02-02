@@ -76,7 +76,7 @@ cd freetype-2.9
 
 mkdir _build && cd _build
 
-cmake -G "Unix Makefiles" ../ "-DCMAKE_POSITION_INDEPENDENT_CODE:BOOL=true"  -DCMAKE_DISABLE_FIND_PACKAGE_HarfBuzz=TRUE -DFT_WITH_ZLIB=OFF -DFT_WITH_BZIP2=OFF -DFT_WITH_PNG=OFF
+cmake -G "Unix Makefiles" ../ "-DCMAKE_POSITION_INDEPENDENT_CODE:BOOL=true"  -DCMAKE_DISABLE_FIND_PACKAGE_HarfBuzz=TRUE -DWITH_ZLIB=OFF -DWITH_BZIP2=OFF -DWITH_PNG=OFF
 
 make
 
@@ -120,8 +120,13 @@ cp libs/image/zlib/src/libzlib.a libs/image/zlib/$LIB_INSTALL/
 cp libs/image/png/src/libpng.a libs/image/png/$LIB_INSTALL/
 cp $DEP_INSTALL_DIR/freetype-2.9/_build/libfreetype.a libs/freetype/$LIB_INSTALL/
 cp $DEP_INSTALL_DIR/libxml2-2.9.8/.libs/libxml2.a libs/libxml/$LIB_INSTALL/
+if [[ "$OSTYPE" == "cygwin" ]]; then
+cp $DEP_INSTALL_DIR/icu/source/lib/libsicuuc.a libs/icu/$LIB_INSTALL/
+cp $DEP_INSTALL_DIR/icu/source/lib/libsicudata.a libs/icu/$LIB_INSTALL/
+#else
 cp $DEP_INSTALL_DIR/icu/source/lib/libicuuc.a libs/icu/$LIB_INSTALL/
-cp $DEP_INSTALL_DIR/icu/source/stubdata/libicudata.a libs/icu/$LIB_INSTALL/
+cp $DEP_INSTALL_DIR/icu/source/lib/libicudata.a libs/icu/$LIB_INSTALL/
+fi
 
 rm -rf $DEP_INSTALL_DIR
 
