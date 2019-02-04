@@ -71,6 +71,7 @@ using namespace ConstantsUtils;
 #include <splash/SplashPath.h>
 #include <splash/SplashPattern.h>
 #include <xpdf/PDFDocEncoding.h>
+#include <dirent.h>
 
 
 #include "BuiltinFont.h"
@@ -322,6 +323,19 @@ TextChar::TextChar(GfxState *stateA, Unicode cA, CharCode charCodeA, int charPos
     colorR = colorRA;
     colorG = colorGA;
     colorB = colorBA;
+    // here filter special characters only (parenthesis..,), not important to have many similar unicode for one kind..
+//    if(unicode_block != UBLOCK_LATIN_1_SUPPLEMENT && unicode_block != UBLOCK_BASIC_LATIN && unicode_block != UBLOCK_LATIN_EXTENDED_A && unicode_block != UBLOCK_LATIN_EXTENDED_B && unicode_block != UBLOCK_LATIN_EXTENDED_C && unicode_block != UBLOCK_LATIN_EXTENDED_D
+//       && unicode_block != UBLOCK_CYRILLIC  //&& unicode_block != UBLOCK_CYRILLIC_EXTENDED_A && unicode_block != UBLOCK_CYRILLIC_EXTENDED_B && unicode_block != UBLOCK_CYRILLIC_EXTENDED_C && unicode_block != UBLOCK_CYRILLIC_SUPPLEMENT && unicode_block != UBLOCK_CYRILLIC_SUPPLEMENTARY
+//       && unicode_block != UBLOCK_GREEK
+//       && unicode_block != UBLOCK_CYRILLIC
+//       && unicode_block != UBLOCK_ARABIC && unicode_block != UBLOCK_ARABIC_EXTENDED_A  && unicode_block != UBLOCK_ARABIC_SUPPLEMENT
+//       && unicode_block != UBLOCK_HEBREW
+//       && unicode_block != UBLOCK_CJK_UNIFIED_IDEOGRAPHS && unicode_block != UBLOCK_CJK_UNIFIED_IDEOGRAPHS_EXTENSION_A && unicode_block != UBLOCK_CJK_UNIFIED_IDEOGRAPHS_EXTENSION_B && unicode_block != UBLOCK_CJK_UNIFIED_IDEOGRAPHS_EXTENSION_C && unicode_block != UBLOCK_CJK_UNIFIED_IDEOGRAPHS_EXTENSION_D && unicode_block != UBLOCK_CJK_UNIFIED_IDEOGRAPHS_EXTENSION_E && unicode_block != UBLOCK_CJK_UNIFIED_IDEOGRAPHS_EXTENSION_F
+//            )
+    if(!u_isalnum(cA) && !u_ispunct(cA))
+        isSpecialUnicodeGlyph = gTrue;
+    else
+        isSpecialUnicodeGlyph = gFalse;
 }
 
 int TextChar::cmpX(const void *p1, const void *p2) {
@@ -371,7 +385,7 @@ int rotA, int dirA, GBool spaceAfterA, GfxState *state,
 
     spaceAfter = spaceAfterA;
 
-    containsNonUnicodeGlyph = gFalse;
+    toBeExtracted = gFalse;
 
     dir = dirA;
 
@@ -547,8 +561,8 @@ int rotA, int dirA, GBool spaceAfterA, GfxState *state,
         ch = (TextChar *)charsA->get(rot >= 2 ? start + len - 1 - j : start + j);
         chars->append(ch);
 
-        if(ch->isNonUnicodeGlyph || (ch->unicode_block != UBLOCK_LATIN_1_SUPPLEMENT && ch->unicode_block != UBLOCK_BASIC_LATIN))
-            containsNonUnicodeGlyph = gTrue;
+        if(ch->isNonUnicodeGlyph || ch->isSpecialUnicodeGlyph)
+            toBeExtracted = gTrue;
 
         charPos[i] = ch->charPos;
         if (i == len - 1) {
@@ -847,7 +861,7 @@ TextRawWord::TextRawWord(GfxState *state, double x0, double y0,
     colorG = colToDbl(rgb.g);
     colorB = colToDbl(rgb.b);
 
-    containsNonUnicodeGlyph = gFalse;
+    toBeExtracted = gFalse;
 }
 
 TextRawWord::~TextRawWord() {
@@ -923,8 +937,8 @@ void TextRawWord::addChar(GfxState *state, double x, double y, double dx,
                                      colToDbl(rgb.r), colToDbl(rgb.g),
                                      colToDbl(rgb.b), isNonUnicodeGlyph);
 
-        if(isNonUnicodeGlyph|| (ch->unicode_block != UBLOCK_LATIN_1_SUPPLEMENT && ch->unicode_block != UBLOCK_BASIC_LATIN))
-            containsNonUnicodeGlyph = gTrue;
+        if(isNonUnicodeGlyph || ch->isSpecialUnicodeGlyph)
+            toBeExtracted = gTrue;
         chars->append(ch);
         switch (rot) {
             case 0:
@@ -1036,8 +1050,8 @@ GBool TextRawWord::overlap(TextRawWord *w2){
     return gFalse;
 }
 
-void IWord::setContainNonUnicodeGlyph(GBool containsNonUnicodeGlyphA) {
-    containsNonUnicodeGlyph = containsNonUnicodeGlyphA;
+void IWord::setToBeExtracted(GBool toBeExtractedA) {
+    toBeExtracted = toBeExtractedA;
 }
 
 //------------------------------------------------------------------------
@@ -1509,11 +1523,7 @@ TextPage::TextPage(GBool verboseA, Catalog *catalog, xmlNodePtr node,
 
     idx = 0; //EG
 
-    if (nsURIA) {
-        namespaceURI = new GString(nsURIA);
-    } else {
-        namespaceURI = NULL;
-    }
+    baseFileName = base;
 
     fonts = new GList();
     lastFindXMin = lastFindYMin = 0;
@@ -1523,8 +1533,8 @@ TextPage::TextPage(GBool verboseA, Catalog *catalog, xmlNodePtr node,
 TextPage::~TextPage() {
     clear();
     delete fonts;
-    if (namespaceURI) {
-        delete namespaceURI;
+    if (baseFileName) {
+        delete baseFileName;
     }
 
     if (splash) {
@@ -3886,7 +3896,7 @@ void TextPage::dumpInReadingOrder(GBool blocks, GBool fullFontName) {
                         nextWord = (TextWord *) line->words->get(wordId + 1);
 
 
-                    if (word->containNonUnicodeGlyph()) {
+                    if (word->isToBeExtracted()) {
                         SplashColorMode colorMode = splashModeRGB8;
                         GBool bitmapTopDown = gTrue;
                         GBool allowAntialias = gTrue;
@@ -4011,14 +4021,14 @@ void TextPage::dump(GBool blocks, GBool fullFontName) {
             prvWord = (TextRawWord *) words->get(wordId-1);
 
 
-        if(word->containNonUnicodeGlyph()){
+        if(word->isToBeExtracted()){
 
             extChars = new GList();
             SplashColorMode colorMode = splashModeRGB8;
             GBool bitmapTopDown = gTrue;
             GBool allowAntialias = gTrue;
             SplashColor paperColor;
-            setupScreenParams(128, 64);
+            setupScreenParams(512, 64);
             paperColor[0] = paperColor[1] = paperColor[2] = 0xff;
             GBool vectorAntialias = allowAntialias &&
                                     globalParams->getVectorAntialias() &&
@@ -4042,12 +4052,13 @@ void TextPage::dump(GBool blocks, GBool fullFontName) {
             CharCode c = 0;
             int k = 0;
             int y = (int)(parameters->getCharCount()*0.5);
-
-            for (wordJ = wordId-1; wordJ >= 0; --wordJ) {
+            if(word->getLength() > y)//here we avoid missing the character in concern
+                y = k - word->getLength();
+            for (wordJ = wordId-1; wordJ >= 0 && y>0; --wordJ) {
                 sWord = (TextRawWord *)words->get(wordJ);
-                int j = sWord->getLength() - 1 ;
+                int j = sWord->getLength() ;
                 while(j > 0) {
-                    TextChar *wordchar = (TextChar *) sWord->chars->get(j);
+                    TextChar *wordchar = (TextChar *) sWord->chars->get(j-1);
 
                     if(firstCharXmin <= wordchar->xMin)//means another line
                         goto rightPart;
@@ -4068,7 +4079,7 @@ void TextPage::dump(GBool blocks, GBool fullFontName) {
                 int j = 0;
                 while(sWord->getLength() > j) {
                     TextChar *wordchar = (TextChar *) sWord->chars->get(j);
-                    if (wordchar->isNonUnicodeGlyph)
+                    if (wordchar->isNonUnicodeGlyph ||wordchar->isSpecialUnicodeGlyph)
                         c = wordchar->charCode;
                     if(wordchar->xMin < word->xMin)//either in newline or not ordered
                         goto theEnd;
@@ -4094,8 +4105,16 @@ void TextPage::dump(GBool blocks, GBool fullFontName) {
                 png_structp png;
                 png_infop pngInfo;
                 GString *pngFile;
-                pngFile = GString::format("so{0:s}-{1:02d}.png", GString::fromInt(data_count)->getCString(), c);
-                if (!(f = fopen(pngFile->getCString(), "wb"))) {
+
+#ifdef WIN32
+                _mkdir(dataDir->getCString());
+#else
+                mkdir(baseFileName->getCString(), 00777);
+#endif
+
+                pngFile = GString::format("so{0:s}-{1:02d}", GString::fromInt(data_count)->getCString(), c);
+                pngFile->append("p")->append(GString::fromInt(num))->append(".png");
+                if (!(f = fopen((new GString(baseFileName))->append("/")->append(pngFile)->getCString(), "wb"))) {
                     exit(2);
                 }
                 delete pngFile;
@@ -4346,6 +4365,8 @@ DataGeneratorOutputDev::DataGeneratorOutputDev(GString *fileName, GString *fileN
 
     globalParams->setTextEncoding((char*)ENCODING_UTF8);
     needClose = gFalse;
+
+    baseFileName = new GString(fileNamePdf->del(fileNamePdf->getLength() - 4, fileNamePdf->getLength()));
 
     delete fileNamePDF;
 
