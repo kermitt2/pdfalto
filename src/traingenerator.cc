@@ -30,6 +30,7 @@
 #include <dirent.h>
 
 #include <iostream>
+#include <sys/stat.h>
 
 using namespace std;
 
@@ -110,6 +111,71 @@ static ArgDesc argDesc[] = {
         {NULL}
 };
 
+
+int processFile(GString *fileName, GString *ownerPW, GString *userPW){
+
+    GString *textFileName;
+    DataGeneratorOutputDev *datagen;
+    int exitCode = 99;
+    // Create the object PDF doc
+
+    PDFDocXrce *doc = new PDFDocXrce(fileName, ownerPW, userPW);
+
+    if (userPW) {
+        delete userPW;
+    }
+    if (ownerPW) {
+        delete ownerPW;
+    }
+    if (!doc->isOk()) {
+        exitCode = 1;
+        goto err2;
+    }
+
+    if (!doc->okToCopy())
+        fprintf(stderr, "\n\nYou are not supposed to copy this document...\n\n");
+
+    // Get page range
+    if (firstPage < 1) {
+        firstPage = 1;
+    }
+
+    if (lastPage!=0){
+        int last = lastPage;
+        if (lastPage > doc->getNumPages()){
+            last = doc->getNumPages();
+        }
+    }
+    if (lastPage < 1 || lastPage > doc->getNumPages()) {
+        lastPage = doc->getNumPages();
+    }
+
+
+    datagen = new DataGeneratorOutputDev(textFileName, fileName, doc->getCatalog(), physLayout, verbose, NULL, NULL);
+
+
+    if (datagen->isOk()) {
+        clock_t startTime = clock();
+
+        datagen->startDoc(doc->getXRef());
+
+        doc->displayPages(datagen, NULL, firstPage, lastPage, 400, 400, 0, gFalse, gTrue, gFalse);
+
+        cout << double( clock() - startTime ) / (double)CLOCKS_PER_SEC<< " seconds." << endl;
+    }
+    else {
+        delete datagen;
+        exitCode = 2;
+    }
+    delete datagen;
+    exitCode = 0;
+
+    err2:
+    delete doc;
+    return exitCode;
+
+}
+
 /**
 * -verbose : display pdf attributes<br/>
 * @date 11-2018
@@ -133,6 +199,8 @@ int main(int argc, char *argv[]) {
     char *p;
     int exitCode;
     char *temp;
+
+    //add parse directory content (many files at once)
 
     exitCode = 99;
 
@@ -200,75 +268,31 @@ int main(int argc, char *argv[]) {
 
     if (argc < 2) {goto err0;}
     fileName = new GString(argv[1]);
-    // Create the object PDF doc
-    doc = new PDFDocXrce(fileName, ownerPW, userPW);
-
-    if (userPW) {
-        delete userPW;
-    }
-    if (ownerPW) {
-        delete ownerPW;
-    }
-    if (!doc->isOk()) {
-        exitCode = 1;
-        goto err2;
-    }
-
-    if (!doc->okToCopy())
-        fprintf(stderr, "\n\nYou are not supposed to copy this document...\n\n");
-
-    // Get page range
-    if (firstPage < 1) {
-        firstPage = 1;
-    }
-
-    if (lastPage!=0){
-        int last = lastPage;
-        if (lastPage > doc->getNumPages()){
-            last = doc->getNumPages();
+    DIR *dir;
+    struct dirent *ent;
+    if ((dir = opendir (fileName->getCString())) != NULL) {
+        GString *filepath, *ext, *name;
+        /* print all the files and directories within directory */
+        while ((ent = readdir (dir)) != NULL) {
+            name = new GString(ent->d_name);
+            ext = name->copy()->del(0, name->getLength()-4);
+            if(ext->cmp(".pdf") == 0) {
+                filepath = fileName->copy()->append(ent->d_name);
+                printf("processing %s ..... \n", filepath->getCString());
+                exitCode = processFile(filepath->copy(), ownerPW, userPW);
+                printf("%s processed. \n", filepath->getCString());
+            }
         }
-    }
-    if (lastPage < 1 || lastPage > doc->getNumPages()) {
-        lastPage = doc->getNumPages();
-    }
-
-    datagen = new DataGeneratorOutputDev(textFileName, fileName, doc->getCatalog(), physLayout, verbose, nsURI, cmd);
-
-
-    if (datagen->isOk()) {
-        clock_t startTime = clock();
-
-        datagen->startDoc(doc->getXRef());
-
-        doc->displayPages(datagen, NULL, firstPage, lastPage, 400, 400, 0, gFalse, gTrue, gFalse);
-
-        cout << double( clock() - startTime ) / (double)CLOCKS_PER_SEC<< " seconds." << endl;
-    }
-    else {
-        delete datagen;
-        exitCode = 2;
-        goto err3;
-    }
-    delete datagen;
-    exitCode = 0;
-    // clean up
-
-    if (nsURI) {
-        delete nsURI;
-    }
-
-    err3:
-    delete textFileName;
-
-    err2:
-    delete doc;
-    delete globalParams;
-    delete parameters;
-    delete cmd;
+        closedir (dir);
+    } else
+        exitCode = processFile(fileName, ownerPW, userPW);
 
     err0:
     // check for memory leaks
     Object::memCheck(stderr);
     gMemReport(stderr);
+
+    delete globalParams;
+    delete parameters;
     return exitCode;
 }
