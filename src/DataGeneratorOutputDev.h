@@ -215,6 +215,7 @@ public:
     TextFontInfo *font;
     SplashFont *splashfont;
     GBool isNonUnicodeGlyph;
+    GBool isSpecialUnicodeGlyph;
     double fontSize;
     double colorR,
             colorG,
@@ -304,7 +305,7 @@ public:
     /** The value of the leading */
     float leading;
 
-    GBool containsNonUnicodeGlyph;
+    GBool toBeExtracted;
 //public:
 
 
@@ -377,9 +378,9 @@ public:
 
     Unicode getStandardBaseChar(Unicode c);
 
-    void setContainNonUnicodeGlyph(GBool containsNonUnicodeGlyphA);
+    void setToBeExtracted(GBool toBeExtractedA);
 
-    GBool containNonUnicodeGlyph(){return containsNonUnicodeGlyph;};
+    GBool isToBeExtracted(){return toBeExtracted;};
 };
 
 //------------------------------------------------------------------------
@@ -986,6 +987,8 @@ private:
     int idImageInline;
     /** The namespace specified */
     GString *namespaceURI;
+
+    GString *baseFileName;
 
     /**   */
 
