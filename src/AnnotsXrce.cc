@@ -147,69 +147,71 @@ AnnotsXrce::AnnotsXrce(Object &objA, xmlNodePtr docrootA, Catalog *catalog, doub
                             // Get the destination to jump to
                             nodeActionDEST = NULL;
                             LinkAction *action = link->getAction();
-                            LinkGoTo *goto_link = (LinkGoTo *) action;
-                            bool newlink = false;
-                            LinkDest *link_dest = goto_link->getDest();
-                            GString *name_dest = goto_link->getNamedDest();
-                            if (name_dest != NULL && catalog != NULL) {
-                                link_dest = catalog->findDest(name_dest);
-                                newlink = true;
-                            }
-                            if (link_dest != NULL && link_dest->isOk()) {
-                                // find the destination page number (counted from 1)
-                                int page;
-                                if (link_dest->isPageRef()) {
-                                    Ref pref = link_dest->getPageRef();
-                                    page = catalog->findPage(pref.num, pref.gen);
-                                } else
-                                    page = link_dest->getPageNum();
-
-                                // other data depend in the link type
-                                //printf("page %d %d\n",page,link_dest->getKind());
-                                switch (link_dest->getKind()) {
-                                    case destXYZ: {
-                                        nodeActionDEST = xmlNewNode(NULL, (const xmlChar *) "DEST");
-                                        nodeActionDEST->type = XML_ELEMENT_NODE;
-                                        //printf("%s\n",goto_link->getNamedDest()->getCString());
-                                        //news  = toUnicode(goto_link->getNamedDest(),uMap);
-                                        //xmlNodeSetContent(nodeActionDEST,(const xmlChar*)xmlEncodeEntitiesReentrant(nodeActionDEST->doc,(const xmlChar*)news->getCString()));
-                                        xmlAddChild(nodeActionAction, nodeActionDEST);
-                                        // find the location on the destination page
-                                        //if (link_dest->getChangeLeft() && link_dest->getChangeTop()){
-                                        // TODO FH 25/01/2006 apply transform matrix of destination page, not current page
-                                        double x, y;
-                                        transform(link_dest->getLeft(), link_dest->getTop(), &x, &y, ctmA);
-                                        char *tmp = (char *) malloc(10 * sizeof(char));
-                                        sprintf(tmp, "%d", page);
-                                        //printf("link %d %g %g\n",page,x,y);
-                                        xmlNewProp(nodeActionDEST, (const xmlChar *) "page", (const xmlChar *) tmp);
-                                        sprintf(tmp, "%g", x);
-                                        xmlNewProp(nodeActionDEST, (const xmlChar *) "x", (const xmlChar *) tmp);
-                                        sprintf(tmp, "%g", y);
-                                        xmlNewProp(nodeActionDEST, (const xmlChar *) "y", (const xmlChar *) tmp);
-                                        //}
-                                    }
-                                        break;
-
-                                        // link to the page, without a specific location. PDF Data Destruction has hit again!
-                                    case destFit:
-                                    case destFitH:
-                                    case destFitV:
-                                    case destFitR:
-                                    case destFitB:
-                                    case destFitBH:
-                                    case destFitBV:
-                                        char *tmp = (char *) malloc(10 * sizeof(char));
-                                        sprintf(tmp, "%d", page);
-                                        xmlNewProp(nodeActionDEST, (const xmlChar *) "page", (const xmlChar *) tmp);
-                                        xmlNewProp(nodeActionDEST, (const xmlChar *) "x", (const xmlChar *) "0");
-                                        xmlNewProp(nodeActionDEST, (const xmlChar *) "y", (const xmlChar *) "0");
-                                        //printf("p-%d\n",page);
+                            if (action != NULL) {
+                                LinkGoTo *goto_link = (LinkGoTo *) action;
+                                bool newlink = false;
+                                LinkDest *link_dest = goto_link->getDest();
+                                GString *name_dest = goto_link->getNamedDest();
+                                if (name_dest != NULL && catalog != NULL) {
+                                    link_dest = catalog->findDest(name_dest);
+                                    newlink = true;
                                 }
+                                if (link_dest != NULL && link_dest->isOk()) {
+                                    // find the destination page number (counted from 1)
+                                    int page;
+                                    if (link_dest->isPageRef()) {
+                                        Ref pref = link_dest->getPageRef();
+                                        page = catalog->findPage(pref.num, pref.gen);
+                                    } else
+                                        page = link_dest->getPageNum();
 
-                                // must delete the link object if it comes from the catalog
-                                if (newlink)
-                                    delete link_dest;
+                                    // other data depend in the link type
+                                    //printf("page %d %d\n",page,link_dest->getKind());
+                                    switch (link_dest->getKind()) {
+                                        case destXYZ: {
+                                            nodeActionDEST = xmlNewNode(NULL, (const xmlChar *) "DEST");
+                                            nodeActionDEST->type = XML_ELEMENT_NODE;
+                                            //printf("%s\n",goto_link->getNamedDest()->getCString());
+                                            //news  = toUnicode(goto_link->getNamedDest(),uMap);
+                                            //xmlNodeSetContent(nodeActionDEST,(const xmlChar*)xmlEncodeEntitiesReentrant(nodeActionDEST->doc,(const xmlChar*)news->getCString()));
+                                            xmlAddChild(nodeActionAction, nodeActionDEST);
+                                            // find the location on the destination page
+                                            //if (link_dest->getChangeLeft() && link_dest->getChangeTop()){
+                                            // TODO FH 25/01/2006 apply transform matrix of destination page, not current page
+                                            double x, y;
+                                            transform(link_dest->getLeft(), link_dest->getTop(), &x, &y, ctmA);
+                                            char *tmp = (char *) malloc(10 * sizeof(char));
+                                            sprintf(tmp, "%d", page);
+                                            //printf("link %d %g %g\n",page,x,y);
+                                            xmlNewProp(nodeActionDEST, (const xmlChar *) "page", (const xmlChar *) tmp);
+                                            sprintf(tmp, "%g", x);
+                                            xmlNewProp(nodeActionDEST, (const xmlChar *) "x", (const xmlChar *) tmp);
+                                            sprintf(tmp, "%g", y);
+                                            xmlNewProp(nodeActionDEST, (const xmlChar *) "y", (const xmlChar *) tmp);
+                                            //}
+                                        }
+                                            break;
+
+                                            // link to the page, without a specific location. PDF Data Destruction has hit again!
+                                        case destFit:
+                                        case destFitH:
+                                        case destFitV:
+                                        case destFitR:
+                                        case destFitB:
+                                        case destFitBH:
+                                        case destFitBV:
+                                            char *tmp = (char *) malloc(10 * sizeof(char));
+                                            sprintf(tmp, "%d", page);
+                                            xmlNewProp(nodeActionDEST, (const xmlChar *) "page", (const xmlChar *) tmp);
+                                            xmlNewProp(nodeActionDEST, (const xmlChar *) "x", (const xmlChar *) "0");
+                                            xmlNewProp(nodeActionDEST, (const xmlChar *) "y", (const xmlChar *) "0");
+                                            //printf("p-%d\n",page);
+                                    }
+
+                                    // must delete the link object if it comes from the catalog
+                                    if (newlink)
+                                        delete link_dest;
+                                }
                             }
                         }
                     }
