@@ -2839,7 +2839,9 @@ void TextPage::addCharToRawWord(GfxState *state, double x, double y, double dx,
         for (i = 0; i < uLen; ++i) {
             if (isNonUnicodeGlyph)
                 curWord->setContainNonUnicodeGlyph(isNonUnicodeGlyph);
-            curWord->addChar(state, x1 + i * w1, y1 + i * h1, w1, h1, u[i], c, charPos,
+            //Check is the code point is defined and not a control one
+            if(u_isdefined(u[i]) && !u_iscntrl(u[i]))
+                curWord->addChar(state, x1 + i * w1, y1 + i * h1, w1, h1, u[i], c, charPos,
                              (overlap || sp < -minDupBreakOverlap * curWord->fontSize), curFont, curFontSize,
                              splashFont, nBytes, curRot, isNonUnicodeGlyph);
         }
