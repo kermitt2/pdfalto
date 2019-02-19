@@ -105,8 +105,6 @@ cd ../..
 
 echo 'ICU installation is finished.'
 
-cd ..
-
 echo 'Installing zlib and png.'
 
 cd libs/image/zlib/src && cmake "-DCMAKE_POSITION_INDEPENDENT_CODE:BOOL=true" && make && cd -
@@ -116,17 +114,17 @@ echo 'zlib and png installation is finished.'
 
 echo 'Copying libraries into their corresponding location.'
 
+cd ..
 cp libs/image/zlib/src/libzlib.a libs/image/zlib/$LIB_INSTALL/
 cp libs/image/png/src/libpng.a libs/image/png/$LIB_INSTALL/
 cp $DEP_INSTALL_DIR/freetype-2.9/_build/libfreetype.a libs/freetype/$LIB_INSTALL/
 cp $DEP_INSTALL_DIR/libxml2-2.9.8/.libs/libxml2.a libs/libxml/$LIB_INSTALL/
 if [[ "$OSTYPE" == "cygwin" ]]; then
-cp $DEP_INSTALL_DIR/icu/source/lib/libsicuuc.a libs/icu/$LIB_INSTALL/
-cp $DEP_INSTALL_DIR/icu/source/lib/libsicudata.a libs/icu/$LIB_INSTALL/
-#else
+mv $DEP_INSTALL_DIR/icu/source/lib/libsicuuc.a $DEP_INSTALL_DIR/icu/source/lib/libicuuc.a
+mv $DEP_INSTALL_DIR/icu/source/lib/libsicudata.a $DEP_INSTALL_DIR/icu/source/lib/libicudata.a
+fi
 cp $DEP_INSTALL_DIR/icu/source/lib/libicuuc.a libs/icu/$LIB_INSTALL/
 cp $DEP_INSTALL_DIR/icu/source/lib/libicudata.a libs/icu/$LIB_INSTALL/
-fi
 
 rm -rf $DEP_INSTALL_DIR
 
