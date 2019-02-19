@@ -44,7 +44,7 @@ echo "$LIB_INSTALL"
 
 echo 'Installing libxml2.'
 #
-rm -f libxml2-2.9.8.tar.gz
+rm -rf libxml2-2.9.8
 wget $LIBXML_URI
 
 tar xvf libxml2-2.9.8.tar.gz
@@ -66,7 +66,7 @@ echo 'libxml2 installation is finished.'
 
 echo 'Installing freetype.'
 
-rm -f freetype-2.9
+rm -rf freetype-2.9
 
 wget $FREETYPE_URI
 
@@ -87,7 +87,7 @@ echo 'Freetype installation is finished.'
 
 echo 'Installing ICU.'
 
-rm -f icu4c-62_1-src
+rm -rf icu4c-62_1-src
 
 wget $ICU_URI
 
@@ -113,18 +113,23 @@ cd libs/image/png/src && cmake "-DCMAKE_POSITION_INDEPENDENT_CODE:BOOL=true" && 
 echo 'zlib and png installation is finished.'
 
 echo 'Copying libraries into their corresponding location.'
-
+MACHINE_TYPE=`uname -m`
+if [ ${MACHINE_TYPE} == 'x86_64' ]; then
+  ARCH="64"
+else
+  ARCH="32"
+fi
 cd ..
-cp libs/image/zlib/src/libzlib.a libs/image/zlib/$LIB_INSTALL/
-cp libs/image/png/src/libpng.a libs/image/png/$LIB_INSTALL/
-cp $DEP_INSTALL_DIR/freetype-2.9/_build/libfreetype.a libs/freetype/$LIB_INSTALL/
-cp $DEP_INSTALL_DIR/libxml2-2.9.8/.libs/libxml2.a libs/libxml/$LIB_INSTALL/
+cp libs/image/zlib/src/libzlib.a libs/image/zlib/$LIB_INSTALL/$ARCH/
+cp libs/image/png/src/libpng.a libs/image/png/$LIB_INSTALL/$ARCH/
+cp $DEP_INSTALL_DIR/freetype-2.9/_build/libfreetype.a libs/freetype/$LIB_INSTALL/$ARCH/
+cp $DEP_INSTALL_DIR/libxml2-2.9.8/.libs/libxml2.a libs/libxml/$LIB_INSTALL/$ARCH/
 if [[ "$OSTYPE" == "cygwin" ]]; then
 mv $DEP_INSTALL_DIR/icu/source/lib/libsicuuc.a $DEP_INSTALL_DIR/icu/source/lib/libicuuc.a
 mv $DEP_INSTALL_DIR/icu/source/lib/libsicudata.a $DEP_INSTALL_DIR/icu/source/lib/libicudata.a
 fi
-cp $DEP_INSTALL_DIR/icu/source/lib/libicuuc.a libs/icu/$LIB_INSTALL/
-cp $DEP_INSTALL_DIR/icu/source/lib/libicudata.a libs/icu/$LIB_INSTALL/
+cp $DEP_INSTALL_DIR/icu/source/lib/libicuuc.a libs/icu/$LIB_INSTALL/$ARCH/
+cp $DEP_INSTALL_DIR/icu/source/lib/libicudata.a libs/icu/$LIB_INSTALL/$ARCH/
 
 rm -rf $DEP_INSTALL_DIR
 
