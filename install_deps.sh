@@ -107,6 +107,8 @@ echo 'ICU installation is finished.'
 
 echo 'Installing zlib and png.'
 
+cd ..
+
 cd libs/image/zlib/src && cmake "-DCMAKE_POSITION_INDEPENDENT_CODE:BOOL=true" && make && cd -
 cd libs/image/png/src && cmake "-DCMAKE_POSITION_INDEPENDENT_CODE:BOOL=true" && make && cd -
 
@@ -119,7 +121,6 @@ if [ ${MACHINE_TYPE} == 'x86_64' ]; then
 else
   ARCH="32"
 fi
-cd ..
 cp libs/image/zlib/src/libzlib.a libs/image/zlib/$LIB_INSTALL/$ARCH/
 cp libs/image/png/src/libpng.a libs/image/png/$LIB_INSTALL/$ARCH/
 cp $DEP_INSTALL_DIR/freetype-2.9/_build/libfreetype.a libs/freetype/$LIB_INSTALL/$ARCH/
