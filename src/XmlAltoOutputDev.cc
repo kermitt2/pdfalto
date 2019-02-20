@@ -5853,25 +5853,25 @@ void TextPage::dump(GBool useBlocks, GBool fullFontName) {
         xmlChar *attrValue = xmlGetProp(secondSvgElement, (const xmlChar *) ATTR_SVG_X);
         if (attrValue != NULL) {
             x = atof((const char *) attrValue);
-            xmlFree(attrValue);
+            free(attrValue);
         }
 
         attrValue = xmlGetProp(secondSvgElement, (const xmlChar *) ATTR_SVG_Y);
         if (attrValue != NULL) {
             y = atof((const char *) attrValue);
-            xmlFree(attrValue);
+            free(attrValue);
         }
 
         attrValue = xmlGetProp(secondSvgElement, (const xmlChar *) ATTR_SVG_WIDTH);
         if (attrValue != NULL) {
             w = atof((const char *) attrValue);
-            xmlFree(attrValue);
+            free(attrValue);
         }
 
         attrValue = xmlGetProp(secondSvgElement, (const xmlChar *) ATTR_SVG_HEIGHT);
         if (attrValue != NULL) {
             h = atof((const char *) attrValue);
-            xmlFree(attrValue);
+            free(attrValue);
         }
 
 
