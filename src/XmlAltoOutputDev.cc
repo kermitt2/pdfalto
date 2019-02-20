@@ -5846,7 +5846,35 @@ void TextPage::dump(GBool useBlocks, GBool fullFontName) {
 
         //xmlNewProp(node, (const xmlChar *) ATTR_SID,(const xmlChar*)listeImages[i]->getImageSid()->getCString());
 
+        xmlNodePtr secondSvgElement = xmlFirstElementChild(xmlFirstElementChild(vecroot));
         double x = 0 , y = 0, h = 0, w = 0, r =0;
+
+
+        xmlChar *attrValue = xmlGetProp(secondSvgElement, (const xmlChar *) ATTR_SVG_X);
+        if (attrValue != NULL) {
+            x = atof((const char *) attrValue);
+            xmlFree(attrValue);
+        }
+
+        attrValue = xmlGetProp(secondSvgElement, (const xmlChar *) ATTR_SVG_Y);
+        if (attrValue != NULL) {
+            y = atof((const char *) attrValue);
+            xmlFree(attrValue);
+        }
+
+        attrValue = xmlGetProp(secondSvgElement, (const xmlChar *) ATTR_SVG_WIDTH);
+        if (attrValue != NULL) {
+            w = atof((const char *) attrValue);
+            xmlFree(attrValue);
+        }
+
+        attrValue = xmlGetProp(secondSvgElement, (const xmlChar *) ATTR_SVG_HEIGHT);
+        if (attrValue != NULL) {
+            h = atof((const char *) attrValue);
+            xmlFree(attrValue);
+        }
+
+
         snprintf(tmp, sizeof(tmp), ATTR_NUMFORMAT, x);
         xmlNewProp(node, (const xmlChar *) ATTR_X, (const xmlChar *) tmp);
         snprintf(tmp, sizeof(tmp), ATTR_NUMFORMAT, y);
