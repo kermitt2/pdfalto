@@ -2835,7 +2835,6 @@ void TextPage::addCharToRawWord(GfxState *state, double x, double y, double dx,
         // add the characters to the current word
         w1 /= uLen;
         h1 /= uLen;
-
         for (i = 0; i < uLen; ++i) {
             if (isNonUnicodeGlyph)
                 curWord->setContainNonUnicodeGlyph(isNonUnicodeGlyph);
@@ -8333,7 +8332,9 @@ void XmlAltoOutputDev::drawChar(GfxState *state, double x, double y, double dx,
             uLen = 1;
             isNonUnicodeGlyph = gTrue;
         }
-    }
+    } else if(uLen > 1 && (globalParams->getTextEncodingName()->cmp(ENCODING_UTF8)==0)&& !isUTF8(u, uLen))
+        return;
+
     text->addChar(state, x, y, dx, dy, c, nBytes, u, uLen, splashFont, isNonUnicodeGlyph);
 }
 
