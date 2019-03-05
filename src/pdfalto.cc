@@ -247,7 +247,10 @@ int main(int argc, char *argv[]) {
     if (ocr) {
         parameters->setOcr(gTrue);
         cmd->append("-ocr ");
-    }
+        //we avoid using heuristic mapping (not reliable)
+        globalParams->setMapNumericCharNames(gFalse);
+    } else
+        globalParams->setMapNumericCharNames(gTrue);
 
     if (fullFontName) {
         parameters->setFullFontName(gTrue);
@@ -407,13 +410,13 @@ int main(int argc, char *argv[]) {
             docroot = xmlNewNode(NULL, (const xmlChar *) TAG_ANNOTATIONS);
             xmlDocSetRootElement(docAnnotXml, docroot);
 
-            doc->displayPages(xmlAltoOut, docroot, firstPage, lastPage, 72, 72, 0, gTrue, gTrue, gFalse);
+            doc->displayPages(xmlAltoOut, docroot, firstPage, lastPage, 72, 72, 0, gFalse, gTrue, gFalse);
 
 
             xmlSaveFile(annotationfile->getCString(), docAnnotXml);
             xmlFreeDoc(docAnnotXml);
         } else {
-            doc->displayPages(xmlAltoOut, NULL, firstPage, lastPage, 72, 72, 0, gTrue, gTrue, gFalse);
+            doc->displayPages(xmlAltoOut, NULL, firstPage, lastPage, 72, 72, 0, gFalse, gTrue, gFalse);
         }
         if (outline) {
             if (doc->getOutline()) {
