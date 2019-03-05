@@ -81,9 +81,8 @@ AnnotsXrce::AnnotsXrce(Object &objA, xmlNodePtr docrootA, Catalog *catalog, doub
                 //printf("%d \n",link->isOk());
                 LinkAction *ac = link->getAction();
                 //printf("ac %d \n",ac->isOk());
-
                 // Get the Action information
-                if (dict->lookup("A", &objAct)->isDict()) {
+                if (ac->isOk()) {
                     xmlNodePtr nodeActionAction;
                     xmlNodePtr nodeActionDEST;
                     if (nodeAnnot) {
@@ -92,37 +91,32 @@ AnnotsXrce::AnnotsXrce(Object &objA, xmlNodePtr docrootA, Catalog *catalog, doub
 
                         xmlAddChild(nodeAnnot, nodeActionAction);
                     }
-
-                    Dict *dictAction;
-                    Object objURI;
-                    Object objGoTo;
-                    dictAction = objAct.getDict();
-                    Object objS;
-                    Object objF;
                     // Get the type of link
-                    if (dictAction->lookup("S", &objS)->isName()) {
-                        if (!strcmp(objS.getName(), "URI")) {
+                    switch (ac->getKind()){
+                        case actionURI: {
                             //printf("uri\n");
                             xmlNewProp(nodeActionAction, (const xmlChar *) "type", (const xmlChar *) "URI");
-                            if (dictAction->lookup("URI", &objURI)->isString()) {
+                            LinkURI* uri = (LinkURI*)ac;
+                            if (uri->isOk()) {
                                 if (nodeAnnot) {
+                                    GString* dest = uri->getURI();
                                     nodeActionDEST = xmlNewNode(NULL, (const xmlChar *) "DEST");
                                     nodeActionDEST->type = XML_ELEMENT_NODE;
                                     //to unicode first
-                                    news = toUnicode(objURI.getString(), uMap);
+                                    news = toUnicode(dest, uMap);
                                     xmlNodeSetContent(nodeActionDEST,
                                                       (const xmlChar *) xmlEncodeEntitiesReentrant(nodeActionDEST->doc,
                                                                                                    (const xmlChar *) news->getCString()));
                                     xmlAddChild(nodeActionAction, nodeActionDEST);
                                 }
-                                objURI.free();
                             }
+                            break;
                         }
-                        if (!strcmp(objS.getName(), "GoToR")) {
+                        case actionGoToR: {
                             //printf("gotor\n");
                             if (link->isOk()) {
                                 xmlNewProp(nodeActionAction, (const xmlChar *) "type",
-                                           (const xmlChar *) objS.getName());
+                                           (const xmlChar *) "gotor");
                                 // Get the destination to jump to
                                 LinkAction *action = link->getAction();
                                 LinkGoToR *goto_link = (LinkGoToR *) action;
@@ -135,15 +129,16 @@ AnnotsXrce::AnnotsXrce(Object &objA, xmlNodePtr docrootA, Catalog *catalog, doub
                                 xmlAddChild(nodeActionAction, nodeActionDEST);
                             } else {
                                 xmlNewProp(nodeActionAction, (const xmlChar *) "type",
-                                           (const xmlChar *) objS.getName());
+                                           (const xmlChar *) "gotor");
                                 nodeActionDEST = xmlNewNode(NULL, (const xmlChar *) "DEST");
                                 nodeActionDEST->type = XML_ELEMENT_NODE;
                                 xmlAddChild(nodeActionAction, nodeActionDEST);
                             }
+                            break;
                         }
-                        if (!strcmp(objS.getName(), "GoTo")) {
+                        case actionGoTo: {
                             //printf("goto\n");
-                            xmlNewProp(nodeActionAction, (const xmlChar *) "type", (const xmlChar *) objS.getName());
+                            xmlNewProp(nodeActionAction, (const xmlChar *) "type", (const xmlChar *) ATTR_GOTOLINK);
                             // Get the destination to jump to
                             nodeActionDEST = NULL;
                             LinkAction *action = link->getAction();
@@ -213,11 +208,10 @@ AnnotsXrce::AnnotsXrce(Object &objA, xmlNodePtr docrootA, Catalog *catalog, doub
                                         delete link_dest;
                                 }
                             }
+                            break;
                         }
                     }
-                    objS.free();
                 }
-                objAct.free();
 
                 // Get the rectangle location link annotation
                 if (dict->lookup("Rect", &objRect)->isArray()) {

@@ -1969,7 +1969,7 @@ void TextPage::startPage(int pageNum, GfxState *state, GBool cut) {
     currentPage = myCat->getPage(num);
     currentPage->getAnnots(&objAnnot);
     //pageLinks = currentPage->getLinks(myCat);
-    pageLinks = currentPage->getLinks();
+    //pageLinks = currentPage->getLinks();
 
     // Annotation's objects list
     if (objAnnot.isArray()) {
@@ -2965,10 +2965,10 @@ void TextPage::addAttributsNode(xmlNodePtr node, IWord *word, TextFontStyleInfo 
 
     stringTemp = new GString();
 
-    testLinkedText(node, word->xMin, word->yMin, word->xMax, word->yMax);
-    if (testAnnotatedText(word->xMin, word->yMin, word->xMax, word->yMax)) {
-        xmlNewProp(node, (const xmlChar *) ATTR_HIGHLIGHT, (const xmlChar *) "yes");
-    }
+    //testLinkedText(node, word->xMin, word->yMin, word->xMax, word->yMax);
+//    if (testAnnotatedText(word->xMin, word->yMin, word->xMax, word->yMax)) {
+//        xmlNewProp(node, (const xmlChar *) ATTR_HIGHLIGHT, (const xmlChar *) "yes");
+//    }
     Unicode *text = NULL;
     text = (Unicode *) grealloc(text, word->len * sizeof(Unicode));
     for (int i = 0; i < word->len; i++) {
@@ -3105,6 +3105,9 @@ void TextPage::addAttributsNode(xmlNodePtr node, IWord *word, TextFontStyleInfo 
     free(tmp);
 }
 
+/*
+ * Deprecated all annotation are under separated file
+ */
 void TextPage::testLinkedText(xmlNodePtr node, double xMin, double yMin, double xMax, double yMax) {
     /*
 	 * first test if overlap
@@ -3258,6 +3261,9 @@ TextPage::testOverlap(double x11, double y11, double x12, double y12, double x21
             (min(y12, y22) >= max(y11, y21)));
 }
 
+/**
+ * Checks whether there are highlighted text.
+ */
 GBool TextPage::testAnnotatedText(double xMin, double yMin, double xMax, double yMax) {
     Object objQuadPoints;
     Dict *dict;
