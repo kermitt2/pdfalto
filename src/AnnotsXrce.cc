@@ -95,7 +95,7 @@ AnnotsXrce::AnnotsXrce(Object &objA, xmlNodePtr docrootA, Catalog *catalog, doub
                     switch (ac->getKind()){
                         case actionURI: {
                             //printf("uri\n");
-                            xmlNewProp(nodeActionAction, (const xmlChar *) "type", (const xmlChar *) ATTR_URILINK);
+                            xmlNewProp(nodeActionAction, (const xmlChar *) ATTR_ANNOTS_TYPE, (const xmlChar *) ATTR_URILINK);
                             LinkURI* uri = (LinkURI*)ac;
                             if (uri->isOk()) {
                                 if (nodeAnnot) {
@@ -115,8 +115,8 @@ AnnotsXrce::AnnotsXrce(Object &objA, xmlNodePtr docrootA, Catalog *catalog, doub
                         case actionGoToR: {
                             //printf("gotor\n");
                             if (link->isOk()) {
-                                xmlNewProp(nodeActionAction, (const xmlChar *) "type",
-                                           (const xmlChar *) "gotor");
+                                xmlNewProp(nodeActionAction, (const xmlChar *) ATTR_ANNOTS_TYPE,
+                                           (const xmlChar *) ATTR_GOTORLINK);
                                 // Get the destination to jump to
                                 LinkAction *action = link->getAction();
                                 LinkGoToR *goto_link = (LinkGoToR *) action;
@@ -128,8 +128,8 @@ AnnotsXrce::AnnotsXrce(Object &objA, xmlNodePtr docrootA, Catalog *catalog, doub
                                                                                                (const xmlChar *) news->getCString()));
                                 xmlAddChild(nodeActionAction, nodeActionDEST);
                             } else {
-                                xmlNewProp(nodeActionAction, (const xmlChar *) "type",
-                                           (const xmlChar *) "gotor");
+                                xmlNewProp(nodeActionAction, (const xmlChar *) ATTR_ANNOTS_TYPE,
+                                           (const xmlChar *) ATTR_GOTORLINK);
                                 nodeActionDEST = xmlNewNode(NULL, (const xmlChar *) TAG_DEST);
                                 nodeActionDEST->type = XML_ELEMENT_NODE;
                                 xmlAddChild(nodeActionAction, nodeActionDEST);
@@ -138,7 +138,7 @@ AnnotsXrce::AnnotsXrce(Object &objA, xmlNodePtr docrootA, Catalog *catalog, doub
                         }
                         case actionGoTo: {
                             //printf("goto\n");
-                            xmlNewProp(nodeActionAction, (const xmlChar *) "type", (const xmlChar *) ATTR_GOTOLINK);
+                            xmlNewProp(nodeActionAction, (const xmlChar *) ATTR_ANNOTS_TYPE, (const xmlChar *) ATTR_GOTOLINK);
                             // Get the destination to jump to
                             nodeActionDEST = NULL;
                             LinkAction *action = link->getAction();
@@ -178,11 +178,11 @@ AnnotsXrce::AnnotsXrce(Object &objA, xmlNodePtr docrootA, Catalog *catalog, doub
                                             char *tmp = (char *) malloc(10 * sizeof(char));
                                             sprintf(tmp, "%d", page);
                                             //printf("link %d %g %g\n",page,x,y);
-                                            xmlNewProp(nodeActionDEST, (const xmlChar *) "page", (const xmlChar *) tmp);
+                                            xmlNewProp(nodeActionDEST, (const xmlChar *) ATTR_ANNOTS_PAGE, (const xmlChar *) tmp);
                                             sprintf(tmp, "%g", x);
-                                            xmlNewProp(nodeActionDEST, (const xmlChar *) "x", (const xmlChar *) tmp);
+                                            xmlNewProp(nodeActionDEST, (const xmlChar *) ATTR_ANNOTS_X, (const xmlChar *) tmp);
                                             sprintf(tmp, "%g", y);
-                                            xmlNewProp(nodeActionDEST, (const xmlChar *) "y", (const xmlChar *) tmp);
+                                            xmlNewProp(nodeActionDEST, (const xmlChar *) ATTR_ANNOTS_Y, (const xmlChar *) tmp);
                                             //}
                                         }
                                             break;
@@ -197,9 +197,9 @@ AnnotsXrce::AnnotsXrce(Object &objA, xmlNodePtr docrootA, Catalog *catalog, doub
                                         case destFitBV:
                                             char *tmp = (char *) malloc(10 * sizeof(char));
                                             sprintf(tmp, "%d", page);
-                                            xmlNewProp(nodeActionDEST, (const xmlChar *) "page", (const xmlChar *) tmp);
-                                            xmlNewProp(nodeActionDEST, (const xmlChar *) "x", (const xmlChar *) "0");
-                                            xmlNewProp(nodeActionDEST, (const xmlChar *) "y", (const xmlChar *) "0");
+                                            xmlNewProp(nodeActionDEST, (const xmlChar *) ATTR_ANNOTS_PAGE, (const xmlChar *) tmp);
+                                            xmlNewProp(nodeActionDEST, (const xmlChar *) ATTR_ANNOTS_X, (const xmlChar *) "0");
+                                            xmlNewProp(nodeActionDEST, (const xmlChar *) ATTR_ANNOTS_Y, (const xmlChar *) "0");
                                             //printf("p-%d\n",page);
                                     }
 

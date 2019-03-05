@@ -130,6 +130,11 @@ namespace ConstantsXML {
 	extern const char *ATTR_OPEN;
 	// annotations in XML file
 	extern const char *ATTR_GOTOLINK;
+	extern const char *ATTR_GOTORLINK;
+	extern const char *ATTR_ANNOTS_X;
+	extern const char *ATTR_ANNOTS_Y;
+	extern const char *ATTR_ANNOTS_PAGE;
+	extern const char *ATTR_ANNOTS_TYPE;
 	extern const char *ATTR_URILINK;
 	extern const char *ATTR_HIGHLIGHT;
 	extern const char *ATTR_UNDERLINE;

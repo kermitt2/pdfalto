@@ -154,6 +154,11 @@ namespace ConstantsXML {
 
 	// annotations in XML file
 	const char *ATTR_GOTOLINK = "goto";
+	const char *ATTR_GOTORLINK = "gotor";
+	const char *ATTR_ANNOTS_X = "x";
+	const char *ATTR_ANNOTS_Y = "y";
+	const char *ATTR_ANNOTS_PAGE = "page";
+	const char *ATTR_ANNOTS_TYPE = "type";
 	const char *ATTR_URILINK = "uri";
 	const char *ATTR_HIGHLIGHT = "highlight";
 	const char *ATTR_UNDERLINE = "underline";
