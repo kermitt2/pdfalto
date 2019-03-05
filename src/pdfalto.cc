@@ -247,7 +247,10 @@ int main(int argc, char *argv[]) {
     if (ocr) {
         parameters->setOcr(gTrue);
         cmd->append("-ocr ");
-    }
+        //we avoid using heuristic mapping (not reliable)
+        globalParams->setMapNumericCharNames(gFalse);
+    } else
+        globalParams->setMapNumericCharNames(gTrue);
 
     if (fullFontName) {
         parameters->setFullFontName(gTrue);
