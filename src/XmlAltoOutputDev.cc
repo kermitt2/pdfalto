@@ -25,9 +25,9 @@ using namespace std;
 
 using namespace ConstantsUtils;
 
-#include "ConstantsXMLALTO.h"
+#include "ConstantsXML.h"
 
-using namespace ConstantsXMLALTO;
+using namespace ConstantsXML;
 
 #include "AnnotsXrce.h"
 

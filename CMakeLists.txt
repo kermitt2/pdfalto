@@ -63,8 +63,8 @@ set(SOURCE_FILES
         src/AnnotsXrce.h
         src/ConstantsUtils.cc
         src/ConstantsUtils.h
-        src/ConstantsXMLALTO.cc
-        src/ConstantsXMLALTO.h
+        src/ConstantsXML.cc
+        src/ConstantsXML.h
         src/Parameters.cc
         src/Parameters.h
         src/PDFDocXrce.cc
