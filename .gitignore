@@ -15,7 +15,12 @@ CMakeCache.txt
 *.cmake
 pdfalto
 Makefile
-*.xml
+./*.xml
 *.pdf
+*.cbp
 .DS_Store
-*.xml_data/
+./*.xml_data/
+libs/image/png/src/libpng.a
+libs/image/zlib/src/libzlib.a
+traingenerator
+jeu/*
