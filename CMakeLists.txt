@@ -76,8 +76,8 @@ set(SOURCE_FILES
 
 add_executable(pdfalto ${SOURCE_FILES})
 
-if(${HAVE_PAPER_H})
-        target_link_libraries(pdfalto ${PNG_LIBRARIES} ${ZLIB_LIBRARY} ${XML_LIBRARY} splash xpdf goo fofi ${ICUUC_LIB} ${ICUDATA_LIB} ${FREETYPE_LIBRARY} dl ${HAVE_PAPER_H})
+if(HAVE_PAPER_H)
+    target_link_libraries(pdfalto ${PNG_LIBRARIES} ${ZLIB_LIBRARY} ${XML_LIBRARY} splash xpdf goo fofi ${ICUUC_LIB} ${ICUDATA_LIB} ${FREETYPE_LIBRARY} dl ${HAVE_PAPER_H})
 else()
     target_link_libraries(pdfalto ${PNG_LIBRARIES} ${ZLIB_LIBRARY} ${XML_LIBRARY} splash xpdf goo fofi ${ICUUC_LIB} ${ICUDATA_LIB} ${FREETYPE_LIBRARY} dl)
 endif()
