@@ -6344,14 +6344,14 @@ void TextPage::doPath(GfxPath *path, GfxState *state, GString *gattributes) {
                    (const xmlChar *) gattributes->getCString());
 
 
-        GString *id = new GString("p"), *sid = new GString("p"), *clipZone = new GString("p");
+        GString *id = new GString("p"), *sid = new GString("p");//, *clipZone = new GString("p");
         GBool isInline = false;
         id = buildIdImage(getPageNumber(), numImage, id);
         sid = buildSID(getPageNumber(), getIdx(), sid);
-        clipZone = buildIdClipZone(getPageNumber(), idCur, clipZone);
+        //clipZone = buildIdClipZone(getPageNumber(), idCur, clipZone);
 
         xmlNewProp(groupNode, (const xmlChar *) ATTR_SVGID, (const xmlChar *) sid->getCString());
-        xmlNewProp(groupNode, (const xmlChar *) ATTR_IDCLIPZONE, (const xmlChar *) clipZone->getCString());
+        //xmlNewProp(groupNode, (const xmlChar *) ATTR_IDCLIPZONE, (const xmlChar *) clipZone->getCString());
         createPath(path, state, groupNode);
     }
 }
@@ -6486,14 +6486,14 @@ void TextPage::clip(GfxState *state) {
         gnode = xmlNewNode(NULL, (const xmlChar *) TAG_CLIPPATH);
         xmlAddChild(vecroot, gnode);
 
-        GString *id = new GString("p"), *sid = new GString("p"), *clipZone = new GString("p");
+        GString *id = new GString("p"), *sid = new GString("p");//, *clipZone = new GString("p");
         GBool isInline = false;
         id = buildIdImage(getPageNumber(), numImage, id);
         sid = buildSID(getPageNumber(), getIdx(), sid);
-        clipZone = buildIdClipZone(getPageNumber(), idCur, clipZone);
+        //clipZone = buildIdClipZone(getPageNumber(), idCur, clipZone);
 
         xmlNewProp(gnode, (const xmlChar *) ATTR_SVGID, (const xmlChar *) sid->getCString());
-        xmlNewProp(gnode, (const xmlChar *) ATTR_IDCLIPZONE, (const xmlChar *) clipZone->getCString());
+        //xmlNewProp(gnode, (const xmlChar *) ATTR_IDCLIPZONE, (const xmlChar *) clipZone->getCString());
         //   	free(tmp);
         doPathForClip(state->getPath(), state, gnode);
     }
@@ -6514,14 +6514,14 @@ void TextPage::eoClip(GfxState *state) {
         gnode = xmlNewNode(NULL, (const xmlChar *) TAG_CLIPPATH);
         xmlAddChild(vecroot, gnode);
 
-        GString *id = new GString("p"), *sid = new GString("p"), *clipZone = new GString("p");
+        GString *id = new GString("p"), *sid = new GString("p");//, *clipZone = new GString("p");
         GBool isInline = false;
         id = buildIdImage(getPageNumber(), numImage, id);
         sid = buildSID(getPageNumber(), getIdx(), sid);
-        clipZone = buildIdClipZone(getPageNumber(), idCur, clipZone);
+        //clipZone = buildIdClipZone(getPageNumber(), idCur, clipZone);
 
         xmlNewProp(gnode, (const xmlChar *) ATTR_SVGID, (const xmlChar *) sid->getCString());
-        xmlNewProp(gnode, (const xmlChar *) ATTR_IDCLIPZONE, (const xmlChar *) clipZone->getCString());
+        //xmlNewProp(gnode, (const xmlChar *) ATTR_IDCLIPZONE, (const xmlChar *) clipZone->getCString());
 
         xmlNewProp(gnode, (const xmlChar *) ATTR_EVENODD, (const xmlChar *) sTRUE);
         //   	free(tmp);
@@ -6544,14 +6544,14 @@ void TextPage::clipToStrokePath(GfxState *state) {
         gnode = xmlNewNode(NULL, (const xmlChar *) TAG_CLIPPATH);
         xmlAddChild(vecroot, gnode);
 
-        GString *id = new GString("p"), *sid = new GString("p"), *clipZone = new GString("p");
+        GString *id = new GString("p"), *sid = new GString("p");//, *clipZone = new GString("p");
         GBool isInline = false;
         id = buildIdImage(getPageNumber(), numImage, id);
         sid = buildSID(getPageNumber(), getIdx(), sid);
-        clipZone = buildIdClipZone(getPageNumber(), idCur, clipZone);
+        //clipZone = buildIdClipZone(getPageNumber(), idCur, clipZone);
 
         xmlNewProp(gnode, (const xmlChar *) ATTR_SVGID, (const xmlChar *) sid->getCString());
-        xmlNewProp(gnode, (const xmlChar *) ATTR_IDCLIPZONE, (const xmlChar *) clipZone->getCString());
+        //xmlNewProp(gnode, (const xmlChar *) ATTR_IDCLIPZONE, (const xmlChar *) clipZone->getCString());
 
         xmlNewProp(gnode, (const xmlChar *) ATTR_EVENODD, (const xmlChar *) sTRUE);
         //   	free(tmp);
