@@ -210,6 +210,28 @@ AnnotsXrce::AnnotsXrce(Object &objA, xmlNodePtr docrootA, Catalog *catalog, doub
                             }
                             break;
                         }
+                        case actionLaunch: {
+                            break;
+                        }
+                        case actionNamed: {
+                            break;
+                        }
+                        case actionMovie: {
+                            break;
+                        }
+                        case actionJavaScript: {
+                            break;
+                        }
+                        case actionSubmitForm: {
+                            break;
+                        }
+                        case actionHide: {
+                            break;
+                        }
+                        case actionUnknown: {
+                            break;
+                        }
+
                     }
                 }
 

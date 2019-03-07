@@ -5951,8 +5951,8 @@ GBool TextPage::addBlockInReadingOrder(TextParagraph * block, double fontSize, G
             double currentWidth = par->getXMax() - par->getXMin();
             double currentHeight = par->getYMax() - par->getXMin();
 
-            if(currentY <= blockY && currentY + currentHeight >= blockY ||
-               blockY + blockHeight > currentY && blockY + blockHeight < currentY + currentHeight){
+            if((currentY <= blockY && currentY + currentHeight >= blockY) ||
+                    (blockY + blockHeight > currentY && blockY + blockHeight < currentY + currentHeight)){
                 noVerticalOverlap = gFalse;
             }
 
@@ -8356,38 +8356,6 @@ void XmlAltoOutputDev::updateCTM(GfxState *state, double m11, double m12,
 // T3FontCache
 //------------------------------------------------------------------------
 
-struct T3FontCacheTag {
-    Gushort code;
-    Gushort mru;            // valid bit (0x8000) and MRU index
-};
-
-class T3FontCache {
-public:
-
-    T3FontCache(Ref *fontID, double m11A, double m12A,
-                double m21A, double m22A,
-                int glyphXA, int glyphYA, int glyphWA, int glyphHA,
-                GBool validBBoxA, GBool aa);
-
-    ~T3FontCache();
-
-    GBool matches(Ref *idA, double m11A, double m12A,
-                  double m21A, double m22A) {
-        return fontID.num == idA->num && fontID.gen == idA->gen &&
-               m11 == m11A && m12 == m12A && m21 == m21A && m22 == m22A;
-    }
-
-    Ref fontID;            // PDF font ID
-    double m11, m12, m21, m22;    // transform matrix
-    int glyphX, glyphY;        // pixel offset of glyph bitmaps
-    int glyphW, glyphH;        // size of glyph bitmaps, in pixels
-    GBool validBBox;        // false if the bbox was [0 0 0 0]
-    int glyphSize;        // size of glyph bitmaps, in bytes
-    int cacheSets;        // number of sets in cache
-    int cacheAssoc;        // cache associativity (glyphs per set)
-    Guchar *cacheData;        // glyph pixmap cache
-    T3FontCacheTag *cacheTags;    // cache tags, i.e., char codes
-};
 
 T3FontCache::T3FontCache(Ref *fontIDA, double m11A, double m12A,
                          double m21A, double m22A,

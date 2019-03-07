@@ -73,6 +73,38 @@ enum ModifierClass {
     NOT_A_MODIFIER, DIAERESIS, ACUTE_ACCENT, DOUBLE_ACUTE_ACCENT, GRAVE_ACCENT, DOUBLE_GRAVE_ACCENT, BREVE_ACCENT, INVERTED_BREVE_ACCENT, CIRCUMFLEX, TILDE, NORDIC_RING, CZECH_CARON, CEDILLA, DOT_ABOVE, HOOK, HORN, MACRON, OGONEK,
 };
 
+struct T3FontCacheTag {
+    Gushort code;
+    Gushort mru;            // valid bit (0x8000) and MRU index
+};
+
+class T3FontCache {
+public:
+
+    T3FontCache(Ref *fontID, double m11A, double m12A,
+                double m21A, double m22A,
+                int glyphXA, int glyphYA, int glyphWA, int glyphHA,
+                GBool validBBoxA, GBool aa);
+
+    ~T3FontCache();
+
+    GBool matches(Ref *idA, double m11A, double m12A,
+                  double m21A, double m22A) {
+        return fontID.num == idA->num && fontID.gen == idA->gen &&
+               m11 == m11A && m12 == m12A && m21 == m21A && m22 == m22A;
+    }
+
+    Ref fontID;            // PDF font ID
+    double m11, m12, m21, m22;    // transform matrix
+    int glyphX, glyphY;        // pixel offset of glyph bitmaps
+    int glyphW, glyphH;        // size of glyph bitmaps, in pixels
+    GBool validBBox;        // false if the bbox was [0 0 0 0]
+    int glyphSize;        // size of glyph bitmaps, in bytes
+    int cacheSets;        // number of sets in cache
+    int cacheAssoc;        // cache associativity (glyphs per set)
+    Guchar *cacheData;        // glyph pixmap cache
+    T3FontCacheTag *cacheTags;    // cache tags, i.e., char codes
+};
 //------------------------------------------------------------------------
 
 typedef void (*TextOutputFunc)(void *stream, char *text, int len);
