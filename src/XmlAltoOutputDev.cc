@@ -6284,41 +6284,46 @@ void TextPage::restoreState(GfxState *state) {
 
 void TextPage::doPathForClip(GfxPath *path, GfxState *state,
                              xmlNodePtr currentNode) {
-    char *tmp;
-    tmp = (char *) malloc(500 * sizeof(char));
-
     double xMin = 0;
     double yMin = 0;
     double xMax = 0;
     double yMax = 0;
 
-    // Increment the absolute object index
-    idx++;
-    xmlNodePtr groupNode = NULL;
-
-    // GROUP tag
-    groupNode = xmlNewNode(NULL, (const xmlChar *) TAG_GROUP);
-
     // Get the clipping box
     state->getClipBBox(&xMin, &yMin, &xMax, &yMax);
-    sprintf(tmp, "%g", xMin);
-    xmlNewProp(groupNode, (const xmlChar *) ATTR_SVG_X, (const xmlChar *) tmp);
-    sprintf(tmp, "%g", yMin);
-    xmlNewProp(groupNode, (const xmlChar *) ATTR_SVG_Y, (const xmlChar *) tmp);
-    sprintf(tmp, "%g", xMax - xMin);
-    xmlNewProp(groupNode, (const xmlChar *) ATTR_SVG_WIDTH, (const xmlChar *) tmp);
-    sprintf(tmp, "%g", yMax - yMin);
-    xmlNewProp(groupNode, (const xmlChar *) ATTR_SVG_HEIGHT, (const xmlChar *) tmp);
+    double height = yMax - yMin;
+    double width = xMax - xMin;
 
-    xmlAddChild(currentNode, groupNode);
+    if(height < pageHeight && width < pageWidth) {
+        char *tmp;
+        tmp = (char *) malloc(500 * sizeof(char));
 
-    GString *id;
-    id = new GString("p");
-    xmlNewProp(groupNode, (const xmlChar *) ATTR_SID, (const xmlChar *) buildSID(num, getIdx(), id)->getCString());
-    delete id;
+        // Increment the absolute object index
+        idx++;
+        xmlNodePtr groupNode = NULL;
 
-    createPath(path, state, groupNode);
-    free(tmp);
+        // GROUP tag
+        groupNode = xmlNewNode(NULL, (const xmlChar *) TAG_GROUP);
+
+        sprintf(tmp, "%g", xMin);
+        xmlNewProp(groupNode, (const xmlChar *) ATTR_SVG_X, (const xmlChar *) tmp);
+        sprintf(tmp, "%g", yMin);
+        xmlNewProp(groupNode, (const xmlChar *) ATTR_SVG_Y, (const xmlChar *) tmp);
+        sprintf(tmp, "%g", width);
+        xmlNewProp(groupNode, (const xmlChar *) ATTR_SVG_WIDTH, (const xmlChar *) tmp);
+        sprintf(tmp, "%g", height);
+        xmlNewProp(groupNode, (const xmlChar *) ATTR_SVG_HEIGHT, (const xmlChar *) tmp);
+
+        xmlAddChild(currentNode, groupNode);
+
+        GString *id;
+        id = new GString("p");
+        xmlNewProp(groupNode, (const xmlChar *) ATTR_SID, (const xmlChar *) buildSID(num, getIdx(), id)->getCString());
+        delete id;
+
+        createPath(path, state, groupNode);
+        free(tmp);
+    }
 }
 
 void TextPage::doPath(GfxPath *path, GfxState *state, GString *gattributes) {
