@@ -12,6 +12,7 @@
 #include <list>
 #include <vector>
 #include <stack>
+#include <algorithm>    // std::min_element, std::max_element
 
 #define _USE_MATH_DEFINES
 
@@ -6373,22 +6374,38 @@ void TextPage::createPath(GfxPath *path, GfxState *state, xmlNodePtr groupNode) 
 //                pathnode=xmlNewNode(NULL, (const xmlChar*)TAG_C);
                 sprintf(tmp, " C%g,%g %g,%g %g,%g", x1, y1, x2, y2, x3, y3);
                 d->append(tmp);
-                if(xmax==0)
-                    xmax = max({ x0, x1, x2, x3});
-                else
-                    xmax = max({ x0, x1, x2, x3, xmax});
-                if(xmin==0)
-                    xmin = min({ x0, x1, x2, x3});
-                else
-                    xmin = min({ x0, x1, x2, x3, xmin});
-                if(ymax==0)
-                    ymax = max({ y0, y1, y2, y3});
-                else
-                    ymax = max({ y0, y1, y2, y3, ymax});
-                if(ymin==0)
-                    ymin = min({ y0, y1, y2, y3});
-                else
-                    ymin = min({ y0, y1, y2, y3, ymin});
+                if(xmax==0) {
+                    double list_double[] = {x0, x1, x2, x3};
+                    xmax = *std::max_element(list_double, list_double +4);
+                } else {
+                    double list_double[] = {x0, x1, x2, x3, xmax};
+                    xmax = *std::max_element(list_double, list_double+5);
+                }
+
+                if(xmin==0) {
+                    double list_double[] = {x0, x1, x2, x3};
+                    xmin = *std::min_element(list_double, list_double+4);
+                } else {
+                    double list_double[] = {x0, x1, x2, x3, xmin};
+                    xmin = *std::min_element(list_double, list_double+5);
+                }
+
+                if(ymax==0){
+                    double list_double[] = { y0, y1, y2, y3};
+                    ymax = *std::max_element(list_double, list_double +4);
+                }
+                else {
+                    double list_double[] = { y0, y1, y2, y3};
+                    ymax = *std::max_element(list_double, list_double+5);
+                }
+
+                if(ymin==0) {
+                    double list_double[] = { y0, y1, y2, y3};
+                    ymin = *std::min_element(list_double, list_double+4);
+                }else {
+                    double list_double[] = {y0, y1, y2, y3, ymin};
+                    ymin = *std::min_element(list_double, list_double+5);
+                }
                 j += 3;
             } else {
                 x1 = subpath->getX(j);
@@ -6408,23 +6425,37 @@ void TextPage::createPath(GfxPath *path, GfxState *state, xmlNodePtr groupNode) 
 //                xmlAddChild(groupNode, pathnode);
                 sprintf(tmp, " L%g,%g", x1, y1);
                 d->append(tmp);
-                if(xmax==0)
-                    xmax = max({ x0, x1});
-                else
-                    xmax = max({ x0, x1, xmax});
-                if(xmin==0)
-                    xmin = min({ x0, x1});
-                else
-                    xmin = min({ x0, x1, xmin});
-                if(ymax==0)
-                    ymax = max({ y0, y1});
-                else
-                    ymax = max({ y0, y1, ymax});
-                if(ymin==0)
-                    ymin = min({ y0, y1});
-                else
-                    ymin = min({ y0, y1, ymin});
+                if (xmax == 0) {
+                    double list_double[] = {x0, x1};
+                    xmax = *std::max_element(list_double, list_double+2);
+                } else {
+                    double list_double[] = {x0, x1, xmax};
+                    xmax = *std::max_element(list_double, list_double+3);
+                }
 
+                if (xmin == 0) {
+                    double list_double[] = {x0, x1};
+                    xmin = *std::min_element(list_double, list_double+2);
+                } else {
+                    double list_double[] = {x0, x1, xmin};
+                    xmin = *std::min_element(list_double, list_double+3);
+                }
+
+                if (ymax == 0) {
+                    double list_double[] = {y0, y1};
+                    ymax = *std::max_element(list_double, list_double+2);
+                }else {
+                    double list_double[] = {y0, y1, ymax};
+                    ymax = *std::max_element(list_double, list_double+3);
+                }
+
+                if(ymin==0) {
+                    double list_double[] = {y0, y1};
+                    ymin = *std::min_element(list_double, list_double+2);
+                }else {
+                    double list_double[] = {y0, y1, ymin};
+                    ymin = *std::min_element(list_double, list_double+3);
+                }
                 ++j;
             }
         }
