@@ -1951,6 +1951,7 @@ void TextPage::startPage(int pageNum, GfxState *state, GBool cut) {
 
     xmlDocSetRootElement(vecdoc, vecroot);
 
+    svg_xmax=0, svg_xmin=0, svg_ymax=0, svg_ymin =0;
     // for links
     //  store them in a list
     //  and when dump: for each token look at intersectionwith
@@ -5862,42 +5863,14 @@ void TextPage::dump(GBool useBlocks, GBool fullFontName) {
 
         //xmlNewProp(node, (const xmlChar *) ATTR_SID,(const xmlChar*)listeImages[i]->getImageSid()->getCString());
 
-        xmlNodePtr secondSvgElement = xmlFirstElementChild(xmlFirstElementChild(vecroot));
-        double x = 0 , y = 0, h = 0, w = 0, r =0;
-
-
-        xmlChar *attrValue = xmlGetProp(secondSvgElement, (const xmlChar *) ATTR_SVG_X);
-        if (attrValue != NULL) {
-            x = atof((const char *) attrValue);
-            free(attrValue);
-        }
-
-        attrValue = xmlGetProp(secondSvgElement, (const xmlChar *) ATTR_SVG_Y);
-        if (attrValue != NULL) {
-            y = atof((const char *) attrValue);
-            free(attrValue);
-        }
-
-        attrValue = xmlGetProp(secondSvgElement, (const xmlChar *) ATTR_SVG_WIDTH);
-        if (attrValue != NULL) {
-            w = atof((const char *) attrValue);
-            free(attrValue);
-        }
-
-        attrValue = xmlGetProp(secondSvgElement, (const xmlChar *) ATTR_SVG_HEIGHT);
-        if (attrValue != NULL) {
-            h = atof((const char *) attrValue);
-            free(attrValue);
-        }
-
-
-        snprintf(tmp, sizeof(tmp), ATTR_NUMFORMAT, x);
+        double r =0;
+        snprintf(tmp, sizeof(tmp), ATTR_NUMFORMAT, svg_xmin);
         xmlNewProp(node, (const xmlChar *) ATTR_X, (const xmlChar *) tmp);
-        snprintf(tmp, sizeof(tmp), ATTR_NUMFORMAT, y);
+        snprintf(tmp, sizeof(tmp), ATTR_NUMFORMAT, svg_ymin);
         xmlNewProp(node, (const xmlChar *) ATTR_Y, (const xmlChar *) tmp);
-        snprintf(tmp, sizeof(tmp), ATTR_NUMFORMAT, w);
+        snprintf(tmp, sizeof(tmp), ATTR_NUMFORMAT, svg_xmax - svg_xmin);
         xmlNewProp(node, (const xmlChar *) ATTR_WIDTH, (const xmlChar *) tmp);
-        snprintf(tmp, sizeof(tmp), ATTR_NUMFORMAT, h);
+        snprintf(tmp, sizeof(tmp), ATTR_NUMFORMAT, svg_ymax - svg_ymin);
         xmlNewProp(node, (const xmlChar *) ATTR_HEIGHT, (const xmlChar *) tmp);
 
         if (r > 0) {
@@ -6370,6 +6343,7 @@ void TextPage::doPath(GfxPath *path, GfxState *state, GString *gattributes) {
 void TextPage::createPath(GfxPath *path, GfxState *state, xmlNodePtr groupNode) {
     GfxSubpath *subpath;
     double x0, y0, x1, y1, x2, y2, x3, y3;
+    double xmin =0 , xmax = 0 , ymin = 0, ymax=0;
     int n, m, i, j;
     double a, b;
     char *tmp;
@@ -6415,30 +6389,26 @@ void TextPage::createPath(GfxPath *path, GfxState *state, xmlNodePtr groupNode) 
                 state->transform(x3, y3, &a, &b);
                 x3 = a;
                 y3 = b;
-
                 // C tag  : curveto
 //                pathnode=xmlNewNode(NULL, (const xmlChar*)TAG_C);
                 sprintf(tmp, " C%g,%g %g,%g %g,%g", x1, y1, x2, y2, x3, y3);
                 d->append(tmp);
-//                xmlNewProp(pathnode, (const xmlChar*)ATTR_X1,
-//                           (const xmlChar*)tmp);
-//                sprintf(tmp, "%g", y1);
-//                xmlNewProp(pathnode, (const xmlChar*)ATTR_Y1,
-//                           (const xmlChar*)tmp);
-//                sprintf(tmp, "%g", x2);
-//                xmlNewProp(pathnode, (const xmlChar*)ATTR_X2,
-//                           (const xmlChar*)tmp);
-//                sprintf(tmp, "%g", y2);
-//                xmlNewProp(pathnode, (const xmlChar*)ATTR_Y2,
-//                           (const xmlChar*)tmp);
-//                sprintf(tmp, "%g", x3);
-//                xmlNewProp(pathnode, (const xmlChar*)ATTR_X3,
-//                           (const xmlChar*)tmp);
-//                sprintf(tmp, "%g", y3);
-//                xmlNewProp(pathnode, (const xmlChar*)ATTR_Y3,
-//                           (const xmlChar*)tmp);
-//                xmlAddChild(groupNode, pathnode);
-
+                if(xmax==0)
+                    xmax = max({ x0, x1, x2, x3});
+                else
+                    xmax = max({ x0, x1, x2, x3, xmax});
+                if(xmin==0)
+                    xmin = min({ x0, x1, x2, x3});
+                else
+                    xmin = min({ x0, x1, x2, x3, xmin});
+                if(ymax==0)
+                    ymax = max({ y0, y1, y2, y3});
+                else
+                    ymax = max({ y0, y1, y2, y3, ymax});
+                if(ymin==0)
+                    ymin = min({ y0, y1, y2, y3});
+                else
+                    ymin = min({ y0, y1, y2, y3, ymin});
                 j += 3;
             } else {
                 x1 = subpath->getX(j);
@@ -6458,6 +6428,22 @@ void TextPage::createPath(GfxPath *path, GfxState *state, xmlNodePtr groupNode) 
 //                xmlAddChild(groupNode, pathnode);
                 sprintf(tmp, " L%g,%g", x1, y1);
                 d->append(tmp);
+                if(xmax==0)
+                    xmax = max({ x0, x1});
+                else
+                    xmax = max({ x0, x1, xmax});
+                if(xmin==0)
+                    xmin = min({ x0, x1});
+                else
+                    xmin = min({ x0, x1, xmin});
+                if(ymax==0)
+                    ymax = max({ y0, y1});
+                else
+                    ymax = max({ y0, y1, ymax});
+                if(ymin==0)
+                    ymin = min({ y0, y1});
+                else
+                    ymin = min({ y0, y1, ymin});
 
                 ++j;
             }
@@ -6469,6 +6455,22 @@ void TextPage::createPath(GfxPath *path, GfxState *state, xmlNodePtr groupNode) 
 //                           (const xmlChar*)sTRUE);
 //            }
             d->append(" Z");
+        }
+
+        if(svg_xmax == 0 && svg_ymin == 0 && svg_ymax == 0 && svg_xmin == 0){
+            svg_xmin = xmin;
+            svg_xmax = xmax;
+            svg_ymin = ymin;
+            svg_ymax = ymax;
+        } else {
+            if (svg_xmin > xmin)
+                svg_xmin = xmin;
+            if (svg_xmax < xmax)
+                svg_xmax = xmax;
+            if (svg_ymin > ymin)
+                svg_ymin = ymin;
+            if (svg_ymax < ymax)
+                svg_ymax = ymax;
         }
 
         xmlNewProp(pathnode, (const xmlChar *) ATTR_D, (const xmlChar *) d->getCString());

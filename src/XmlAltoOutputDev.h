@@ -1382,6 +1382,11 @@ private:
     /** The vectorials intructions element */
     xmlNodePtr vecroot;
 
+    double svg_xmin;
+    double svg_ymin;
+    double svg_xmax;
+    double svg_ymax;
+
     /** The directory name which contain all data */
     GString *dataDirectory;
 
