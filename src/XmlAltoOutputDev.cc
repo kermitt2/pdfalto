@@ -6284,28 +6284,8 @@ void TextPage::doPathForClip(GfxPath *path, GfxState *state,
 
         // Increment the absolute object index
         idx++;
-        xmlNodePtr groupNode = NULL;
 
-        // GROUP tag
-        groupNode = xmlNewNode(NULL, (const xmlChar *) TAG_GROUP);
-
-        sprintf(tmp, "%g", xMin);
-        xmlNewProp(groupNode, (const xmlChar *) ATTR_SVG_X, (const xmlChar *) tmp);
-        sprintf(tmp, "%g", yMin);
-        xmlNewProp(groupNode, (const xmlChar *) ATTR_SVG_Y, (const xmlChar *) tmp);
-        sprintf(tmp, "%g", width);
-        xmlNewProp(groupNode, (const xmlChar *) ATTR_SVG_WIDTH, (const xmlChar *) tmp);
-        sprintf(tmp, "%g", height);
-        xmlNewProp(groupNode, (const xmlChar *) ATTR_SVG_HEIGHT, (const xmlChar *) tmp);
-
-        xmlAddChild(currentNode, groupNode);
-
-        GString *id;
-        id = new GString("p");
-        xmlNewProp(groupNode, (const xmlChar *) ATTR_SID, (const xmlChar *) buildSID(num, getIdx(), id)->getCString());
-        delete id;
-
-        createPath(path, state, groupNode);
+        createPath(path, state, currentNode);
         free(tmp);
     }
 }
