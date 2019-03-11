@@ -2801,10 +2801,17 @@ void TextPage::addCharToRawWord(GfxState *state, double x, double y, double dx,
             modifierClass = classifyChar(((TextChar *) curWord->chars->get(curWord->getLength() - 1))->c);
         if (modifierClass == NOT_A_MODIFIER)
             modifierClass = classifyChar(u[0]);
+        GBool space = sp > minWordBreakSpace * curWord->fontSize;
 
+        if(space){
+            curWord->setSpaceAfter(gTrue);
+            if (curWord->chars->getLength() > 0)
+                ((TextChar *) curWord->chars->get(curWord->chars->getLength() - 1))->spaceAfter =
+                        (char) gTrue;
+        }
         // take into account rotation angle ??
         if (((overlap || fabs(base - curWord->base) > 1 ||
-              sp > minWordBreakSpace * curWord->fontSize ||
+                space ||
               (sp < -minDupBreakOverlap * curWord->fontSize)) && modifierClass == NOT_A_MODIFIER)) {
             endWord();
             beginWord(state, x, y);
@@ -2850,6 +2857,10 @@ void TextPage::addCharToRawWord(GfxState *state, double x, double y, double dx,
         curWord->charLen += nBytes;
     }
     charPos += nBytes;
+
+    // reinitiate word if no char added
+    if(curWord->getLength()==0)
+        curWord = NULL;
 }
 
 void TextPage::addChar(GfxState *state, double x, double y, double dx,
@@ -5755,7 +5766,7 @@ void TextPage::dump(GBool useBlocks, GBool fullFontName) {
 
                 xmlAddChild(nodeline, node);
 
-                if (wordI < line1->words->getLength() - 1 and word->spaceAfter) {
+                if (wordI < line1->words->getLength() - 1 and (word->spaceAfter == gTrue)) {
                     xmlNodePtr spacingNode = xmlNewNode(NULL, (const xmlChar *) TAG_SPACING);
                     spacingNode->type = XML_ELEMENT_NODE;
                     snprintf(tmp, sizeof(tmp), ATTR_NUMFORMAT, (nextWord->xMin - word->xMax));
