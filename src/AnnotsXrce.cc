@@ -82,7 +82,7 @@ AnnotsXrce::AnnotsXrce(Object &objA, xmlNodePtr docrootA, Catalog *catalog, doub
                 LinkAction *ac = link->getAction();
                 //printf("ac %d \n",ac->isOk());
                 // Get the Action information
-                if (ac->isOk()) {
+                if (ac != NULL && ac->isOk()) {
                     xmlNodePtr nodeActionAction;
                     xmlNodePtr nodeActionDEST;
                     if (nodeAnnot) {
