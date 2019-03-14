@@ -64,8 +64,8 @@ set(SOURCE_FILES
         src/AnnotsXrce.h
         src/ConstantsUtils.cc
         src/ConstantsUtils.h
-        src/ConstantsXMLALTO.cc
-        src/ConstantsXMLALTO.h
+        src/ConstantsXML.cc
+        src/ConstantsXML.h
         src/Parameters.cc
         src/Parameters.h
         src/PDFDocXrce.cc
@@ -77,7 +77,7 @@ set(SOURCE_FILES
 
 add_executable(traingenerator ${SOURCE_FILES})
 
-if(${HAVE_PAPER_H})
+if(HAVE_PAPER_H)
     target_link_libraries(traingenerator ${PNG_LIBRARIES} ${ZLIB_LIBRARY} ${XML_LIBRARY} splash xpdf goo fofi ${ICUUC_LIB} ${ICUDATA_LIB} ${FREETYPE_LIBRARY} dl ${HAVE_PAPER_H})
 else()
     target_link_libraries(traingenerator ${PNG_LIBRARIES} ${ZLIB_LIBRARY} ${XML_LIBRARY} splash xpdf goo fofi ${ICUUC_LIB} ${ICUDATA_LIB} ${FREETYPE_LIBRARY} dl)

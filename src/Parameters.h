@@ -10,8 +10,8 @@
 #include <libxml/xmlmemory.h>
 #include <libxml/parser.h>
 
-#include "ConstantsXMLALTO.h"
-using namespace ConstantsXMLALTO;
+#include "ConstantsXML.h"
+using namespace ConstantsXML;
 
 class Parameters;
 

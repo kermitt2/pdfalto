@@ -3,6 +3,17 @@
 : ${CFLAGS="-fPIC"}
 : ${CXX_FLAGS=${CFLAGS}}
 
+
+if ! [ -x "$(command -v wget)" ]; then
+  echo 'Error: wget is not installed.' >&2
+  exit 1
+fi
+
+if ! [ -x "$(command -v cmake)" ]; then
+  echo 'Error: cmake is not installed.' >&2
+  exit 1
+fi
+
 DEP_INSTALL_DIR=install
 
 LIBXML_URI=http://xmlsoft.org/sources/libxml2-2.9.8.tar.gz

@@ -10,8 +10,9 @@ The latest (non-)stable version is *0.2*.
 
 # Requirements
 
-* clang 3.6 or gcc 4.9
-* cmake 3.12.0
+* compilers : clang 3.6 or gcc 4.9
+* makefile generator : cmake 3.12.0
+* fetching dependencies : wget
 
 # Usage
 
@@ -140,3 +141,10 @@ The windows version has been built originally by [@pboumenot](https://github.com
 # License
 
 As the original pdf2xml, pdfalto is distributed under GPL2 license. 
+
+# Useful links
+
+These are some tools for converting alto to other formats :
+
+- https://github.com/filak/hOCR-to-ALTO
+- https://github.com/UB-Mannheim/ocr-fileformat

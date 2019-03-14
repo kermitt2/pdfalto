@@ -2,8 +2,9 @@ Here we describe procedures to compile the static dependencies.
 
 # Requirements
 
-* clang 3.6 or gcc 4.9
-* cmake 3.12.0
+* compilers : clang 3.6 or gcc 4.9
+* makefile generator : cmake 3.12.0
+* fetching dependencies : wget
 
 # libpng & zlib
 1- The source code for these libraries could be found under `libs/image/png/src` and `libs/image/zlib/src`, so we start with zlib :
