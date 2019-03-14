@@ -37,9 +37,9 @@ using namespace std;
 #include "ConstantsUtils.h"
 using namespace ConstantsUtils;
 
-#include "ConstantsXMLALTO.h"
+#include "ConstantsXML.h"
 
-using namespace ConstantsXMLALTO;
+using namespace ConstantsXML;
 
 #include "TextString.h"
 
