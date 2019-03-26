@@ -2847,9 +2847,7 @@ void TextPage::addCharToRawWord(GfxState *state, double x, double y, double dx,
         for (i = 0; i < uLen; ++i) {
             if (isNonUnicodeGlyph)
                 curWord->setContainNonUnicodeGlyph(isNonUnicodeGlyph);
-            //Check is the code point is defined and not a control one
-            if(u_isdefined(u[i]) && !u_iscntrl(u[i]))
-                curWord->addChar(state, x1 + i * w1, y1 + i * h1, w1, h1, u[i], c, charPos,
+            curWord->addChar(state, x1 + i * w1, y1 + i * h1, w1, h1, u[i], c, charPos,
                              (overlap || sp < -minDupBreakOverlap * curWord->fontSize), curFont, curFontSize,
                              splashFont, nBytes, curRot, isNonUnicodeGlyph);
         }
@@ -5250,8 +5248,7 @@ void TextPage::dump(GBool useBlocks, GBool fullFontName) {
                 (
                         (fabs(word->base - nextWord->baseYmin) < maxSpacingWordsBetweenTwoLines) ||
                         (fabs(nextWord->base - word->base) <
-                         maxIntraLineDelta * min(lineFontSize, nextWord->fontSize)) ||
-                        (nextWord->yMax > word->yMin && nextWord->base < word->base)
+                         maxIntraLineDelta * min(lineFontSize, nextWord->fontSize))
                 )
                 && (nextWord->xMin <= word->xMax + maxWordSpacing * lineFontSize)
         )
@@ -6194,9 +6191,13 @@ int TextPage::dumpFragment(Unicode *text, int len, UnicodeMap *uMap, GString *s)
                 // output a left-to-right section
                 for (j = i; j < len && !unicodeTypeR(text[j]); ++j);
                 for (k = i; k < j; ++k) {
-                    n = uMap->mapUnicode(text[k], buf, sizeof(buf));
-                    s->append(buf, n);
-                    ++nCols;
+
+                    //Check is the code point is defined and not a control one
+                    if(u_isdefined(text[k]) && !u_iscntrl(text[k])) {
+                        n = uMap->mapUnicode(text[k], buf, sizeof(buf));
+                        s->append(buf, n);
+                        ++nCols;
+                    }
                 }
                 i = j;
                 // output a right-to-left section
@@ -6204,9 +6205,12 @@ int TextPage::dumpFragment(Unicode *text, int len, UnicodeMap *uMap, GString *s)
                 if (j > i) {
                     s->append(rle, rleLen);
                     for (k = j - 1; k >= i; --k) {
-                        n = uMap->mapUnicode(text[k], buf, sizeof(buf));
-                        s->append(buf, n);
-                        ++nCols;
+                        //Check is the code point is defined and not a control one
+                        if(u_isdefined(text[k]) && !u_iscntrl(text[k])) {
+                            n = uMap->mapUnicode(text[k], buf, sizeof(buf));
+                            s->append(buf, n);
+                            ++nCols;
+                        }
                     }
                     s->append(popdf, popdfLen);
                     i = j;
@@ -6223,9 +6227,12 @@ int TextPage::dumpFragment(Unicode *text, int len, UnicodeMap *uMap, GString *s)
                 // output a right-to-left section
                 for (j = i; j >= 0 && !unicodeTypeL(text[j]); --j);
                 for (k = i; k > j; --k) {
-                    n = uMap->mapUnicode(text[k], buf, sizeof(buf));
-                    s->append(buf, n);
-                    ++nCols;
+                    //Check is the code point is defined and not a control one
+                    if(u_isdefined(text[k]) && !u_iscntrl(text[k])) {
+                        n = uMap->mapUnicode(text[k], buf, sizeof(buf));
+                        s->append(buf, n);
+                        ++nCols;
+                    }
                 }
                 i = j;
                 // output a left-to-right section
@@ -6233,9 +6240,12 @@ int TextPage::dumpFragment(Unicode *text, int len, UnicodeMap *uMap, GString *s)
                 if (j < i) {
                     s->append(lre, lreLen);
                     for (k = j + 1; k <= i; ++k) {
-                        n = uMap->mapUnicode(text[k], buf, sizeof(buf));
-                        s->append(buf, n);
-                        ++nCols;
+                        //Check is the code point is defined and not a control one
+                        if(u_isdefined(text[k]) && !u_iscntrl(text[k])) {
+                            n = uMap->mapUnicode(text[k], buf, sizeof(buf));
+                            s->append(buf, n);
+                            ++nCols;
+                        }
                     }
                     s->append(popdf, popdfLen);
                     i = j;
@@ -6247,9 +6257,12 @@ int TextPage::dumpFragment(Unicode *text, int len, UnicodeMap *uMap, GString *s)
         // Unicode NOT OK
     else {
         for (i = 0; i < len; ++i) {
-            n = uMap->mapUnicode(text[i], buf, sizeof(buf));
-            s->append(buf, n);
-            nCols += n;
+            //Check is the code point is defined and not a control one
+            if(u_isdefined(text[i]) && !u_iscntrl(text[i])) {
+                n = uMap->mapUnicode(text[i], buf, sizeof(buf));
+                s->append(buf, n);
+                nCols += n;
+            }
         }
     }
 
