@@ -5,6 +5,7 @@ namespace ConstantsUtils {
 	const char *EXTENSION_XML = ".xml";
 	const char *EXTENSION_XML_MAJ = ".XML";
 	const char *EXTENSION_VEC = ".vec";
+	const char *EXTENSION_SVG = ".svg";
 	const char *EXTENSION_JPG = ".jpg";
 	const char *EXTENSION_PNG = ".png";
 	const char *EXTENSION_PDF = ".pdf";

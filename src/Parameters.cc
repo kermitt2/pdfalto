@@ -15,6 +15,13 @@ Parameters::Parameters() {}
 
 Parameters::~Parameters() {}
 
+void Parameters::setFilesCountLimit(int count) {
+	lockGlobalParams;
+	filesCountLimit = count;
+	unlockGlobalParams;
+}
+
+
 void Parameters::setDisplayImage(GBool image) {
   lockGlobalParams;
   displayImage = image;
@@ -62,6 +69,12 @@ void Parameters::setReadingOrder(GBool readingOrders) {
   lockGlobalParams;
   readingOrder = readingOrders;
   unlockGlobalParams;
+}
+
+void Parameters::setOcr(GBool ocrA) {
+	lockGlobalParams;
+	ocr = ocrA;
+	unlockGlobalParams;
 }
 
 void Parameters::saveToXML(const char *fileName,int firstPage,int lastPage){

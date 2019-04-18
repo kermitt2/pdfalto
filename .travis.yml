@@ -1,44 +1,33 @@
-os:
-  - linux
-  - osx
-osx_image: xcode8.3
-
-sudo: true
-
-language: cpp
-compiler: gcc
+matrix:
+  include:    
+    - os: linux
+    - os: osx
+      osx_image: xcode8.3
 
 dist: trusty
+sudo: true
+language:
+  - cpp
+compiler:
+  - clang
 
 before_install:
-  - git submodule foreach "(git checkout master; git pull)&"
+  - eval "${MATRIX_EVAL}"
+  - git submodule update --init --recursive;
   - if [ "$TRAVIS_OS_NAME" = "linux" ]; then
-      sudo add-apt-repository ppa:ubuntu-toolchain-r/test -y;
       sudo add-apt-repository ppa:beineri/opt-qt571-trusty -y;
-    fi
-  - if [ "$TRAVIS_OS_NAME" = "linux" ]; then
       sudo apt-get update -qq;
+      sudo apt-get install -qq cmake build-essential;
     fi
   - if [ "$TRAVIS_OS_NAME" = "osx" ]; then
       brew update;
-    fi
-
-install:
-  - if [ "$TRAVIS_OS_NAME" = "linux" ]; then
-      sudo apt-get install -qq qt57base cmake libxml2-dev libmotif-dev;
-      source /opt/qt57/bin/qt57-env.sh;
-    fi
-  - if [ "$TRAVIS_OS_NAME" = "osx" ]; then
-     brew install openmotif;
-     brew install libxml2;
-     brew install qt5;
-     brew link --force qt5 && sudo ln -s /usr/local/Cellar/qt5/5.11.0/mkspecs /usr/local/mkspecs && sudo ln -s /usr/local/Cellar/qt5/5.11.0/plugins /usr/local/plugins;
-     echo 'export PATH="/usr/local/opt/qt/bin:$PATH"' >> ~/.bash_profile;
+      brew upgrade cmake;
     fi
 
 script:
-  - cmake CMakeLists.txt
-  - make
+  - gcc -v && g++ -v && cmake --version
+  - cmake ./;
+  - make;
 
 notifications:
   email: true
