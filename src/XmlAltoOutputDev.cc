@@ -5395,7 +5395,7 @@ void TextPage::dump(GBool useBlocks, GBool fullFontName) {
 
         // IF block option is selected
         // IF it's the end of line or the end of page
-        if ((useBlocks && lineFinish) || (useBlocks && endPage)) {
+        if ((lineFinish) || (endPage)) {
             // IF it's the first line
             if (linePreviousX == 0) {
                 if (nextWord != NULL) {
