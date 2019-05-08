@@ -1844,9 +1844,9 @@ void TextPage::startPage(int pageNum, GfxState *state, GBool cut) {
 
     xmlNewProp(page, (const xmlChar *) ATTR_PHYSICAL_IMG_NR, (const xmlChar *) tmp);
 
-    sprintf(tmp, "%g", pageWidth);
+    snprintf(tmp, sizeof(tmp), ATTR_NUMFORMAT, pageWidth);
     xmlNewProp(page, (const xmlChar *) ATTR_WIDTH, (const xmlChar *) tmp);
-    sprintf(tmp, "%g", pageHeight);
+    snprintf(tmp, sizeof(tmp), ATTR_NUMFORMAT, pageHeight);
     xmlNewProp(page, (const xmlChar *) ATTR_HEIGHT, (const xmlChar *) tmp);
 
 //    xmlNodePtr mediaboxtag = NULL;
@@ -3197,7 +3197,7 @@ void TextPage::testLinkedText(xmlNodePtr node, double xMin, double yMin, double 
                                             // TODO FH 25/01/2006 apply transform matrix of destination page, not current page
                                             double x, y;
                                             curstate->transform(link_dest->getLeft(), link_dest->getTop(), &x, &y);
-                                            sprintf(tmp, "p-%d %g %g", page, x, y);
+                                            snprintf(tmp, sizeof(tmp), "p-%d %g %g", page, x, y);
                                             xmlNewProp(node, (const xmlChar *) ATTR_GOTOLINK, (const xmlChar *) tmp);
 //												printf("link %d %g %g\n",page,x,y);
                                             free(tmp); // PL
@@ -4910,15 +4910,11 @@ void TextPage::dumpInReadingOrder(GBool useBlocks, GBool fullFontName) {
                                             (const xmlChar *) buildSID(num, listeImageInline[indiceImage]->getIdx(),
                                                                        id)->getCString());
                                     delete id;
-                                    sprintf(
-                                            tmp,
-                                            ATTR_NUMFORMAT,
+                                    snprintf(tmp, sizeof(tmp), ATTR_NUMFORMAT,
                                             listeImageInline[indiceImage]->getXPositionImage());
                                     xmlNewProp(nodeImageInline, (const xmlChar *) ATTR_X,
                                                (const xmlChar *) tmp);
-                                    sprintf(
-                                            tmp,
-                                            ATTR_NUMFORMAT,
+                                    snprintf(tmp, sizeof(tmp), ATTR_NUMFORMAT,
                                             listeImageInline[indiceImage]->getYPositionImage());
                                     xmlNewProp(nodeImageInline, (const xmlChar *) ATTR_Y,
                                                (const xmlChar *) tmp);
@@ -5722,15 +5718,11 @@ void TextPage::dump(GBool useBlocks, GBool fullFontName) {
                                         (const xmlChar *) buildSID(num, listeImageInline[indiceImage]->getIdx(),
                                                                    id)->getCString());
                                 delete id;
-                                sprintf(
-                                        tmp,
-                                        ATTR_NUMFORMAT,
+                                snprintf(tmp, sizeof(tmp), ATTR_NUMFORMAT,
                                         listeImageInline[indiceImage]->getXPositionImage());
                                 xmlNewProp(nodeImageInline, (const xmlChar *) ATTR_X,
                                            (const xmlChar *) tmp);
-                                sprintf(
-                                        tmp,
-                                        ATTR_NUMFORMAT,
+                                snprintf(tmp, sizeof(tmp), ATTR_NUMFORMAT,
                                         listeImageInline[indiceImage]->getYPositionImage());
                                 xmlNewProp(nodeImageInline, (const xmlChar *) ATTR_Y,
                                            (const xmlChar *) tmp);
@@ -6358,7 +6350,7 @@ void TextPage::createPath(GfxPath *path, GfxState *state, xmlNodePtr groupNode) 
 
         // M tag : moveto
         pathnode = xmlNewNode(NULL, (const xmlChar *) TAG_PATH);
-        sprintf(tmp, "M%g,%g", x0, y0);
+        snprintf(tmp, sizeof(tmp), "M%g,%g", x0, y0);
 
         d = new GString(tmp);
 
@@ -6385,7 +6377,7 @@ void TextPage::createPath(GfxPath *path, GfxState *state, xmlNodePtr groupNode) 
                 y3 = b;
                 // C tag  : curveto
 //                pathnode=xmlNewNode(NULL, (const xmlChar*)TAG_C);
-                sprintf(tmp, " C%g,%g %g,%g %g,%g", x1, y1, x2, y2, x3, y3);
+                snprintf(tmp, sizeof(tmp), " C%g,%g %g,%g %g,%g", x1, y1, x2, y2, x3, y3);
                 d->append(tmp);
                 if(xmax==0) {
                     double list_double[] = {x0, x1, x2, x3};
@@ -6436,7 +6428,7 @@ void TextPage::createPath(GfxPath *path, GfxState *state, xmlNodePtr groupNode) 
 //                xmlNewProp(pathnode, (const xmlChar*)ATTR_Y,
 //                           (const xmlChar*)tmp);
 //                xmlAddChild(groupNode, pathnode);
-                sprintf(tmp, " L%g,%g", x1, y1);
+                snprintf(tmp, sizeof(tmp)," L%g,%g", x1, y1);
                 d->append(tmp);
                 if (xmax == 0) {
                     double list_double[] = {x0, x1};
@@ -7536,7 +7528,7 @@ void XmlAltoOutputDev::addStyles() {
         xmlNewProp(textStyleNode, (const xmlChar *) ATTR_FONTFAMILY, (const xmlChar *) tmp);
         delete fontStyleInfo->getFontNameCS();
 
-        sprintf(tmp, "%.3f", fontStyleInfo->getFontSize());
+        snprintf(tmp, sizeof(tmp), "%.3f", fontStyleInfo->getFontSize());
         xmlNewProp(textStyleNode, (const xmlChar *) ATTR_FONTSIZE, (const xmlChar *) tmp);
 
         //
@@ -8531,7 +8523,7 @@ void XmlAltoOutputDev::stroke(GfxState *state) {
     // The stroke-opacity attribute
     double fo = state->getStrokeOpacity();
     if (fo != 1) {
-        sprintf(tmp, "stroke-opacity: %g;", fo);
+        snprintf(tmp, sizeof(tmp), "stroke-opacity: %g;", fo);
         attr->append(tmp);
     }
 
@@ -8546,7 +8538,7 @@ void XmlAltoOutputDev::stroke(GfxState *state) {
     if (length != 0) {
         attr->append("stroke-dasharray:");
         for (i = 0; i < length; i++) {
-            sprintf(tmp, "%g", state->transformWidth(dash[i]) == 0 ? 1
+            snprintf(tmp, sizeof(tmp), "%g", state->transformWidth(dash[i]) == 0 ? 1
                                                                    : state->transformWidth(dash[i]));
             attr->append(tmp);
             sprintf(tmp, "%s", (i == length - 1) ? "" : ", ");
@@ -8566,7 +8558,7 @@ void XmlAltoOutputDev::stroke(GfxState *state) {
     if (lineWidth1 != lineWidth2) {
         lineWidth2 = lineWidth2 + 0.5;
     }
-    sprintf(tmp, "stroke-width: %g;", lineWidth2);
+    snprintf(tmp, sizeof(tmp), "stroke-width: %g;", lineWidth2);
     attr->append(tmp);
 
     // The stroke-linejoin attribute
@@ -8600,7 +8592,7 @@ void XmlAltoOutputDev::stroke(GfxState *state) {
     // The stroke-miterlimit attribute
     double miter = state->getMiterLimit();
     if (miter != 4) {
-        sprintf(tmp, "stroke-miterlimit: %g;", miter);
+        snprintf(tmp, sizeof(tmp), "stroke-miterlimit: %g;", miter);
     }
     attr->append(tmp);
 
@@ -8621,7 +8613,7 @@ void XmlAltoOutputDev::fill(GfxState *state) {
 
     // The fill-opacity attribute
     double fo = state->getFillOpacity();
-    sprintf(tmp, "fill-opacity: %g;", fo);
+    snprintf(tmp, sizeof(tmp), "fill-opacity: %g;", fo);
     attr->append(tmp);
 
     doPath(state->getPath(), state, attr);
@@ -8644,7 +8636,7 @@ void XmlAltoOutputDev::eoFill(GfxState *state) {
 
     // The fill-opacity attribute
     double fo = state->getFillOpacity();
-    sprintf(tmp, "fill-opacity: %g;", fo);
+    snprintf(tmp, sizeof(tmp), "fill-opacity: %g;", fo);
     attr->append(tmp);
 
     doPath(state->getPath(), state, attr);
@@ -9183,13 +9175,13 @@ GBool XmlAltoOutputDev::dumpOutline(xmlNodePtr parentNode, GList *itemsA, PDFDoc
 
             sprintf(tmp, "%d", page);
             xmlNewProp(nodeLink, (const xmlChar *) ATTR_PAGE, (const xmlChar *) tmp);
-            sprintf(tmp, "%g", y2);
+            snprintf(tmp, sizeof(tmp), "%g", y2);
             xmlNewProp(nodeLink, (const xmlChar *) ATTR_TOP, (const xmlChar *) tmp);
-            sprintf(tmp, "%g", bottom);
+            snprintf(tmp, sizeof(tmp), "%g", bottom);
             xmlNewProp(nodeLink, (const xmlChar *) ATTR_BOTTOM, (const xmlChar *) tmp);
-            sprintf(tmp, "%g", x2);
+            snprintf(tmp, sizeof(tmp), "%g", x2);
             xmlNewProp(nodeLink, (const xmlChar *) ATTR_LEFT, (const xmlChar *) tmp);
-            sprintf(tmp, "%g", right);
+            snprintf(tmp, sizeof(tmp), "%g", right);
             xmlNewProp(nodeLink, (const xmlChar *) ATTR_RIGHT, (const xmlChar *) tmp);
 
             xmlAddChild(nodeItem, nodeLink);
