@@ -4964,10 +4964,12 @@ void TextPage::dumpInReadingOrder(GBool useBlocks, GBool fullFontName) {
 
                 if (useBlocks)
                     xmlAddChild(nodeblocks, nodeline);
-                else xmlAddChild(printSpace, nodeline);
+                else 
+                    xmlAddChild(printSpace, nodeline);
             }
 
-            xmlAddChild(printSpace, nodeblocks);
+            if (useBlocks)
+                xmlAddChild(printSpace, nodeblocks);
         }
         //(*outputFunc)(outputStream, eol, eolLen);
     }
@@ -5320,9 +5322,10 @@ void TextPage::dump(GBool useBlocks, GBool fullFontName) {
 
                 if (nextWord != NULL) {
                     firstword = 1;
-                    if (useBlocks) {
-                        lineFinish = gTrue;
-                    } else {
+                    // PL: blocks are now always considered at this stage
+                    //if (useBlocks) {
+                    lineFinish = gTrue;
+                    /*} else {
                         // new line
                         line = new TextLine;
                         line->setWords(lineWords);
@@ -5331,7 +5334,7 @@ void TextPage::dump(GBool useBlocks, GBool fullFontName) {
                         parLines->append(line);
                         minLineY = 999999999;
                         minLineX = 999999999;
-                    }
+                    }*/
                 } else {
                     endPage = gTrue;
                 }
@@ -5369,15 +5372,16 @@ void TextPage::dump(GBool useBlocks, GBool fullFontName) {
             line->setFontSize(lineFontSize);
 
             if (nextWord != NULL) {
-                if (useBlocks) {
-                    lineFinish = gTrue;
-                } else {
+                // PL: blocks are now always considered at this stage
+                //if (useBlocks) {
+                lineFinish = gTrue;
+                /*} else {
                     // new line
                     line = new TextLine;
                     lineWords = new GList();
                     line->setWords(lineWords);
                     parLines->append(line);
-                }
+                }*/
             } else {
                 endPage = gTrue;
             }
@@ -5389,7 +5393,6 @@ void TextPage::dump(GBool useBlocks, GBool fullFontName) {
             minLineX = 99999999;
         }
 
-        // IF block option is selected
         // IF it's the end of line or the end of page
         if ((lineFinish) || (endPage)) {
             // IF it's the first line
@@ -5782,10 +5785,12 @@ void TextPage::dump(GBool useBlocks, GBool fullFontName) {
 
             if (useBlocks)
                 xmlAddChild(nodeblocks, nodeline);
-            else xmlAddChild(printSpace, nodeline);
+            else 
+                xmlAddChild(printSpace, nodeline);
         }
 
-        xmlAddChild(printSpace, nodeblocks);
+        if (useBlocks)
+            xmlAddChild(printSpace, nodeblocks);
     }
 
     int imageCount = listeImages.size();
