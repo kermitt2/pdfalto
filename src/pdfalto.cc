@@ -93,8 +93,9 @@ static ArgDesc argDesc[] = {
                 "create an outline file xml"},
         {"-annotation",    argFlag,   &annots,          0,
                 "create an annotations file xml"},
-        {"-cutPages",      argFlag,   &cutPages,        0,
-                "cut all pages in separately files"},
+// PL: code for supporting cut pages need to be put back
+//        {"-cutPages",      argFlag,   &cutPages,        0,
+//                "cut all pages in separately files"},
         {"-blocks",        argFlag,   &blocks,          0,
                 "add blocks informations whithin the structure"},
         {"-readingOrder",  argFlag,   &readingOrder,    0,

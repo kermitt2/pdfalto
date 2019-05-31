@@ -6,7 +6,7 @@
 
 **pdfalto** is a fork of [pdf2xml](http://sourceforge.net/projects/pdf2xml), developed at XRCE, with modifications for robustness, addition of features and output enhanced format in [ALTO](https://github.com/altoxml/documentation/wiki) (including in particular space information, useful for instance for further machine learning processing). It is based on the Xpdf library.  
 
-The latest (non-)stable version is *0.2*. 
+The latest stable version is *0.2*. 
 
 # Requirements
 
@@ -28,7 +28,6 @@ General usage is as follow:
   -noImageInline         : do not include images inline in the stream
   -outline               : create an outline file xml (i.e. a table of content) as additional file
   -annotation            : create an annotations file xml as additional file
-  -cutPages              : cut all pages in separately files
   -blocks                : add blocks informations whithin the structure
   -readingOrder          : blocks follow the reading order
   -fullFontName          : fonts names are not normalized
@@ -62,7 +61,8 @@ All dependencies are provided as static libraries corresponding to each operatin
 Dependencies can be recompiled by running this [script](https://github.com/kermitt2/pdfalto/blob/master/install_deps.sh)
 
 See [compiling dependencies procedures](Dependencies_INSTALL.md) for further details.
-##### Known issues ([issue 41](https://github.com/kermitt2/pdfalto/issues/41)) might occur whille building, in this case you'll need to compile the dependencies before build pdflato.
+##### Known issues ([issue 41](https://github.com/kermitt2/pdfalto/issues/41)) might occur whille building, in this case you'll need to compile the dependencies before building pdflato.
+
 # Build
 
 * NOTE for windows : it's recommended to use Cygwin and install standard libraries (either for cland or gcc)
@@ -82,31 +82,29 @@ The executable `pdfalto` is generated in the root directory. Additionally, this 
 
 # Future work
 
+- Text like containing block element characters (https://unicode.org/charts/PDF/U2B00.pdf) are used as placeholders for unknown character unicodes, instead of what would be expected when visually inspecting the text. The reason for these unsolved character unicode values is that the actual characters are glyphs that are embedded in the PDF document which use free unicode range for embedded fonts, not the right unicode. The only way to extract the valid text for those special characters is to use OCR at glyph level . This is our targeted main future enhancement, relying on a custom Deep Learning approach.
+
 - map special characters in secondary fonts to their expected unicode 
-
-- try OCR for unsolved character unicode value based on their associated glyph in embedded font
-
-- try OCR for unsolved character unicode value in context based on their occurences in the document
 
 - try to optimize speed and memory
 
-- ..see the issue tracker
+- see the issue tracker for further tasks
 
 # Changes
 
 - support unicode composition of characters
 
-- generalize reading order to all blocks (now it is limited to the blocks of the first page)
+- generalize reading order to all blocks (it was limited to the blocks of the first page)
 
-- use subscript/superscript text font style attribut.
+- use subscript/superscript text font style attribut
 
-- use SVG as a format for vectorial images.
+- use SVG as a format for vectorial images
 
 - propagate unsolved character unicode value (free unicode range for embedded fonts) as encoded special character in ALTO (so-called "placeholder" approach)
 
 - generate metadata information in a separate XML file (as ALTO schema does not support that)
 
-- use the latest version of xpdf, version 4.00.
+- use the latest version of xpdf, version 4.00
 
 - add cmake
 
@@ -116,17 +114,12 @@ The executable `pdfalto` is generated in the root directory. Additionally, this 
 
 - output coordinates attributes for the BLOCK elements when the `-block` option is selected,
 
-- add a parameter `-readingOrder` which re-order the blocks following the reading order when the -block option is selected. By default in pdf2xml, the elements follow the PDF content stream (the so-called _raw order_). In pdf2txt from xpdf, several text flow orders are available including the raw order and the reading order. Note that, with this modification and this new option, only the blocks are re-ordered.
+- add a parameter `-readingOrder` which re-order the blocks following the reading order when the -block option is selected. By default in pdf2xml, the elements followed the PDF content stream (the so-called _raw order_). In xpdf, several text flow orders are available including the raw order and the reading order. Note that, with this modification and this new option, only the blocks are re-ordered.
 
   From our experiments, the raw order can diverge quite significantly from the order of elements according to the visual/reading layout in 2-4% of scholar PDF (e.g. title element is introduced at the end of the page element, while visually present at the top of the page), and minor changes can be present in up to 100% of PDF for some scientific publishers (e.g. headnote introduced at the end of the page content). This additional mode can be thus quite useful for information/structure extraction applications exploiting pdf2xml output. 
 
 - use the latest version of xpdf, version 3.04.
 
-# Known Limitations
-
-See the issue tracker and future work :
-
-1. Text like containing block element characters (https://unicode.org/charts/PDF/U2B00.pdf) might be placeholders for unknown characters unicodes instead of what you expect when you are extracting text. This is because the actual characters are glyphs that are embedded in the PDF document. The only way to access the text is to use OCR. This may be a future enhancement.
 
 # Contributors
 
@@ -140,11 +133,11 @@ The windows version has been built originally by [@pboumenot](https://github.com
 
 # License
 
-As the original pdf2xml, pdfalto is distributed under GPL2 license. 
+As the original pdf2xml and main dependency xpdf, pdfalto is distributed under GPL2 license. 
 
 # Useful links
 
-These are some tools for converting alto to other formats :
+Some tools for converting alto to other formats:
 
 - https://github.com/filak/hOCR-to-ALTO
 - https://github.com/UB-Mannheim/ocr-fileformat
