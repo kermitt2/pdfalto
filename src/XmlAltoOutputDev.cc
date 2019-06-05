@@ -3109,7 +3109,8 @@ void TextPage::addAttributsNode(xmlNodePtr node, IWord *word, TextFontStyleInfo 
 //             << fontStyles.size()  << std::endl;
     }
 
-
+    // PL: this should be present only of !contain ???
+    // otherwise duplicated fonts
     sprintf(tmp, "font%d", fontStyleInfo->getId());
     xmlNewProp(node, (const xmlChar *) ATTR_STYLEREFS, (const xmlChar *) tmp);
 
@@ -3335,8 +3336,8 @@ GBool TextFontStyleInfo::cmp(TextFontStyleInfo *tsi) {
          && (fontWidth == tsi->getFontWidth())
          && (isbold == tsi->isBold())
          && (isitalic == tsi->isItalic())
-//            && (issubscript == tsi->isSubscript())
-//            && (issuperscript == tsi->isSuperscript())
+         && (issubscript == tsi->isSubscript())
+         && (issuperscript == tsi->isSuperscript())
     )
             )
         return gTrue;
@@ -4768,7 +4769,7 @@ void TextPage::insertColumnIntoTree(TextBlock *column, TextBlock *tree) {
     tree->tag = blkTagMulticolumn;
 }
 
-
+// PL: this is apparently not used
 void TextPage::dumpInReadingOrder(GBool useBlocks, GBool fullFontName) {
     TextBlock *tree;
     TextColumn *col;
@@ -4812,16 +4813,11 @@ void TextPage::dumpInReadingOrder(GBool useBlocks, GBool fullFontName) {
     xmlNodePtr nodeblocks = NULL;
     xmlNodePtr nodeImageInline = NULL;
 
-    double previousWordBaseLine = 0;
-    double previousWordYmin = 0;
-    double previousWordYmax = 0;
-
     GString *id;
 
     printSpace = xmlNewNode(NULL, (const xmlChar *) TAG_PRINTSPACE);
     printSpace->type = XML_ELEMENT_NODE;
     xmlAddChild(page, printSpace);
-
 
     for (colIdx = 0; colIdx < columns->getLength(); ++colIdx) {
         col = (TextColumn *) columns->get(colIdx);
@@ -4838,9 +4834,20 @@ void TextPage::dumpInReadingOrder(GBool useBlocks, GBool fullFontName) {
                 numBlock = numBlock + 1;
             }
 
+            // for superscript/subscript determination
+            double previousWordBaseLine = 0;
+            double previousWordYmin = 0;
+            double previousWordYmax = 0;
+            double currentLineBaseLine = 0;
+            double currentLineYmin = 0;
+            double currentLineYmax = 0;
+
             par = (TextParagraph *) col->paragraphs->get(parIdx);
             for (lineIdx = 0; lineIdx < par->lines->getLength(); ++lineIdx) {
                 line = (TextLine *) par->lines->get(lineIdx);
+
+                // this is the max font size for the line
+                double lineFontSize = line->fontSize;
 
                 nodeline = xmlNewNode(NULL, (const xmlChar *) TAG_TEXT);
                 nodeline->type = XML_ELEMENT_NODE;
@@ -4866,14 +4873,61 @@ void TextPage::dumpInReadingOrder(GBool useBlocks, GBool fullFontName) {
 
                     node->type = XML_ELEMENT_NODE;
 
-                    //AA : this is a naive heuristic ( regarding general typography cases ) super/sub script, wikipedia description is good
-                    // first is clear, second check is in case of firstword in line and superscript which is recurrent for declaring affiliations or even refs.
-                    if ((word->base < previousWordBaseLine && word->yMax > previousWordYmin) ||
-                        (wordI == 0 && wordI < line->words->getLength() - 1 && word->base < nextWord->base &&
-                         word->yMax > nextWord->yMin))
+                    // determine if the current token is superscript of subscript: a general constraint for superscript and subscript
+                    // is that the scripted tokens have a font size smaller than the tokens on the line baseline.
+
+                    // superscript
+                    if (currentLineBaseLine != 0 && 
+                        wordI > 0 &&
+                        word->base < currentLineBaseLine && 
+                        word->yMax > currentLineYmin &&
+                        word->fontSize < lineFontSize) {
+                        // superscript: general case, not at the beginning of a line
                         fontStyleInfo->setIsSuperscript(gTrue);
-                    else if (((wordI > 0) && word->base > previousWordBaseLine && word->yMin > previousWordYmax))
+                    }
+                    else if (wordI == 0 && 
+                        wordI < line->words->getLength() - 1 && 
+                        nextWord != NULL &&
+                        word->base < nextWord->base &&
+                        word->yMax > nextWord->yMin && 
+                        word->fontSize < lineFontSize) {
+                        // superscript: case first token of the line, check if the current token is the first token of the line 
+                        // and use next tokens to see if we have a vertical shift
+                        // note: it won't work when we have several tokens in superscript at the beginning of the line...
+                        // actually it might screw all the rest :/
+                        // superscript as first token of a line is common for declaring affiliations (and sometime references)
+                        fontStyleInfo->setIsSuperscript(gTrue);
+                        currentLineBaseLine = nextWord->base;  
+                        currentLineYmin = nextWord->yMin;
+                        currentLineYmax = nextWord->yMax;
+                    }   
+                    else if (wordI > 0 && 
+                        word->base > currentLineBaseLine && 
+                        word->yMin < currentLineYmax &&
+                        word->fontSize < lineFontSize) {
+                        // common subscript, not at the beginning of a line
                         fontStyleInfo->setIsSubscript(gTrue);
+                    }
+                    else if (wordI == 0 && 
+                        wordI < line->words->getLength() - 1 && 
+                        nextWord != NULL &&
+                        word->base > nextWord->base &&
+                        word->yMin < nextWord->yMax && 
+                        word->fontSize < lineFontSize) {
+                        // subscript: case first token of the line, check if the current token is the first token of the line 
+                        // and use next tokens to see if we have a vertical shift
+                        // note: it won't work when we have several tokens in subscripts at the beginning of the line...
+                        // actually it might screw all the rest :/
+                        // subscript as first token of a line should never appear, but it's better to cover this case to 
+                        // avoid having the rest of the line detected as superscript... 
+                        fontStyleInfo->setIsSubscript(gTrue);
+                        currentLineBaseLine = nextWord->base;  
+                        currentLineYmin = nextWord->yMin;
+                        currentLineYmax = nextWord->yMax;
+                    }   
+                    // PL: above, we need to pay attention to the font style of the previous token and consider the whole line, 
+                    // because otherwise the token next to a subscript is always superscript even when normal, in addition for 
+                    // several tokens as superscript or subscript, only the first one will be set as superscript or subscript
 
                     // If option verbose is selected
                     if (verbose) {
@@ -4955,7 +5009,12 @@ void TextPage::dumpInReadingOrder(GBool useBlocks, GBool fullFontName) {
                         xmlAddChild(nodeline, spacingNode);
                     }
 
-                    previousWordBaseLine = word->base;
+                    if (!fontStyleInfo->isSuperscript() && !fontStyleInfo->isSubscript()) {
+                        currentLineBaseLine = word->base;  
+                        currentLineYmin = word->yMin;
+                        currentLineYmax = word->yMax;
+                    }
+                    previousWordBaseLine = word->base;  
                     previousWordYmin = word->yMin;
                     previousWordYmax = word->yMax;
 
@@ -5021,6 +5080,8 @@ void TextPage::dumpInReadingOrder(GBool useBlocks, GBool fullFontName) {
 }
 
 void TextPage::dump(GBool useBlocks, GBool fullFontName) {
+    // Output the page in raw (content stream) order
+
     blocks = new GList(); //these are blocks in alto schema
 
     UnicodeMap *uMap;
@@ -5056,9 +5117,6 @@ void TextPage::dump(GBool useBlocks, GBool fullFontName) {
     double lineHeight = 0;
     double lineFontSize = 0;
 
-    double previousWordBaseLine = 0;
-    double previousWordYmin = 0;
-    double previousWordYmax = 0;
     // Informations about the previous line
     double linePreviousX = 0;
     double linePreviousYmin = 0;
@@ -5076,8 +5134,7 @@ void TextPage::dump(GBool useBlocks, GBool fullFontName) {
 
     numText = 1;
     numBlock = 1;
-    // Output the page in raw (content stream) order
-
+    
     lineFontSize = 0;
 
     TextLine *line = new TextLine;
@@ -5115,11 +5172,15 @@ void TextPage::dump(GBool useBlocks, GBool fullFontName) {
 
         //AA : this is a naive heuristic ( regarding general typography cases ) super/sub script, wikipedia description is good
         // first is clear, second check is in case of firstword in line and superscript which is recurrent for declaring affiliations or even refs.
+        /*
         if ((word->base < previousWordBaseLine && word->yMax > previousWordYmin) ||
             (firstword && nextWord && word->base < nextWord->base && word->yMax > nextWord->yMin))
             fontStyleInfo->setIsSuperscript(gTrue);
-        else if ((!firstword && word->base > previousWordBaseLine && word->yMin > previousWordYmax))
+        else if ((!firstword && word->base > previousWordBaseLine && word->yMin < previousWordYmax))
             fontStyleInfo->setIsSubscript(gTrue);
+        */
+        // PL: the piece of code above to detect super- and subscript looks useless as fontStyleInfo is not further used or assigned in this loop
+        // super- and subscript are further detect another time in the second main structure iteration below, so normally that should be removed 
 
         lineFinish = gFalse;
         if (firstword) { // test useful?
@@ -5233,24 +5294,27 @@ void TextPage::dump(GBool useBlocks, GBool fullFontName) {
         if (word->rot == 3 && word->angle == 270) {
             rotation = 3;
         }
-        // Add the attributes width and height to the node TEXT
-        // The line is finished IF :
 
+        // The line is finished IF :
         // 		- there is no next word
         //		- and IF the rotation of current word is different of the rotation next word
         //		- and IF the difference between the base of current word and the yMin next word is superior to the maxSpacingWordsBetweenTwoLines
         //		-      or IF the difference between the base of current word and the base next word is superior to maxIntraLineDelta * lineFontSize
         //		- and IF the xMax current word ++ maxWordSpacing * lineFontSize is superior to the xMin next word.
         //		HD 24/07/09 ?? - or if the font size of the current word is far different from the next word
+        // PL: note that the second criteria create an artificial new line for every superscript sequences whithin a line (but subscript are okay), we
+        // revised it by taking the max of lineFontSize and nextWord fontSize, instead of the min (it means we have a new line when the shift if greater
+        // than the main font size, a smaller shift does not introduce a new line)
         if (nextWord != NULL && (word->rot == nextWord->rot) && (
                 (
-                        (fabs(word->base - nextWord->baseYmin) < maxSpacingWordsBetweenTwoLines) ||
-                        (fabs(nextWord->base - word->base) <
-                         maxIntraLineDelta * min(lineFontSize, nextWord->fontSize))
+                    (fabs(word->base - nextWord->baseYmin) < maxSpacingWordsBetweenTwoLines) ||
+                    //(fabs(nextWord->base - word->base) < maxIntraLineDelta * min(lineFontSize, nextWord->fontSize))
+                    //(fabs(nextWord->base - word->base) < maxIntraLineDelta * lineFontSize)
+                    (fabs(nextWord->base - word->base) < maxIntraLineDelta * max(lineFontSize, nextWord->fontSize))
                 )
                 && (nextWord->xMin <= word->xMax + maxWordSpacing * lineFontSize)
-        )
-                ) {
+            )
+        ) {
 
             // IF - switch the rotation :
             //			base word and yMin word are inferior to yMin next word
@@ -5258,7 +5322,8 @@ void TextPage::dump(GBool useBlocks, GBool fullFontName) {
             //			xMax word is superior to xMin next word and the difference between the base of current word and the next word is superior to maxIntraLineDelta*lineFontSize
             //			xMin next word is superior to xMax word + maxWordSpacing * lineFontSize
             //THEN if one of these tests is true, the line is finish
-            if (((rotation == -1) ? ((word->base < nextWord->yMin)
+            if (
+                ((rotation == -1) ? ((word->base < nextWord->yMin)
                                      && (word->yMin < nextWord->yMin)) : (word->rot == 0
                                                                           || word->rot == 1) ? (
                                                                                  (word->base < yyMinNext) && (yyMin
@@ -5267,8 +5332,8 @@ void TextPage::dump(GBool useBlocks, GBool fullFontName) {
                                                                                              : (
                                                                                  (word->base > yyMinNext) && (yyMin
                                                                                                               >
-                                                                                                              yyMinNext))) ||
-                ((rotation == -1) ? (nextWord->xMin
+                                                                                                              yyMinNext)))
+                || ((rotation == -1) ? (nextWord->xMin
                                      < word->xMin) : (word->rot == 0) ? (xxMinNext < xxMin)
                                                                       : (word->rot == 1 ? xxMinNext > xxMin
                                                                                         : (word->rot == 2 ? xxMinNext >
@@ -5296,8 +5361,9 @@ void TextPage::dump(GBool useBlocks, GBool fullFontName) {
                                                                                                     xxMinNext
                                                                                                     < xxMax -
                                                                                                       maxWordSpacing *
-                                                                                                      lineFontSize))) {
-                lineWords->append(word);// here we first add this last word to line then create new line
+                                                                                                      lineFontSize))
+            ) {
+                lineWords->append(word); // here we first add this last word to line then create new line
                 if (word->rot == 2) {
                     lineWidth = fabs(xMaxRot - xMinRot);
                 } else {
@@ -5572,9 +5638,9 @@ void TextPage::dump(GBool useBlocks, GBool fullFontName) {
             line->setWords(lineWords);
         }
 
-        previousWordBaseLine = word->base;
-        previousWordYmin = word->yMin;
-        previousWordYmax = word->yMax;
+        //previousWordBaseLine = word->base;
+        //previousWordYmin = word->yMin;
+        //previousWordYmax = word->yMax;
 
         free(tmp);
     } // end FOR
@@ -5595,6 +5661,14 @@ void TextPage::dump(GBool useBlocks, GBool fullFontName) {
     printSpace = xmlNewNode(NULL, (const xmlChar*)TAG_PRINTSPACE);
     printSpace->type = XML_ELEMENT_NODE;
     xmlAddChild(page, printSpace);
+
+    // for superscript/subscript determination
+    double previousWordBaseLine = 0;
+    double previousWordYmin = 0;
+    double previousWordYmax = 0;
+    double currentLineBaseLine = 0;
+    double currentLineYmin = 0;
+    double currentLineYmax = 0;
 
     for (parIdx = 0; parIdx < blocks->getLength(); parIdx++) {
         par = (TextParagraph *) blocks->get(parIdx);
@@ -5627,6 +5701,9 @@ void TextPage::dump(GBool useBlocks, GBool fullFontName) {
         }
         for (lineIdx = 0; lineIdx < par->lines->getLength(); ++lineIdx) {
             line1 = (TextLine *) par->lines->get(lineIdx);
+
+            // this is the max font size for the line
+            double lineFontSize = line1->fontSize;
 
             nodeline = xmlNewNode(NULL, (const xmlChar *) TAG_TEXT);
             nodeline->type = XML_ELEMENT_NODE;
@@ -5677,14 +5754,61 @@ void TextPage::dump(GBool useBlocks, GBool fullFontName) {
 
                 node->type = XML_ELEMENT_NODE;
 
-                //AA : this is a naive heuristic ( regarding general typography cases ) super/sub script, wikipedia description is good
-                // first is clear, second check is in case of firstword in line and superscript which is recurrent for declaring affiliations or even refs.
-                if ((word->base < previousWordBaseLine && word->yMax > previousWordYmin) ||
-                    (wordI == 0 && wordI < line1->words->getLength() - 1 && word->base < nextWord->base &&
-                     word->yMax > nextWord->yMin))
+                // determine if the current token is superscript of subscript: a general constraint for superscript and subscript
+                // is that the scripted tokens have a font size smaller than the tokens on the line baseline.
+
+                // superscript
+                if (currentLineBaseLine != 0 && 
+                    wordI > 0 &&
+                    word->base < currentLineBaseLine && 
+                    word->yMax > currentLineYmin &&
+                    word->fontSize < lineFontSize) {
+                    // superscript: general case, not at the beginning of a line
                     fontStyleInfo->setIsSuperscript(gTrue);
-                else if (((wordI > 0) && word->base > previousWordBaseLine && word->yMin > previousWordYmax))
+                }
+                else if (wordI == 0 && 
+                    wordI < line1->words->getLength() - 1 && 
+                    nextWord != NULL &&
+                    word->base < nextWord->base &&
+                    word->yMax > nextWord->yMin && 
+                    word->fontSize < lineFontSize) {
+                    // superscript: case first token of the line, check if the current token is the first token of the line 
+                    // and use next tokens to see if we have a vertical shift
+                    // note: it won't work when we have several tokens in superscript at the beginning of the line...
+                    // actually it might screw all the rest :/
+                    // superscript as first token of a line is common for declaring affiliations (and sometime references)
+                    fontStyleInfo->setIsSuperscript(gTrue);
+                    currentLineBaseLine = nextWord->base;  
+                    currentLineYmin = nextWord->yMin;
+                    currentLineYmax = nextWord->yMax;
+                }   
+                else if (wordI > 0 && 
+                    word->base > currentLineBaseLine && 
+                    word->yMin < currentLineYmax &&
+                    word->fontSize < lineFontSize) {
+                    // common subscript, not at the beginning of a line
                     fontStyleInfo->setIsSubscript(gTrue);
+                }
+                else if (wordI == 0 && 
+                    wordI < line1->words->getLength() - 1 && 
+                    nextWord != NULL &&
+                    word->base > nextWord->base &&
+                    word->yMin < nextWord->yMax && 
+                    word->fontSize < lineFontSize) {
+                    // subscript: case first token of the line, check if the current token is the first token of the line 
+                    // and use next tokens to see if we have a vertical shift
+                    // note: it won't work when we have several tokens in subscripts at the beginning of the line...
+                    // actually it might screw all the rest :/
+                    // subscript as first token of a line should never appear, but it's better to cover this case to 
+                    // avoid having the rest of the line detected as superscript... 
+                    fontStyleInfo->setIsSubscript(gTrue);
+                    currentLineBaseLine = nextWord->base;  
+                    currentLineYmin = nextWord->yMin;
+                    currentLineYmax = nextWord->yMax;
+                }   
+                // PL: above, we need to pay attention to the font style of the previous token and consider the whole line, 
+                // because otherwise the token next to a subscript is always superscript even when normal, in addition for 
+                // several tokens as superscript or subscript, only the first one will be set as superscript or subscript
 
                 // If option verbose is selected
                 if (verbose) {
@@ -5693,6 +5817,7 @@ void TextPage::dump(GBool useBlocks, GBool fullFontName) {
 
                 addAttributsNode(node, word, fontStyleInfo, uMap, fullFontName);
                 addAttributTypeReadingOrder(node, tmp, word);
+                // PL: not clear why reading order? we are working with stream order here
 
 //                    encodeFragment(line->text, n, uMap, primaryLR, s);
 //                    if (lineIdx + 1 < par->lines->getLength() && !line->hyphenated) {
@@ -5776,7 +5901,12 @@ void TextPage::dump(GBool useBlocks, GBool fullFontName) {
                     xmlAddChild(nodeline, spacingNode);
                 }
 
-                previousWordBaseLine = word->base;
+                if (!fontStyleInfo->isSuperscript() && !fontStyleInfo->isSubscript()) {
+                    currentLineBaseLine = word->base;  
+                    currentLineYmin = word->yMin;
+                    currentLineYmax = word->yMax;
+                }
+                previousWordBaseLine = word->base;  
                 previousWordYmin = word->yMin;
                 previousWordYmax = word->yMax;
 
@@ -7513,7 +7643,6 @@ void XmlAltoOutputDev::closeMetadataInfoDoc(GString *shortFileName) {
 
 void XmlAltoOutputDev::addStyles() {
 
-
     xmlNodePtr nodeSourceImageInfo = findNodeByName(docroot, (const xmlChar *) TAG_STYLES);
     for (int j = 0; j < getText()->fontStyles.size(); ++j) {
         xmlNodePtr textStyleNode = xmlNewNode(NULL, (const xmlChar *) TAG_TEXTSTYLE);
@@ -7563,9 +7692,10 @@ void XmlAltoOutputDev::addStyles() {
             if (fontStyle->getLength() > 0)
                 fontStyle->append(" subscript");
             else fontStyle->append("subscript");
-        }
+        } 
 
         if (fontStyleInfo->isSuperscript()) {
+            // PL: font style can't be subscript and superscript at the same time
             if (fontStyle->getLength() > 0)
                 fontStyle->append(" superscript");
             else fontStyle->append("superscript");
