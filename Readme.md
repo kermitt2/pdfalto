@@ -1,10 +1,11 @@
 # pdfalto
 
+[![License: GPL v2](https://img.shields.io/badge/License-GPL%20v2-blue.svg)](https://www.gnu.org/licenses/old-licenses/gpl-2.0.en.html)
 [![Build Status](https://travis-ci.org/kermitt2/pdfalto.svg?branch=master)](https://travis-ci.org/kermitt2/pdfalto)
 
 **pdfalto** is a command line executable for parsing PDF files and producing structured XML representations of the PDF content in [ALTO](https://github.com/kermitt2/pdfalto/blob/master/schema/alto.xsd) format. 
 
-**pdfalto** is a fork of [pdf2xml](http://sourceforge.net/projects/pdf2xml), developed at XRCE, with modifications for robustness, addition of features and output enhanced format in [ALTO](https://github.com/altoxml/documentation/wiki) (including in particular space information, useful for instance for further machine learning processing). It is based on the Xpdf library.  
+**pdfalto** is a fork of [pdf2xml](http://sourceforge.net/projects/pdf2xml), developed at XRCE, with modifications for robustness, addition of features and output enhanced format in [ALTO](https://github.com/altoxml/documentation/wiki) (including in particular space information, useful for instance for further machine learning processing). It is based on the [Xpdf](http://www.xpdfreader.com/) library.  
 
 The latest stable version is *0.2*. 
 
@@ -42,7 +43,6 @@ General usage is as follow:
   --help                 : print usage information
   -?                     : print usage information
   --saveconf <string>    : save all command line parameters in the specified XML <file>
-  -ocr                   : recognises all characters that are missing from unicode, or replace with placeholder to flag it.
 ```
 
 In addition to the [ALTO](https://github.com/altoxml/documentation/wiki) file describing the PDF content, the following files are generated:
@@ -123,21 +123,22 @@ The executable `pdfalto` is generated in the root directory. Additionally, this 
 
 # Contributors
 
-xpdf is developed by Glyph & Cog, LLC (1996-2017) and distributed under GPL2 or GPL3 license. 
+Contact: Patrice Lopez (patrice.lopez@science-miner.com), Achraf Azhar (achraf.azhar@inria.fr)
 
 pdf2xml is orignally written by Hervé Déjean, Sophie Andrieu, Jean-Yves Vion-Dury and  Emmanuel Giguet (XRCE) under GPL2 license. 
 
-pdfalto has been modified and forked by Patrice Lopez (patrice.lopez@science-miner.com) and Achraf Azhar (achraf.azhar@inria.fr).
+[Xpdf](http://www.xpdfreader.com/) is developed by Glyph & Cog, LLC (1996-2017) and distributed under GPL2 or GPL3 license. 
 
 The windows version has been built originally by [@pboumenot](https://github.com/boumenot) and ported on windows 7 for 64 bit, then for windows (native and cygwin) by [@lfoppiano](https://github.com/lfoppiano) and [@flydutch](https://github.com/flydutch).  
 
+
 # License
 
-As the original pdf2xml and main dependency xpdf, pdfalto is distributed under GPL2 license. 
+As the original pdf2xml and main dependency Xpdf, pdfalto is distributed under GPL2 license. 
 
 # Useful links
 
-Some tools for converting alto to other formats:
+Some tools for converting ALTO to other formats:
 
 - https://github.com/filak/hOCR-to-ALTO
 - https://github.com/UB-Mannheim/ocr-fileformat

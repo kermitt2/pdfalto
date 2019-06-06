@@ -26,7 +26,6 @@
 // PNG lib
 #include "png.h"
 
-
 using namespace std;
 #include <list>
 #include <stack>

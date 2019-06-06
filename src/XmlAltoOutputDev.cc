@@ -1849,82 +1849,6 @@ void TextPage::startPage(int pageNum, GfxState *state, GBool cut) {
     snprintf(tmp, sizeof(tmp), ATTR_NUMFORMAT, pageHeight);
     xmlNewProp(page, (const xmlChar *) ATTR_HEIGHT, (const xmlChar *) tmp);
 
-//    xmlNodePtr mediaboxtag = NULL;
-//    mediaboxtag = xmlNewNode(NULL, (const xmlChar*)TAG_MEDIABOX);
-//    xmlAddChild(page,mediaboxtag);
-//    tmp = (char*)malloc(20*sizeof(char));
-//    sprintf(tmp, "%g", mediaBox->x1);
-//    xmlNewProp(mediaboxtag, (const xmlChar*)ATTR_X1, (const xmlChar*)tmp);
-//    sprintf(tmp, "%g", mediaBox->y1);
-//    xmlNewProp(mediaboxtag, (const xmlChar*)ATTR_Y1, (const xmlChar*)tmp);
-//    sprintf(tmp, "%g", mediaBox->x2);
-//    xmlNewProp(mediaboxtag, (const xmlChar*)ATTR_X2, (const xmlChar*)tmp);
-//    sprintf(tmp, "%g", mediaBox->y2);
-//    xmlNewProp(mediaboxtag, (const xmlChar*)ATTR_Y2, (const xmlChar*)tmp);
-//
-//    xmlNodePtr cropboxtag = NULL;
-//    cropboxtag = xmlNewNode(NULL, (const xmlChar*)TAG_CROPBOX);
-//    xmlAddChild(page,cropboxtag);
-//    tmp = (char*)malloc(20*sizeof(char));
-//    sprintf(tmp, "%g", cropBox->x1);
-//    xmlNewProp(cropboxtag, (const xmlChar*)ATTR_X1, (const xmlChar*)tmp);
-//    sprintf(tmp, "%g", cropBox->y1);
-//    xmlNewProp(cropboxtag, (const xmlChar*)ATTR_Y1, (const xmlChar*)tmp);
-//    sprintf(tmp, "%g", cropBox->x2);
-//    xmlNewProp(cropboxtag, (const xmlChar*)ATTR_X2, (const xmlChar*)tmp);
-//    sprintf(tmp, "%g", cropBox->y2);
-//    xmlNewProp(cropboxtag, (const xmlChar*)ATTR_Y2, (const xmlChar*)tmp);
-//
-//    xmlNodePtr bleedboxtag = NULL;
-//    bleedboxtag = xmlNewNode(NULL, (const xmlChar*)TAG_BLEEDBOX);
-//    xmlAddChild(page,bleedboxtag);
-//    tmp = (char*)malloc(20*sizeof(char));
-//    sprintf(tmp, "%g", bleedBox->x1);
-//    xmlNewProp(bleedboxtag, (const xmlChar*)ATTR_X1, (const xmlChar*)tmp);
-//    sprintf(tmp, "%g", bleedBox->y1);
-//    xmlNewProp(bleedboxtag, (const xmlChar*)ATTR_Y1, (const xmlChar*)tmp);
-//    sprintf(tmp, "%g", bleedBox->x2);
-//    xmlNewProp(bleedboxtag, (const xmlChar*)ATTR_X2, (const xmlChar*)tmp);
-//    sprintf(tmp, "%g", bleedBox->y2);
-//    xmlNewProp(bleedboxtag, (const xmlChar*)ATTR_Y2, (const xmlChar*)tmp);
-//
-//    xmlNodePtr artboxtag = NULL;
-//    artboxtag = xmlNewNode(NULL, (const xmlChar*)TAG_ARTBOX);
-//    xmlAddChild(page,artboxtag);
-//    tmp = (char*)malloc(20*sizeof(char));
-//    sprintf(tmp, "%g", artBox->x1);
-//    xmlNewProp(artboxtag, (const xmlChar*)ATTR_X1, (const xmlChar*)tmp);
-//    sprintf(tmp, "%g", artBox->y1);
-//    xmlNewProp(artboxtag, (const xmlChar*)ATTR_Y1, (const xmlChar*)tmp);
-//    sprintf(tmp, "%g", artBox->x2);
-//    xmlNewProp(artboxtag, (const xmlChar*)ATTR_X2, (const xmlChar*)tmp);
-//    sprintf(tmp, "%g", artBox->y2);
-//    xmlNewProp(artboxtag, (const xmlChar*)ATTR_Y2, (const xmlChar*)tmp);
-//
-//
-//    xmlNodePtr trimboxtag = NULL;
-//    trimboxtag = xmlNewNode(NULL, (const xmlChar*)TAG_TRIMBOX);
-//    xmlAddChild(page,trimboxtag);
-//    tmp = (char*)malloc(20*sizeof(char));
-//    sprintf(tmp, "%g", trimBox->x1);
-//    xmlNewProp(trimboxtag, (const xmlChar*)ATTR_X1, (const xmlChar*)tmp);
-//    sprintf(tmp, "%g", trimBox->y1);
-//    xmlNewProp(trimboxtag, (const xmlChar*)ATTR_Y1, (const xmlChar*)tmp);
-//    sprintf(tmp, "%g", trimBox->x2);
-//    xmlNewProp(trimboxtag, (const xmlChar*)ATTR_X2, (const xmlChar*)tmp);
-//    sprintf(tmp, "%g", trimBox->y2);
-//    xmlNewProp(trimboxtag, (const xmlChar*)ATTR_Y2, (const xmlChar*)tmp);
-
-    // 26/04/2010: commented
-//	if (pageWidth>700 && pageHeight<700) {
-//		if ((pageHeight==841 || pageHeight==842) && pageWidth==1224) {
-//			xmlNewProp(page, (const xmlChar*)ATTR_FORMAT, (const xmlChar*)"A3");
-//		} else {
-//			xmlNewProp(page, (const xmlChar*)ATTR_FORMAT,
-//					(const xmlChar*)"landscape");
-//		}
-//	}
-
     // Cut all pages OK
     if (cutter) {
         docPage = xmlNewDoc((const xmlChar *) VERSION);
@@ -1967,7 +1891,7 @@ void TextPage::startPage(int pageNum, GfxState *state, GBool cut) {
         ctm[i] = state->getCTM()[i];
     }
 
-//  	printf("start annotations\n");
+    // annotations
     currentPage = myCat->getPage(num);
     currentPage->getAnnots(&objAnnot);
     //pageLinks = currentPage->getLinks(myCat);
@@ -1999,7 +1923,6 @@ void TextPage::startPage(int pageNum, GfxState *state, GBool cut) {
     free(tmp);
 }
 
-
 void TextPage::configuration() {
     if (curWord) {
         endWord();
@@ -2008,7 +1931,6 @@ void TextPage::configuration() {
         primaryRot = 0;
     }
 }
-
 
 void TextPage::endPage(GString *dataDir) {
     if (curWord) {
@@ -2044,12 +1966,10 @@ void TextPage::clear() {
     diagonal = gFalse;
     deleteGList(fonts, TextFontInfo);
 
-
     gfree(actualText);
     actualText = NULL;
     actualTextLen = 0;
     actualTextNBytes = 0;
-
 
     curWord = NULL;
     charPos = 0;
@@ -2075,7 +1995,6 @@ void TextPage::clear() {
         delete listeImages[i];
     }
     listeImages.clear();
-
 }
 
 void TextPage::beginActualText(GfxState *state, Unicode *u, int uLen) {
@@ -2220,9 +2139,7 @@ void TextPage::beginWord(GfxState *state, double x0, double y0) {
 
     // Increment the absolute object index
     idx++;
-
-    curWord
-            = new TextRawWord(state, x0, y0, curFont, curFontSize, getIdWORD(), getIdx());
+    curWord = new TextRawWord(state, x0, y0, curFont, curFontSize, getIdWORD(), getIdx());
 }
 
 ModifierClass TextPage::classifyChar(Unicode u) {
@@ -2976,10 +2893,6 @@ void TextPage::addAttributsNode(xmlNodePtr node, IWord *word, TextFontStyleInfo 
 
     stringTemp = new GString();
 
-    //testLinkedText(node, word->xMin, word->yMin, word->xMax, word->yMax);
-//    if (testAnnotatedText(word->xMin, word->yMin, word->xMax, word->yMax)) {
-//        xmlNewProp(node, (const xmlChar *) ATTR_HIGHLIGHT, (const xmlChar *) "yes");
-//    }
     Unicode *text = NULL;
     text = (Unicode *) grealloc(text, word->len * sizeof(Unicode));
     for (int i = 0; i < word->len; i++) {
@@ -2997,27 +2910,14 @@ void TextPage::addAttributsNode(xmlNodePtr node, IWord *word, TextFontStyleInfo 
                (const xmlChar *) stringTemp->getCString());
     delete stringTemp;
 
-//                    if (word->fontSize > lineFontSize) {
-//                        lineFontSize = word->fontSize;
-//                    }
-
     GString *gsFontName = new GString();
     if (word->getFontName()) {
         xmlChar *xcFontName;
         // If the font name normalization option is selected
         if (fullFontName) {
-            //xmlNewProp(node, (const xmlChar*)ATTR_FONT_NAME,
-            //(const xmlChar*)word->getFontName());
-            //(const xmlChar*)"none1");
             xcFontName = (xmlChar *) word->getFontName();
         } else {
-            xcFontName
-                    = (xmlChar *) word->normalizeFontName(word->getFontName());
-            //xmlNewProp(
-            //		node,
-            //			(const xmlChar*)ATTR_FONT_NAME,
-            //(const xmlChar*)word->normalizeFontName(word->getFontName()));
-            //OK (const xmlChar*)"none2");
+            xcFontName = (xmlChar *) word->normalizeFontName(word->getFontName());
         }
         //ugly code because I don't know how all these types...
         //convert to a Unicode*
@@ -3031,49 +2931,17 @@ void TextPage::addAttributsNode(xmlNodePtr node, IWord *word, TextFontStyleInfo 
         dumpFragment(uncdFontName, size, uMap, gsFontName);
 
     }
-    //            xmlNewProp(node, (const xmlChar*)ATTR_FONT_NAME,
-//                       (const xmlChar*)gsFontName->getCString());
+
     fontStyleInfo->setFontName(gsFontName->lowerCase());
-    //delete gsFontName;
 
     if (word->font != NULL) {
-//        if (word->font->isSymbolic()) {
-//            xmlNewProp(node, (const xmlChar*)ATTR_SYMBOLIC, (const xmlChar*)YES);
-//        } else
-//            xmlNewProp(node, (const xmlChar*)ATTR_SYMBOLIC, (const xmlChar*)NO);
-
-//        if (word->font->isSerif()) {
-//            xmlNewProp(node, (const xmlChar*)ATTR_SERIF, (const xmlChar*)YES);
-//        } else
-//            xmlNewProp(node, (const xmlChar*)ATTR_SERIF, (const xmlChar*)NO);
         fontStyleInfo->setFontType(word->font->isSerif());
-
-//        if (word->font->isFixedWidth()) {
-//            xmlNewProp(node, (const xmlChar*)ATTR_FIXED_WIDTH,
-//                       (const xmlChar*)YES);
-//        } else
-//            xmlNewProp(node, (const xmlChar*)ATTR_FIXED_WIDTH, (const xmlChar*)NO);
         fontStyleInfo->setFontWidth(word->font->isFixedWidth());
     }
 
-//    if (word->isBold())
-//        xmlNewProp(node, (const xmlChar*)ATTR_BOLD, (const xmlChar*)YES);
-//    else
-//        xmlNewProp(node, (const xmlChar*)ATTR_BOLD, (const xmlChar*)NO);
     fontStyleInfo->setIsBold(word->isBold());
-
-//    if (word->isItalic())
-//        xmlNewProp(node, (const xmlChar*)ATTR_ITALIC, (const xmlChar*)YES);
-//    else
-//        xmlNewProp(node, (const xmlChar*)ATTR_ITALIC, (const xmlChar*)NO);
     fontStyleInfo->setIsItalic(word->isItalic());
-
-//    sprintf(tmp, "%g", word->fontSize);
-//    xmlNewProp(node, (const xmlChar*)ATTR_FONT_SIZE, (const xmlChar*)tmp);
     fontStyleInfo->setFontSize(word->fontSize);
-
-//    xmlNewProp(node, (const xmlChar*)ATTR_FONT_COLOR,
-//               (const xmlChar*)word->colortoString()->getCString());
     fontStyleInfo->setFontColor(word->colortoString());
 
     snprintf(tmp, sizeof(tmp), ATTR_NUMFORMAT, word->xMin);
@@ -3081,9 +2949,6 @@ void TextPage::addAttributsNode(xmlNodePtr node, IWord *word, TextFontStyleInfo 
 
     snprintf(tmp, sizeof(tmp), ATTR_NUMFORMAT, word->yMin);
     xmlNewProp(node, (const xmlChar *) ATTR_Y, (const xmlChar *) tmp);
-//
-//    snprintf(tmp, sizeof(tmp), ATTR_NUMFORMAT, word->base);
-//    xmlNewProp(node, (const xmlChar *) ATTR_BASE, (const xmlChar *) tmp);
 
     snprintf(tmp, sizeof(tmp), ATTR_NUMFORMAT, word->xMax - word->xMin);
     xmlNewProp(node, (const xmlChar *) ATTR_WIDTH, (const xmlChar *) tmp);
@@ -3104,9 +2969,6 @@ void TextPage::addAttributsNode(xmlNodePtr node, IWord *word, TextFontStyleInfo 
     if (!contains) {
         fontStyleInfo->setId(fontStyles.size());
         fontStyles.push_back(fontStyleInfo);
-
-//        cout << "size :"
-//             << fontStyles.size()  << std::endl;
     }
 
     // PL: this should be present only of !contain ???
@@ -5170,18 +5032,6 @@ void TextPage::dump(GBool useBlocks, GBool fullFontName) {
         tmp = (char *) malloc(10 * sizeof(char));
         fontStyleInfo = new TextFontStyleInfo;
 
-        //AA : this is a naive heuristic ( regarding general typography cases ) super/sub script, wikipedia description is good
-        // first is clear, second check is in case of firstword in line and superscript which is recurrent for declaring affiliations or even refs.
-        /*
-        if ((word->base < previousWordBaseLine && word->yMax > previousWordYmin) ||
-            (firstword && nextWord && word->base < nextWord->base && word->yMax > nextWord->yMin))
-            fontStyleInfo->setIsSuperscript(gTrue);
-        else if ((!firstword && word->base > previousWordBaseLine && word->yMin < previousWordYmax))
-            fontStyleInfo->setIsSubscript(gTrue);
-        */
-        // PL: the piece of code above to detect super- and subscript looks useless as fontStyleInfo is not further used or assigned in this loop
-        // super- and subscript are further detect another time in the second main structure iteration below, so normally that should be removed 
-
         lineFinish = gFalse;
         if (firstword) { // test useful?
             xMin = word->xMin;
@@ -5389,18 +5239,7 @@ void TextPage::dump(GBool useBlocks, GBool fullFontName) {
                 if (nextWord != NULL) {
                     firstword = 1;
                     // PL: blocks are now always considered at this stage
-                    //if (useBlocks) {
                     lineFinish = gTrue;
-                    /*} else {
-                        // new line
-                        line = new TextLine;
-                        line->setWords(lineWords);
-                        lineWords = new GList();
-
-                        parLines->append(line);
-                        minLineY = 999999999;
-                        minLineX = 999999999;
-                    }*/
                 } else {
                     endPage = gTrue;
                 }
@@ -5439,15 +5278,7 @@ void TextPage::dump(GBool useBlocks, GBool fullFontName) {
 
             if (nextWord != NULL) {
                 // PL: blocks are now always considered at this stage
-                //if (useBlocks) {
                 lineFinish = gTrue;
-                /*} else {
-                    // new line
-                    line = new TextLine;
-                    lineWords = new GList();
-                    line->setWords(lineWords);
-                    parLines->append(line);
-                }*/
             } else {
                 endPage = gTrue;
             }
@@ -5637,10 +5468,6 @@ void TextPage::dump(GBool useBlocks, GBool fullFontName) {
             lineWords = new GList();
             line->setWords(lineWords);
         }
-
-        //previousWordBaseLine = word->base;
-        //previousWordYmin = word->yMin;
-        //previousWordYmax = word->yMax;
 
         free(tmp);
     } // end FOR

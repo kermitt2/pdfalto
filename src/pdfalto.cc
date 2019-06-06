@@ -23,7 +23,6 @@
 #include "Parameters.h"
 #include "Outline.h"
 
-
 #include "PDFDocXrce.h"
 
 #include <sys/types.h>
@@ -44,7 +43,6 @@ using namespace ConstantsXML;
 #include "TextString.h"
 
 void removeAlreadyExistingData(GString *dir);
-
 
 static const char cvsid[] = "$Revision: 1.4 $";
 
@@ -100,8 +98,8 @@ static ArgDesc argDesc[] = {
                 "add blocks informations whithin the structure"},
         {"-readingOrder",  argFlag,   &readingOrder,    0,
                 "blocks follow the reading order"},
-        {"-ocr",           argFlag,   &ocr,             0,
-                "recognises all characters that are missing from unicode."},
+//        {"-ocr",           argFlag,   &ocr,             0,
+//                "recognises all characters that are missing from unicode."},
         {"-fullFontName",  argFlag,   &fullFontName,    0,
                 "fonts names are not normalized"},
         {"-nsURI",         argString, namespaceUri,     sizeof(namespaceUri),
@@ -134,33 +132,6 @@ static ArgDesc argDesc[] = {
 
 /**
 * Main method which execute pdfalto tool <br/>
-* This file pdfalto.cc is based on pdftotext.cc from xpdf library<br/>
-* Usage: pdfalto [options] <PDF-file> [<XML-file>] <br/>
-* -f <int> : first page to convert<br/>
-* -l <int> : last page to convert<br/>
-* -verbose : display pdf attributes<br/>
-* -noText : do not extract textual objects<br/>
-* -noImage : do not extract images (Bitmap and Vectorial)<br/>
-* -noImageInline : do not include images inline in the stream<br/>
-* -outline : create an outline file xml<br/>
-* -annots : create an annotaitons file xml<br/>
-* -cutPages : cut all pages in separately files<br/>
-* -blocks : add blocks informations whithin the structure<br/>
-* -readingOrder : blocks follow the reading order<br/>
-* -fullFontName : fonts names are not normalized<br/>
-* -nsURI : add the specified namespace URI<br/>
-* -q : don't print any messages or errors<br/>
-* -v : print version information<br/>
-* -h : print usage information<br/>
-* -help : print usage information<br/>
-* --help : print usage information<br/>
-* -? : print usage information<br/>
-* <br/>
-* @date 12-2017
-* @param argc The arguments number
-* @param argv[] The arguments list that the user configured
-* @author Achraf Azhar
-* @version xpdf 3.01
 */
 int main(int argc, char *argv[]) {
     PDFDocXrce *doc;
@@ -190,20 +161,19 @@ int main(int argc, char *argv[]) {
             fprintf(stderr, " version ");
             fprintf(stderr, "%s", PDFALTO_VERSION);
             fprintf(stderr, "\n");
-            fprintf(stderr, "(Based on Xpdf version %s, %s)\n", xpdfVersion, xpdfCopyright);
+            //fprintf(stderr, "(Based on Xpdf version %s, %s)\n", xpdfVersion, xpdfCopyright);
             if (!printVersion) {
                 printUsage("pdfalto", "<PDF-file> [<xml-file>]", argDesc);
             }
             goto err0;
         }
     }
-//  fileName = new GString(argv[1]);
+    //fileName = new GString(argv[1]);
     cmd = new GString();
     globalParams = new GlobalParams(cfgFileName);
 
     // Parameters specifics to pdfalto
     parameters = new Parameters();
-
 
     if (noImage) {
         parameters->setDisplayImage(gFalse);
