@@ -1337,14 +1337,14 @@ GString *IWord::convtoX(double xcol) const {
     unsigned int k;
     k = static_cast<int>(xcol);
     k = k / 16;
-    if ((k > 0) && (k < 10))
+    if ((k >= 0) && (k < 10))
         tmp = (char) ('0' + k);
     else
         tmp = (char) ('a' + k - 10);
     xret->append(tmp);
     k = static_cast<int>(xcol);
     k = k % 16;
-    if ((k > 0) && (k < 10))
+    if ((k >= 0) && (k < 10))
         tmp = (char) ('0' + k);
     else
         tmp = (char) ('a' + k - 10);
@@ -1352,6 +1352,7 @@ GString *IWord::convtoX(double xcol) const {
 
     return xret;
 }
+
 
 GString *IWord::colortoString() const {
     GString *tmp = new GString("#");
@@ -1361,7 +1362,6 @@ GString *IWord::colortoString() const {
     tmp->append(tmpr);
     tmp->append(tmpg);
     tmp->append(tmpb);
-
     delete tmpr;
     delete tmpg;
     delete tmpb;
@@ -8640,9 +8640,11 @@ void XmlAltoOutputDev::restoreState(GfxState *state) {
 GString *XmlAltoOutputDev::colortoString(GfxRGB rgb) const {
     char *temp;
     temp = (char *) malloc(10 * sizeof(char));
-    sprintf(temp, "#%02X%02X%02X", static_cast<int>(255 * colToDbl(rgb.r)),
-            static_cast<int>(255 * colToDbl(rgb.g)), static_cast<int>(255
-                                                                      * colToDbl(rgb.b)));
+    sprintf(temp, "#%02X%02X%02X", 
+            static_cast<int>(255 * colToDbl(rgb.r)),
+            static_cast<int>(255 * colToDbl(rgb.g)), 
+            static_cast<int>(255 * colToDbl(rgb.b)));
+
     GString *tmp = new GString(temp);
 
     free(temp);
@@ -8655,13 +8657,13 @@ GString *XmlAltoOutputDev::convtoX(unsigned int xcol) const {
     char tmp;
     unsigned int k;
     k = (xcol / 16);
-    if ((k > 0) && (k < 10))
+    if ((k >= 0) && (k < 10))
         tmp = (char) ('0' + k);
     else
         tmp = (char) ('a' + k - 10);
     xret->append(tmp);
     k = (xcol % 16);
-    if ((k > 0) && (k < 10))
+    if ((k >= 0) && (k < 10))
         tmp = (char) ('0' + k);
     else
         tmp = (char) ('a' + k - 10);
