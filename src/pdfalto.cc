@@ -95,7 +95,7 @@ static ArgDesc argDesc[] = {
 //        {"-cutPages",      argFlag,   &cutPages,        0,
 //                "cut all pages in separately files"},
         {"-blocks",        argFlag,   &blocks,          0,
-                "add blocks informations whithin the structure"},
+                "add blocks informations within the structure"},
         {"-readingOrder",  argFlag,   &readingOrder,    0,
                 "blocks follow the reading order"},
 //        {"-ocr",           argFlag,   &ocr,             0,
