@@ -477,6 +477,15 @@ int TextChar::cmpY(const void *p1, const void *p2) {
     }
 }
 
+
+bool hasEnding (std::string const &fullString, std::string const &ending) {
+    if (fullString.length() >= ending.length()) {
+        return (0 == fullString.compare (fullString.length() - ending.length(), ending.length(), ending));
+    } else {
+        return false;
+    }
+}
+
 //------------------------------------------------------------------------
 // TextWord
 //------------------------------------------------------------------------
@@ -600,10 +609,12 @@ TextWord::TextWord(GList *charsA, int start, int lenA,
             //different tags. For example, EOODIA+Poetica is the name of a subset of Poetica�, a
             //Type 1 font. (See implementation note 62 in Appendix H.)
             fontName = strdup(fontA->getFontName()->getCString());
-            if (strstr(fontA->getFontName()->lowerCase()->getCString(), "bold"))
+            if (strstr(fontA->getFontName()->lowerCase()->getCString(), "bold") ||
+            hasEnding(fontA->getFontName()->lowerCase()->getCString(), "_bd"))
                 bold = gTrue;
             if (strstr(fontA->getFontName()->lowerCase()->getCString(), "italic") ||
-                strstr(fontA->getFontName()->lowerCase()->getCString(), "oblique"))
+                strstr(fontA->getFontName()->lowerCase()->getCString(), "oblique") ||
+                hasEnding(fontA->getFontName()->lowerCase()->getCString(), "_it"))
                 italic = gTrue;
         } else {
             fontName = NULL;
@@ -911,10 +922,12 @@ TextRawWord::TextRawWord(GfxState *state, double x0, double y0,
             //different tags. For example, EOODIA+Poetica is the name of a subset of Poetica�, a
             //Type 1 font. (See implementation note 62 in Appendix H.)
             fontName = strdup(state->getFont()->getName()->getCString());
-            if (strstr(state->getFont()->getName()->lowerCase()->getCString(), "bold"))
+            if (strstr(state->getFont()->getName()->lowerCase()->getCString(), "bold") ||
+                hasEnding(fontA->getFontName()->lowerCase()->getCString(), "_bd"))
                 bold = gTrue;
             if (strstr(state->getFont()->getName()->lowerCase()->getCString(), "italic") ||
-                strstr(state->getFont()->getName()->lowerCase()->getCString(), "oblique"))
+                strstr(state->getFont()->getName()->lowerCase()->getCString(), "oblique") ||
+                hasEnding(fontA->getFontName()->lowerCase()->getCString(), "_it"))
                 italic = gTrue;
         } else {
             fontName = NULL;
@@ -4739,19 +4752,19 @@ void TextPage::dumpInReadingOrder(GBool useBlocks, GBool fullFontName) {
                     // is that the scripted tokens have a font size smaller than the tokens on the line baseline.
 
                     // superscript
-                    if (currentLineBaseLine != 0 && 
+                    if (currentLineBaseLine != 0 &&
                         wordI > 0 &&
-                        word->base < currentLineBaseLine && 
+                        word->base < currentLineBaseLine &&
                         word->yMax > currentLineYmin &&
                         word->fontSize < lineFontSize) {
                         // superscript: general case, not at the beginning of a line
                         fontStyleInfo->setIsSuperscript(gTrue);
                     }
-                    else if (wordI == 0 && 
-                        wordI < line->words->getLength() - 1 && 
+                    else if (wordI == 0 &&
+                        wordI < line->words->getLength() - 1 &&
                         nextWord != NULL &&
                         word->base < nextWord->base &&
-                        word->yMax > nextWord->yMin && 
+                        word->yMax > nextWord->yMin &&
                         word->fontSize < lineFontSize) {
                         // superscript: case first token of the line, check if the current token is the first token of the line 
                         // and use next tokens to see if we have a vertical shift
@@ -4759,22 +4772,22 @@ void TextPage::dumpInReadingOrder(GBool useBlocks, GBool fullFontName) {
                         // actually it might screw all the rest :/
                         // superscript as first token of a line is common for declaring affiliations (and sometime references)
                         fontStyleInfo->setIsSuperscript(gTrue);
-                        currentLineBaseLine = nextWord->base;  
+                        currentLineBaseLine = nextWord->base;
                         currentLineYmin = nextWord->yMin;
                         currentLineYmax = nextWord->yMax;
-                    }   
-                    else if (wordI > 0 && 
-                        word->base > currentLineBaseLine && 
+                    }
+                    else if (wordI > 0 &&
+                        word->base > currentLineBaseLine &&
                         word->yMin < currentLineYmax &&
                         word->fontSize < lineFontSize) {
                         // common subscript, not at the beginning of a line
                         fontStyleInfo->setIsSubscript(gTrue);
                     }
-                    else if (wordI == 0 && 
-                        wordI < line->words->getLength() - 1 && 
+                    else if (wordI == 0 &&
+                        wordI < line->words->getLength() - 1 &&
                         nextWord != NULL &&
                         word->base > nextWord->base &&
-                        word->yMin < nextWord->yMax && 
+                        word->yMin < nextWord->yMax &&
                         word->fontSize < lineFontSize) {
                         // subscript: case first token of the line, check if the current token is the first token of the line 
                         // and use next tokens to see if we have a vertical shift
@@ -4783,10 +4796,10 @@ void TextPage::dumpInReadingOrder(GBool useBlocks, GBool fullFontName) {
                         // subscript as first token of a line should never appear, but it's better to cover this case to 
                         // avoid having the rest of the line detected as superscript... 
                         fontStyleInfo->setIsSubscript(gTrue);
-                        currentLineBaseLine = nextWord->base;  
+                        currentLineBaseLine = nextWord->base;
                         currentLineYmin = nextWord->yMin;
                         currentLineYmax = nextWord->yMax;
-                    }   
+                    }
                     // PL: above, we need to pay attention to the font style of the previous token and consider the whole line, 
                     // because otherwise the token next to a subscript is always superscript even when normal, in addition for 
                     // several tokens as superscript or subscript, only the first one will be set as superscript or subscript
@@ -4872,11 +4885,11 @@ void TextPage::dumpInReadingOrder(GBool useBlocks, GBool fullFontName) {
                     }
 
                     if (!fontStyleInfo->isSuperscript() && !fontStyleInfo->isSubscript()) {
-                        currentLineBaseLine = word->base;  
+                        currentLineBaseLine = word->base;
                         currentLineYmin = word->yMin;
                         currentLineYmax = word->yMax;
                     }
-                    previousWordBaseLine = word->base;  
+                    previousWordBaseLine = word->base;
                     previousWordYmin = word->yMin;
                     previousWordYmax = word->yMax;
 
@@ -4885,7 +4898,7 @@ void TextPage::dumpInReadingOrder(GBool useBlocks, GBool fullFontName) {
 
                 if (useBlocks)
                     xmlAddChild(nodeblocks, nodeline);
-                else 
+                else
                     xmlAddChild(printSpace, nodeline);
             }
 
@@ -4996,7 +5009,7 @@ void TextPage::dump(GBool useBlocks, GBool fullFontName) {
 
     numText = 1;
     numBlock = 1;
-    
+
     lineFontSize = 0;
 
     TextLine *line = new TextLine;
@@ -5585,19 +5598,19 @@ void TextPage::dump(GBool useBlocks, GBool fullFontName) {
                 // is that the scripted tokens have a font size smaller than the tokens on the line baseline.
 
                 // superscript
-                if (currentLineBaseLine != 0 && 
+                if (currentLineBaseLine != 0 &&
                     wordI > 0 &&
-                    word->base < currentLineBaseLine && 
+                    word->base < currentLineBaseLine &&
                     word->yMax > currentLineYmin &&
                     word->fontSize < lineFontSize) {
                     // superscript: general case, not at the beginning of a line
                     fontStyleInfo->setIsSuperscript(gTrue);
                 }
-                else if (wordI == 0 && 
-                    wordI < line1->words->getLength() - 1 && 
+                else if (wordI == 0 &&
+                    wordI < line1->words->getLength() - 1 &&
                     nextWord != NULL &&
                     word->base < nextWord->base &&
-                    word->yMax > nextWord->yMin && 
+                    word->yMax > nextWord->yMin &&
                     word->fontSize < lineFontSize) {
                     // superscript: case first token of the line, check if the current token is the first token of the line 
                     // and use next tokens to see if we have a vertical shift
@@ -5605,22 +5618,22 @@ void TextPage::dump(GBool useBlocks, GBool fullFontName) {
                     // actually it might screw all the rest :/
                     // superscript as first token of a line is common for declaring affiliations (and sometime references)
                     fontStyleInfo->setIsSuperscript(gTrue);
-                    currentLineBaseLine = nextWord->base;  
+                    currentLineBaseLine = nextWord->base;
                     currentLineYmin = nextWord->yMin;
                     currentLineYmax = nextWord->yMax;
-                }   
-                else if (wordI > 0 && 
-                    word->base > currentLineBaseLine && 
+                }
+                else if (wordI > 0 &&
+                    word->base > currentLineBaseLine &&
                     word->yMin < currentLineYmax &&
                     word->fontSize < lineFontSize) {
                     // common subscript, not at the beginning of a line
                     fontStyleInfo->setIsSubscript(gTrue);
                 }
-                else if (wordI == 0 && 
-                    wordI < line1->words->getLength() - 1 && 
+                else if (wordI == 0 &&
+                    wordI < line1->words->getLength() - 1 &&
                     nextWord != NULL &&
                     word->base > nextWord->base &&
-                    word->yMin < nextWord->yMax && 
+                    word->yMin < nextWord->yMax &&
                     word->fontSize < lineFontSize) {
                     // subscript: case first token of the line, check if the current token is the first token of the line 
                     // and use next tokens to see if we have a vertical shift
@@ -5629,10 +5642,10 @@ void TextPage::dump(GBool useBlocks, GBool fullFontName) {
                     // subscript as first token of a line should never appear, but it's better to cover this case to 
                     // avoid having the rest of the line detected as superscript... 
                     fontStyleInfo->setIsSubscript(gTrue);
-                    currentLineBaseLine = nextWord->base;  
+                    currentLineBaseLine = nextWord->base;
                     currentLineYmin = nextWord->yMin;
                     currentLineYmax = nextWord->yMax;
-                }   
+                }
                 // PL: above, we need to pay attention to the font style of the previous token and consider the whole line, 
                 // because otherwise the token next to a subscript is always superscript even when normal, in addition for 
                 // several tokens as superscript or subscript, only the first one will be set as superscript or subscript
@@ -5729,11 +5742,11 @@ void TextPage::dump(GBool useBlocks, GBool fullFontName) {
                 }
 
                 if (!fontStyleInfo->isSuperscript() && !fontStyleInfo->isSubscript()) {
-                    currentLineBaseLine = word->base;  
+                    currentLineBaseLine = word->base;
                     currentLineYmin = word->yMin;
                     currentLineYmax = word->yMax;
                 }
-                previousWordBaseLine = word->base;  
+                previousWordBaseLine = word->base;
                 previousWordYmin = word->yMin;
                 previousWordYmax = word->yMax;
 
@@ -5742,7 +5755,7 @@ void TextPage::dump(GBool useBlocks, GBool fullFontName) {
 
             if (useBlocks)
                 xmlAddChild(nodeblocks, nodeline);
-            else 
+            else
                 xmlAddChild(printSpace, nodeline);
         }
 
@@ -7519,7 +7532,7 @@ void XmlAltoOutputDev::addStyles() {
             if (fontStyle->getLength() > 0)
                 fontStyle->append(" subscript");
             else fontStyle->append("subscript");
-        } 
+        }
 
         if (fontStyleInfo->isSuperscript()) {
             // PL: font style can't be subscript and superscript at the same time
@@ -8640,9 +8653,9 @@ void XmlAltoOutputDev::restoreState(GfxState *state) {
 GString *XmlAltoOutputDev::colortoString(GfxRGB rgb) const {
     char *temp;
     temp = (char *) malloc(10 * sizeof(char));
-    sprintf(temp, "#%02X%02X%02X", 
+    sprintf(temp, "#%02X%02X%02X",
             static_cast<int>(255 * colToDbl(rgb.r)),
-            static_cast<int>(255 * colToDbl(rgb.g)), 
+            static_cast<int>(255 * colToDbl(rgb.g)),
             static_cast<int>(255 * colToDbl(rgb.b)));
 
     GString *tmp = new GString(temp);
