@@ -4,7 +4,7 @@ namespace ConstantsXML {
 	// All tags ALTO XML dialect
 	const char *TAG_ALTO = "alto";
 
-	const char *ALTO_URI = "http://www.loc.gov/standards/alto/v3/alto.xsd";
+	const char *ALTO_URI = "http://www.loc.gov/standards/alto/ns-v3#";
 
 	const char *TAG_DESCRIPTION = "Description";
     const char *TAG_MEASUREMENTUNIT = "MeasurementUnit";
