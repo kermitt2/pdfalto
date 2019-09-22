@@ -610,12 +610,17 @@ TextWord::TextWord(GList *charsA, int start, int lenA,
             //Type 1 font. (See implementation note 62 in Appendix H.)
             fontName = strdup(fontA->getFontName()->getCString());
             if (strstr(fontA->getFontName()->lowerCase()->getCString(), "bold") ||
-            hasEnding(fontA->getFontName()->lowerCase()->getCString(), "_bd"))
+                strstr(fontA->getFontName()->lowerCase()->getCString(), "_bd")) {
+
                 bold = gTrue;
+            }
+
             if (strstr(fontA->getFontName()->lowerCase()->getCString(), "italic") ||
                 strstr(fontA->getFontName()->lowerCase()->getCString(), "oblique") ||
-                hasEnding(fontA->getFontName()->lowerCase()->getCString(), "_it"))
+                    strstr(fontA->getFontName()->lowerCase()->getCString(), "_it")) {
+
                 italic = gTrue;
+            }
         } else {
             fontName = NULL;
         }
