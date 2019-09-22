@@ -478,6 +478,7 @@ int TextChar::cmpY(const void *p1, const void *p2) {
 }
 
 
+/*
 bool hasEnding (std::string const &fullString, std::string const &ending) {
     if (fullString.length() >= ending.length()) {
         return (0 == fullString.compare (fullString.length() - ending.length(), ending.length(), ending));
@@ -485,6 +486,7 @@ bool hasEnding (std::string const &fullString, std::string const &ending) {
         return false;
     }
 }
+*/
 
 //------------------------------------------------------------------------
 // TextWord
@@ -609,15 +611,16 @@ TextWord::TextWord(GList *charsA, int start, int lenA,
             //different tags. For example, EOODIA+Poetica is the name of a subset of Poetica�, a
             //Type 1 font. (See implementation note 62 in Appendix H.)
             fontName = strdup(fontA->getFontName()->getCString());
-            if (strstr(fontA->getFontName()->lowerCase()->getCString(), "bold") ||
-                strstr(fontA->getFontName()->lowerCase()->getCString(), "_bd")) {
+            char* localLowerFontName = fontA->getFontName()->lowerCase()->getCString();
+            if (strstr(localLowerFontName, "bold") ||
+                strstr(localLowerFontName, "_bd")) {
 
                 bold = gTrue;
             }
 
-            if (strstr(fontA->getFontName()->lowerCase()->getCString(), "italic") ||
-                strstr(fontA->getFontName()->lowerCase()->getCString(), "oblique") ||
-                    strstr(fontA->getFontName()->lowerCase()->getCString(), "_it")) {
+            if (strstr(localLowerFontName, "italic") ||
+                strstr(localLowerFontName, "oblique") ||
+                    strstr(localLowerFontName, "_it")) {
 
                 italic = gTrue;
             }
@@ -927,12 +930,13 @@ TextRawWord::TextRawWord(GfxState *state, double x0, double y0,
             //different tags. For example, EOODIA+Poetica is the name of a subset of Poetica�, a
             //Type 1 font. (See implementation note 62 in Appendix H.)
             fontName = strdup(state->getFont()->getName()->getCString());
-            if (strstr(state->getFont()->getName()->lowerCase()->getCString(), "bold") ||
-                hasEnding(fontA->getFontName()->lowerCase()->getCString(), "_bd"))
+            char *localLowerFontName = state->getFont()->getName()->lowerCase()->getCString();
+            if (strstr(localLowerFontName, "bold") ||
+                strstr(localLowerFontName, "_bd"))
                 bold = gTrue;
-            if (strstr(state->getFont()->getName()->lowerCase()->getCString(), "italic") ||
-                strstr(state->getFont()->getName()->lowerCase()->getCString(), "oblique") ||
-                hasEnding(fontA->getFontName()->lowerCase()->getCString(), "_it"))
+            if (strstr(localLowerFontName, "italic") ||
+                strstr(localLowerFontName, "oblique") ||
+                strstr(localLowerFontName, "_it"))
                 italic = gTrue;
         } else {
             fontName = NULL;
