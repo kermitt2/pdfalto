@@ -65,7 +65,6 @@ static GBool fullFontName = gFalse;
 static GBool noImageInline = gFalse;
 static GBool annots = gFalse;
 static GBool readingOrder = gFalse;
-static GBool charReadingOrderAttr = gFalse;
 static GBool ocr = gFalse;
 
 static char ownerPassword[33] = "\001";
@@ -99,8 +98,6 @@ static ArgDesc argDesc[] = {
                 "add blocks informations within the structure"},
         {"-readingOrder",  argFlag,   &readingOrder,    0,
                 "blocks follow the reading order"},
-        {"-charReadingOrderAttr",  argFlag,   &charReadingOrderAttr,    0,
-                "include TYPE attribute to String elements to indicate right-to-left reading order (not valid ALTO)"},
 //        {"-ocr",           argFlag,   &ocr,             0,
 //                "recognises all characters that are missing from unicode."},
         {"-fullFontName",  argFlag,   &fullFontName,    0,
@@ -216,11 +213,6 @@ int main(int argc, char *argv[]) {
     if (readingOrder) {
         parameters->setReadingOrder(gTrue);
         cmd->append("-readingOrder ");
-    }
-
-    if (charReadingOrderAttr) {
-        parameters->setCharReadingOrderAttr(gTrue);
-        cmd->append("-charReadingOrderAttr ");
     }
 
     if (ocr) {
