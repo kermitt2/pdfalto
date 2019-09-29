@@ -2842,10 +2842,6 @@ void TextPage::addWord(TextRawWord *word) {
 
 void TextPage::addAttributTypeReadingOrder(xmlNodePtr node, char *tmp,
                                            IWord *word) {
-    if (parameters->getCharReadingOrderAttr() == gFalse) {
-        return;
-    }
-
     int nbLeft = 0;
     int nbRight = 0;
 
@@ -4935,15 +4931,12 @@ void TextPage::dumpInReadingOrder(GBool useBlocks, GBool fullFontName) {
         snprintf(tmp, sizeof(tmp), ATTR_NUMFORMAT, listeImages[i]->getHeightImage());
         xmlNewProp(node, (const xmlChar *) ATTR_HEIGHT, (const xmlChar *) tmp);
 
-        std::string rotation = std::to_string(listeImages[i]->getRotation());
-        xmlNewProp(node,(const xmlChar*)ATTR_ROTATION,(const xmlChar*)rotation.c_str());
-        //if (listeImages[i]->getRotation() > 0){
-        //    xmlNewProp(node,(const xmlChar*)ATTR_ROTATION,(const xmlChar*)sTRUE);
-        //}
-        //else{
-        //    xmlNewProp(node,(const xmlChar*)ATTR_ROTATION,(const xmlChar*)sFALSE);
-        //}
-
+        if (listeImages[i]->getRotation() > 0){
+            xmlNewProp(node,(const xmlChar*)ATTR_ROTATION,(const xmlChar*)sTRUE);
+        }
+        else{
+            xmlNewProp(node,(const xmlChar*)ATTR_ROTATION,(const xmlChar*)sFALSE);
+        }
 //        if (listeImages[i]->isImageInline()) {
 //            xmlNewProp(node, (const xmlChar *) ATTR_INLINE, (const xmlChar *) sTRUE);
 //        }
@@ -5792,15 +5785,12 @@ void TextPage::dump(GBool useBlocks, GBool fullFontName) {
         snprintf(tmp, sizeof(tmp), ATTR_NUMFORMAT, listeImages[i]->getHeightImage());
         xmlNewProp(node, (const xmlChar *) ATTR_HEIGHT, (const xmlChar *) tmp);
 
-        std::string rotation = std::to_string(listeImages[i]->getRotation());
-        xmlNewProp(node,(const xmlChar*)ATTR_ROTATION,(const xmlChar*)rotation.c_str());
-        //if (listeImages[i]->getRotation() > 0){
-        //    xmlNewProp(node,(const xmlChar*)ATTR_ROTATION,(const xmlChar*)sTRUE);
-        //}
-        //else{
-        //    xmlNewProp(node,(const xmlChar*)ATTR_ROTATION,(const xmlChar*)sFALSE);
-        //}
-
+        if (listeImages[i]->getRotation() > 0){
+            xmlNewProp(node,(const xmlChar*)ATTR_ROTATION,(const xmlChar*)sTRUE);
+        }
+        else{
+            xmlNewProp(node,(const xmlChar*)ATTR_ROTATION,(const xmlChar*)sFALSE);
+        }
 //        if (listeImages[i]->isImageInline()) {
 //            xmlNewProp(node, (const xmlChar *) ATTR_INLINE, (const xmlChar *) sTRUE);
 //        }
@@ -5847,14 +5837,11 @@ void TextPage::dump(GBool useBlocks, GBool fullFontName) {
         snprintf(tmp, sizeof(tmp), ATTR_NUMFORMAT, svg_ymax - svg_ymin);
         xmlNewProp(node, (const xmlChar *) ATTR_HEIGHT, (const xmlChar *) tmp);
 
-        std::string rotation = std::to_string(r);
-        xmlNewProp(node,(const xmlChar*)ATTR_ROTATION,(const xmlChar*)rotation.c_str());
-        //if (r > 0) {
-        //    xmlNewProp(node, (const xmlChar *) ATTR_ROTATION, (const xmlChar *) sTRUE);
-        //} else {
-        //    xmlNewProp(node, (const xmlChar *) ATTR_ROTATION, (const xmlChar *) sFALSE);
-        //}
-
+        if (r > 0) {
+            xmlNewProp(node, (const xmlChar *) ATTR_ROTATION, (const xmlChar *) sTRUE);
+        } else {
+            xmlNewProp(node, (const xmlChar *) ATTR_ROTATION, (const xmlChar *) sFALSE);
+        }
 //        if (listeImages[i]->isImageInline()) {
 //            xmlNewProp(node, (const xmlChar *) ATTR_INLINE, (const xmlChar *) sTRUE);
 //        }
@@ -7309,10 +7296,8 @@ XmlAltoOutputDev::XmlAltoOutputDev(GString *fileName, GString *fileNamePdf,
     xmlAddChild(nodeOCRProcessingStep, nodeProcessingDate);
     time_t t;
     time(&t);
-    char tstamp[sizeof "YYYY-MM-DDTHH:MM:SSZ"];
-    strftime(tstamp, sizeof tstamp, "%FT%TZ", gmtime(&t));
     xmlNodeSetContent(nodeProcessingDate, (const xmlChar *) xmlEncodeEntitiesReentrant(
-            nodeProcessingDate->doc, (const xmlChar *) tstamp));
+            nodeProcessingDate->doc, (const xmlChar *) ctime(&t)));
 
     xmlNodePtr nodeProcessingSoftware = xmlNewNode(NULL, (const xmlChar *) TAG_PROCESSINGSOFTWARE);
     nodeProcessingSoftware->type = XML_ELEMENT_NODE;
@@ -7527,7 +7512,7 @@ void XmlAltoOutputDev::addStyles() {
         xmlNewProp(textStyleNode, (const xmlChar *) ATTR_FONTWIDTH, (const xmlChar *) tmp);
 
         sprintf(tmp, "%s", fontStyleInfo->getFontColor()->getCString());
-        xmlNewProp(textStyleNode, (const xmlChar *) ATTR_FONTCOLOR, (const xmlChar *) (tmp+1));
+        xmlNewProp(textStyleNode, (const xmlChar *) ATTR_FONTCOLOR, (const xmlChar *) tmp);
 
         delete fontStyleInfo->getFontColor();
 
@@ -7556,8 +7541,7 @@ void XmlAltoOutputDev::addStyles() {
         }
 
         sprintf(tmp, "%s", fontStyle->getCString());
-        if ( strcmp(tmp, "") )
-            xmlNewProp(textStyleNode, (const xmlChar *) ATTR_FONTSTYLE, (const xmlChar *) tmp);
+        xmlNewProp(textStyleNode, (const xmlChar *) ATTR_FONTSTYLE, (const xmlChar *) tmp);
 
         delete fontStyle;
 
