@@ -36,11 +36,6 @@ public:
 	 */
 	GBool getDisplayText() { return displayText;};
 	
-	/** Return a boolean which inform if blocks informations are diplayed
-	 * @return <code>true</code> if the blocks option is selected, <code>false</code> otherwise
-	 */
-	GBool getDisplayBlocks() { return displayBlocks;};
-	
 	/** Return a boolean which inform if the images are displayed
 	 * @return <code>true</code> if the noImage option is not selected, <code>false</code> otherwise
 	 */
@@ -137,8 +132,6 @@ private:
 	GBool displayImage;
 	/** The value of the noText option */
 	GBool displayText;
-	/** The value of the blocks option */
-	GBool displayBlocks;
 	/** The value of the outline option */
 	GBool displayOutline;
 	/** The value of the cutPages option */

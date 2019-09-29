@@ -1026,14 +1026,12 @@ public:
     void addWord(TextRawWord *word);
 
     /** Dump contents of the current page
-     * @param blocks To know if the blocks option is selected
      * @param fullFontName To know if the fullFontName option is selected */
-    void dump(GBool blocks, GBool fullFontName);
+    void dump(GBool fullFontName);
 
     /** Dump contents of the current page following the reading order.
-     * @param blocks To know if the blocks option is selected
      * @param fullFontName To know if the fullFontName option is selected */
-    void dumpInReadingOrder(GBool blocks, GBool fullFontName);
+    void dumpInReadingOrder(GBool fullFontName);
 
     int rotateChars(GList *charsA);
 
@@ -1808,8 +1806,6 @@ private:
     //GBool rawOrder;
 /** To make text in reading order */
     GBool readingOrder;
-    /** To know if the blocks option is selected */
-    GBool useBlocks;
     /** To know if the fullFontName option is selected */
     GBool fullFontName;
     /** To know if the noImageInline option is selected */

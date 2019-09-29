@@ -4644,7 +4644,7 @@ void TextPage::insertColumnIntoTree(TextBlock *column, TextBlock *tree) {
 }
 
 // PL: this is apparently not used
-void TextPage::dumpInReadingOrder(GBool useBlocks, GBool fullFontName) {
+void TextPage::dumpInReadingOrder(GBool fullFontName) {
     TextBlock *tree;
     TextColumn *col;
     TextParagraph *par;
@@ -4697,16 +4697,14 @@ void TextPage::dumpInReadingOrder(GBool useBlocks, GBool fullFontName) {
         col = (TextColumn *) columns->get(colIdx);
         for (parIdx = 0; parIdx < col->paragraphs->getLength(); ++parIdx) {
 
-            if (useBlocks) {
-                nodeblocks = xmlNewNode(NULL, (const xmlChar *) TAG_BLOCK);
-                nodeblocks->type = XML_ELEMENT_NODE;
+            nodeblocks = xmlNewNode(NULL, (const xmlChar *) TAG_BLOCK);
+            nodeblocks->type = XML_ELEMENT_NODE;
 
-                id = new GString("p");
-                xmlNewProp(nodeblocks, (const xmlChar *) ATTR_ID,
-                           (const xmlChar *) buildIdBlock(num, numBlock, id)->getCString());
-                delete id;
-                numBlock = numBlock + 1;
-            }
+            id = new GString("p");
+            xmlNewProp(nodeblocks, (const xmlChar *) ATTR_ID,
+                       (const xmlChar *) buildIdBlock(num, numBlock, id)->getCString());
+            delete id;
+            numBlock = numBlock + 1;
 
             // for superscript/subscript determination
             double previousWordBaseLine = 0;
@@ -4895,14 +4893,10 @@ void TextPage::dumpInReadingOrder(GBool useBlocks, GBool fullFontName) {
                     free(tmp);
                 }
 
-                if (useBlocks)
-                    xmlAddChild(nodeblocks, nodeline);
-                else
-                    xmlAddChild(printSpace, nodeline);
+                xmlAddChild(nodeblocks, nodeline);
             }
 
-            if (useBlocks)
-                xmlAddChild(printSpace, nodeblocks);
+            xmlAddChild(printSpace, nodeblocks);
         }
         //(*outputFunc)(outputStream, eol, eolLen);
     }
@@ -4953,7 +4947,7 @@ void TextPage::dumpInReadingOrder(GBool useBlocks, GBool fullFontName) {
     }
 }
 
-void TextPage::dump(GBool useBlocks, GBool fullFontName) {
+void TextPage::dump(GBool fullFontName) {
     // Output the page in raw (content stream) order
 
     blocks = new GList(); //these are blocks in alto schema
@@ -5511,33 +5505,30 @@ void TextPage::dump(GBool useBlocks, GBool fullFontName) {
 
     for (parIdx = 0; parIdx < blocks->getLength(); parIdx++) {
         par = (TextParagraph *) blocks->get(parIdx);
+        nodeblocks = xmlNewNode(NULL, (const xmlChar *) TAG_BLOCK);
+        nodeblocks->type = XML_ELEMENT_NODE;
 
-        if (useBlocks) {
-            nodeblocks = xmlNewNode(NULL, (const xmlChar *) TAG_BLOCK);
-            nodeblocks->type = XML_ELEMENT_NODE;
+        id = new GString("p");
+        xmlNewProp(nodeblocks, (const xmlChar *) ATTR_ID,
+                   (const xmlChar *) buildIdBlock(num, numBlock, id)->getCString());
+        delete id;
+        numBlock = numBlock + 1;
 
-            id = new GString("p");
-            xmlNewProp(nodeblocks, (const xmlChar *) ATTR_ID,
-                       (const xmlChar *) buildIdBlock(num, numBlock, id)->getCString());
-            delete id;
-            numBlock = numBlock + 1;
+        char *tmp;
 
-            char *tmp;
+        tmp = (char *) malloc(10 * sizeof(char));
+        snprintf(tmp, sizeof(tmp),ATTR_NUMFORMAT, par->getXMin());
+        xmlNewProp(nodeblocks, (const xmlChar*)ATTR_X, (const xmlChar*)tmp);
 
-            tmp = (char *) malloc(10 * sizeof(char));
-            snprintf(tmp, sizeof(tmp),ATTR_NUMFORMAT, par->getXMin());
-            xmlNewProp(nodeblocks, (const xmlChar*)ATTR_X, (const xmlChar*)tmp);
+        snprintf(tmp, sizeof(tmp),ATTR_NUMFORMAT, par->getYMin());
+        xmlNewProp(nodeblocks, (const xmlChar*)ATTR_Y, (const xmlChar*)tmp);
 
-            snprintf(tmp, sizeof(tmp),ATTR_NUMFORMAT, par->getYMin());
-            xmlNewProp(nodeblocks, (const xmlChar*)ATTR_Y, (const xmlChar*)tmp);
+        snprintf(tmp, sizeof(tmp),ATTR_NUMFORMAT, par->getYMax() - par->getYMin());
+        xmlNewProp(nodeblocks, (const xmlChar*)ATTR_HEIGHT, (const xmlChar*)tmp);
+        snprintf(tmp, sizeof(tmp),ATTR_NUMFORMAT, par->getXMax() - par->getXMin());
+        xmlNewProp(nodeblocks, (const xmlChar*)ATTR_WIDTH, (const xmlChar*)tmp);
 
-            snprintf(tmp, sizeof(tmp),ATTR_NUMFORMAT, par->getYMax() - par->getYMin());
-            xmlNewProp(nodeblocks, (const xmlChar*)ATTR_HEIGHT, (const xmlChar*)tmp);
-            snprintf(tmp, sizeof(tmp),ATTR_NUMFORMAT, par->getXMax() - par->getXMin());
-            xmlNewProp(nodeblocks, (const xmlChar*)ATTR_WIDTH, (const xmlChar*)tmp);
-
-            free(tmp);
-        }
+        free(tmp);
         for (lineIdx = 0; lineIdx < par->lines->getLength(); ++lineIdx) {
             line1 = (TextLine *) par->lines->get(lineIdx);
 
@@ -5752,14 +5743,10 @@ void TextPage::dump(GBool useBlocks, GBool fullFontName) {
                 free(tmp);
             }
 
-            if (useBlocks)
-                xmlAddChild(nodeblocks, nodeline);
-            else
-                xmlAddChild(printSpace, nodeline);
+            xmlAddChild(nodeblocks, nodeline);
         }
 
-        if (useBlocks)
-            xmlAddChild(printSpace, nodeblocks);
+        xmlAddChild(printSpace, nodeblocks);
     }
 
     int imageCount = listeImages.size();
@@ -7174,7 +7161,6 @@ XmlAltoOutputDev::XmlAltoOutputDev(GString *fileName, GString *fileNamePdf,
     myCatalog = catalog;
     UnicodeMap *uMap;
 
-    useBlocks = parameters->getDisplayBlocks();
     fullFontName = parameters->getFullFontName();
     noImageInline = parameters->getImageInline();
 
@@ -7722,9 +7708,9 @@ void XmlAltoOutputDev::endPage() {
     text->configuration();
     if (parameters->getDisplayText()) {
 //        if (readingOrder) {
-//            text->dumpInReadingOrder(useBlocks, fullFontName);
+//            text->dumpInReadingOrder(fullFontName);
 //        } else
-        text->dump(useBlocks, fullFontName);
+        text->dump(fullFontName);
     }
 
     text->endPage(dataDir);

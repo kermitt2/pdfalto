@@ -60,7 +60,6 @@ static GBool noText = gFalse;
 static GBool noImage = gFalse;
 static GBool outline = gFalse;
 static GBool cutPages = gFalse;
-static GBool blocks = gFalse;
 static GBool fullFontName = gFalse;
 static GBool noImageInline = gFalse;
 static GBool annots = gFalse;
@@ -94,8 +93,6 @@ static ArgDesc argDesc[] = {
 // PL: code for supporting cut pages need to be put back
 //        {"-cutPages",      argFlag,   &cutPages,        0,
 //                "cut all pages in separately files"},
-        {"-blocks",        argFlag,   &blocks,          0,
-                "add blocks informations within the structure"},
         {"-readingOrder",  argFlag,   &readingOrder,    0,
                 "blocks follow the reading order"},
 //        {"-ocr",           argFlag,   &ocr,             0,
@@ -201,13 +198,6 @@ int main(int argc, char *argv[]) {
         cmd->append("-cutPages ");
     } else {
         parameters->setCutAllPages(gTrue);
-    }
-
-    if (blocks) {
-        parameters->setDisplayBlocks(gTrue);
-        cmd->append("-blocks ");
-    } else {
-        parameters->setDisplayBlocks(gFalse);
     }
 
     if (readingOrder) {

@@ -34,12 +34,6 @@ void Parameters::setDisplayText(GBool text) {
   unlockGlobalParams;
 }
 
-void Parameters::setDisplayBlocks(GBool block) {
-  lockGlobalParams;
-  displayBlocks = block;
-  unlockGlobalParams;
-}
-
 void Parameters::setDisplayOutline(GBool outl) {
   lockGlobalParams;
   displayOutline = outl;
