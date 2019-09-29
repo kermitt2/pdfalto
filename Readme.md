@@ -29,7 +29,6 @@ General usage is as follow:
   -noImageInline         : do not include images inline in the stream
   -outline               : create an outline file xml (i.e. a table of content) as additional file
   -annotation            : create an annotations file xml as additional file
-  -blocks                : add blocks informations whithin the structure
   -readingOrder          : blocks follow the reading order
   -fullFontName          : fonts names are not normalized
   -nsURI <string>        : add the specified namespace URI
