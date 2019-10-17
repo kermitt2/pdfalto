@@ -5,7 +5,7 @@
 
 **pdfalto** is a command line executable for parsing PDF files and producing structured XML representations of the PDF content in [ALTO](https://github.com/kermitt2/pdfalto/blob/master/schema/alto.xsd) format. 
 
-**pdfalto** is a fork of [pdf2xml](http://sourceforge.net/projects/pdf2xml), developed at XRCE, with modifications for robustness, addition of features and output enhanced format in [ALTO](https://github.com/altoxml/documentation/wiki) (including in particular space information, useful for instance for further machine learning processing). It is based on the [Xpdf](http://www.xpdfreader.com/) library.  
+**pdfalto** is initially a fork of [pdf2xml](http://sourceforge.net/projects/pdf2xml), developed at XRCE, with modifications for robustness, addition of features and output enhanced format in [ALTO](https://github.com/altoxml/documentation/wiki) (including in particular space information, useful for instance for further machine learning processing). It is based on the [Xpdf](http://www.xpdfreader.com/) library.  
 
 The latest stable version is *0.2*. 
 
@@ -123,7 +123,9 @@ The executable `pdfalto` is generated in the root directory. Additionally, this 
 
 # Contributors
 
-Contact: Patrice Lopez (patrice.lopez@science-miner.com), Achraf Azhar (achraf.azhar@inria.fr)
+Contact: Patrice Lopez (patrice.lopez@science-miner.com)
+
+pdfalto is developed by Patrice Lopez (patrice.lopez@science-miner.com) and Achraf Azhar (achraf.azhar@inria.fr).
 
 pdf2xml is orignally written by Hervé Déjean, Sophie Andrieu, Jean-Yves Vion-Dury and  Emmanuel Giguet (XRCE) under GPL2 license. 
 
@@ -138,7 +140,7 @@ As the original pdf2xml and main dependency Xpdf, pdfalto is distributed under G
 
 # Useful links
 
-Some tools for converting ALTO to other formats:
+Some tools for converting ALTO into other formats:
 
 - https://github.com/filak/hOCR-to-ALTO
 - https://github.com/UB-Mannheim/ocr-fileformat
