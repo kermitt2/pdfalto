@@ -7,7 +7,7 @@
 
 **pdfalto** is initially a fork of [pdf2xml](http://sourceforge.net/projects/pdf2xml), developed at XRCE, with modifications for robustness, addition of features and output enhanced format in [ALTO](https://github.com/altoxml/documentation/wiki) (including in particular space information, useful for instance for further machine learning processing). It is based on the [Xpdf](http://www.xpdfreader.com/) library.  
 
-The latest stable version is *0.2*. 
+The latest stable version is *0.2*. Working version (master) is *0.3*.
 
 # Requirements
 
@@ -92,15 +92,17 @@ The executable `pdfalto` is generated in the root directory. Additionally, this 
 
 # Changes
 
-- support unicode composition of characters
+New in version 0.2 (apart various bug fixes):
+
+- support Unicode composition of characters
 
 - generalize reading order to all blocks (it was limited to the blocks of the first page)
 
-- use subscript/superscript text font style attribut
+- use subscript/superscript text font style attribute
 
 - use SVG as a format for vectorial images
 
-- propagate unsolved character unicode value (free unicode range for embedded fonts) as encoded special character in ALTO (so-called "placeholder" approach)
+- propagate unsolved character Unicode value (free Unicode range for embedded fonts) as encoded special character in ALTO (so-called "placeholder" approach)
 
 - generate metadata information in a separate XML file (as ALTO schema does not support that)
 
@@ -109,6 +111,10 @@ The executable `pdfalto` is generated in the root directory. Additionally, this 
 - add cmake
 
 - [ALTO](https://github.com/altoxml/documentation/wiki) output is replacing custom Xerox XML format
+
+- Note: this released version was used for Grobid release 0.5.6
+
+New in version 0.1 (apart various bug fixes): 
 
 - encode URI (using `xmlURIEscape` from libxml2) for the @href attribute content to avoid blocking XML wellformedness issues. From our experiments, this problem happens in average for 2-3 scholar PDF out of one thousand.
 
