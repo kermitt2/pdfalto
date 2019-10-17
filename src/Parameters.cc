@@ -71,6 +71,12 @@ void Parameters::setReadingOrder(GBool readingOrders) {
   unlockGlobalParams;
 }
 
+void Parameters::setCharReadingOrderAttr(GBool charReadingOrderAttrs) {
+  lockGlobalParams;
+  charReadingOrderAttr = charReadingOrderAttrs;
+  unlockGlobalParams;
+}
+
 void Parameters::setOcr(GBool ocrA) {
 	lockGlobalParams;
 	ocr = ocrA;

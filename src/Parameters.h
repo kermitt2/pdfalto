@@ -72,6 +72,12 @@ public:
 	 */
 	GBool getReadingOrder() {return readingOrder;}
 
+	/** PL: Return the boolean that controls whether to include TYPE attributes to String elements to
+	 * indicate right-to-left reading order (produces non-valid ALTO)
+	 * @return <code>true</code> if the charReadingOrderAttr option is selected, <code>false</code> otherwise
+	 */
+	GBool getCharReadingOrderAttr() {return charReadingOrderAttr;}
+
 	/** Return a boolean which inform if OCR should be applied to recognize non unicode glyphs
 	 * @return <code>true</code> if the ocr option is selected, <code>false</code> otherwise
 	 */
@@ -122,6 +128,12 @@ public:
 	 */	
 	void setReadingOrder(GBool readingOrders);
 
+	/** PL: Modifiy the boolean that controls whether to include TYPE attributes to String elements to indicate
+	 * right-to-left reading order (produces non-valid ALTO)
+	 * @param charReadingOrderAttr <code>true</code> if the charReadingOrderAttr option is selected, <code>false</code> otherwise
+	 */
+	void setCharReadingOrderAttr(GBool charReadingOrderAttrs);
+
 	/** Modifiy the boolean which inform ocr should be applied or not
 	 * @param readingOrder <code>true</code> if the readingOrder option is selected, <code>false</code> otherwise
 	 */
@@ -149,6 +161,8 @@ private:
 	GBool imageInline;
 	/** PL: The value of the readingOrder option */
 	GBool readingOrder;
+	/** PL: The value of the charReadingOrderAttr option */
+	GBool charReadingOrderAttr;
 	/** The value of ocr option */
 	GBool ocr;
 	/** the count limit of files */
