@@ -15,7 +15,7 @@ namespace ConstantsUtils {
 	const char *NAME_ANNOT = "annot";
 	const char *NAME_DATA_DIR = "_data";
 
-	const char *PDFALTO_VERSION = "0.1";
+	const char *PDFALTO_VERSION = "0.3";
 	const char *PDFALTO_NAME = "pdfalto";
 
 	const char *PDFALTO_CREATOR = "CONTRIBUTORS";

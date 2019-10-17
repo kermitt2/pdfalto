@@ -67,11 +67,13 @@ See [ICU Readme](http://source.icu-project.org/repos/icu/trunk/icu4c/readme.html
 6- Copy `libicuuc.a` from `icu/source/lib` and `libicudata.a` from `icu/source/stubdata` and put it under corresponding OS `libs/icu/<OS>`
 # Contributors
 
+Main contact: Patrice Lopez (patrice.lopez@science-miner.com)
+
+pdfalto is developed by Patrice Lopez (patrice.lopez@science-miner.com) and Achraf Azhar (achraf.azhar@inria.fr).
+
 xpdf is developed by Glyph & Cog, LLC (1996-2017) and distributed under GPL2 or GPL3 license. 
 
 pdf2xml is orignally written by Hervé Déjean, Sophie Andrieu, Jean-Yves Vion-Dury and  Emmanuel Giguet (XRCE) under GPL2 license. 
-
-pdfalto has been modified and forked by Patrice Lopez (patrice.lopez@science-miner.com) and Achraf Azhar (achraf.azhar@inria.fr).
 
 The windows version has been built originally by [@pboumenot](https://github.com/boumenot) and ported on windows 7 for 64 bit, then for windows (native and cygwin) by [@lfoppiano](https://github.com/lfoppiano) and [@flydutch](https://github.com/flydutch).  
 
