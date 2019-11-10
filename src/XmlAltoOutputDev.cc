@@ -2879,17 +2879,17 @@ void TextPage::addAttributsNodeVerbose(xmlNodePtr node, char *tmp,
     xmlNewProp(node, (const xmlChar *) ATTR_ANGLE_SKEWING_Y, (const xmlChar *) tmp);
     sprintf(tmp, "%d", word->angleSkewing_X);
     xmlNewProp(node, (const xmlChar *) ATTR_ANGLE_SKEWING_X, (const xmlChar *) tmp);
-    sprintf(tmp, "%g", word->leading);
+    sprintf(tmp, ATTR_NUMFORMAT, word->leading);
     xmlNewProp(node, (const xmlChar *) ATTR_LEADING, (const xmlChar *) tmp);
-    sprintf(tmp, "%g", word->render);
+    sprintf(tmp, ATTR_NUMFORMAT, word->render);
     xmlNewProp(node, (const xmlChar *) ATTR_RENDER, (const xmlChar *) tmp);
-    sprintf(tmp, "%g", word->rise);
+    sprintf(tmp, ATTR_NUMFORMAT, word->rise);
     xmlNewProp(node, (const xmlChar *) ATTR_RISE, (const xmlChar *) tmp);
-    sprintf(tmp, "%g", word->horizScaling);
+    sprintf(tmp, ATTR_NUMFORMAT, word->horizScaling);
     xmlNewProp(node, (const xmlChar *) ATTR_HORIZ_SCALING, (const xmlChar *) tmp);
-    sprintf(tmp, "%g", word->wordSpace);
+    sprintf(tmp, ATTR_NUMFORMAT, word->wordSpace);
     xmlNewProp(node, (const xmlChar *) ATTR_WORD_SPACE, (const xmlChar *) tmp);
-    sprintf(tmp, "%g", word->charSpace);
+    sprintf(tmp, ATTR_NUMFORMAT, word->charSpace);
     xmlNewProp(node, (const xmlChar *) ATTR_CHAR_SPACE, (const xmlChar *) tmp);
 }
 
@@ -6341,7 +6341,7 @@ void TextPage::createPath(GfxPath *path, GfxState *state, xmlNodePtr groupNode) 
 
         d = new GString(tmp);
 
-//        sprintf(tmp, "%g", y0);
+//        sprintf(tmp, ATTR_NUMFORMAT, y0);
 //        xmlNewProp(pathnode, (const xmlChar*)ATTR_Y, (const xmlChar*)tmp);
 
         j = 1;
@@ -6408,10 +6408,10 @@ void TextPage::createPath(GfxPath *path, GfxState *state, xmlNodePtr groupNode) 
 
                 // L tag : lineto
 //                pathnode=xmlNewNode(NULL, (const xmlChar*)TAG_L);
-//                sprintf(tmp, "%g", x1);
+//                sprintf(tmp, ATTR_NUMFORMAT, x1);
 //                xmlNewProp(pathnode, (const xmlChar*)ATTR_X,
 //                           (const xmlChar*)tmp);
-//                sprintf(tmp, "%g", y1);
+//                sprintf(tmp, ATTR_NUMFORMAT, y1);
 //                xmlNewProp(pathnode, (const xmlChar*)ATTR_Y,
 //                           (const xmlChar*)tmp);
 //                xmlAddChild(groupNode, pathnode);
@@ -8528,7 +8528,7 @@ void XmlAltoOutputDev::stroke(GfxState *state) {
     if (length != 0) {
         attr->append("stroke-dasharray:");
         for (i = 0; i < length; i++) {
-            snprintf(tmp, sizeof(tmp), "%g", state->transformWidth(dash[i]) == 0 ? 1
+            snprintf(tmp, sizeof(tmp), ATTR_NUMFORMAT, state->transformWidth(dash[i]) == 0 ? 1
                                                                    : state->transformWidth(dash[i]));
             attr->append(tmp);
             sprintf(tmp, "%s", (i == length - 1) ? "" : ", ");
@@ -9167,13 +9167,13 @@ GBool XmlAltoOutputDev::dumpOutline(xmlNodePtr parentNode, GList *itemsA, PDFDoc
 
             sprintf(tmp, "%d", page);
             xmlNewProp(nodeLink, (const xmlChar *) ATTR_PAGE, (const xmlChar *) tmp);
-            snprintf(tmp, sizeof(tmp), "%g", y2);
+            snprintf(tmp, sizeof(tmp), ATTR_NUMFORMAT, y2);
             xmlNewProp(nodeLink, (const xmlChar *) ATTR_TOP, (const xmlChar *) tmp);
-            snprintf(tmp, sizeof(tmp), "%g", bottom);
+            snprintf(tmp, sizeof(tmp), ATTR_NUMFORMAT, bottom);
             xmlNewProp(nodeLink, (const xmlChar *) ATTR_BOTTOM, (const xmlChar *) tmp);
-            snprintf(tmp, sizeof(tmp), "%g", x2);
+            snprintf(tmp, sizeof(tmp), ATTR_NUMFORMAT, x2);
             xmlNewProp(nodeLink, (const xmlChar *) ATTR_LEFT, (const xmlChar *) tmp);
-            snprintf(tmp, sizeof(tmp), "%g", right);
+            snprintf(tmp, sizeof(tmp), ATTR_NUMFORMAT, right);
             xmlNewProp(nodeLink, (const xmlChar *) ATTR_RIGHT, (const xmlChar *) tmp);
 
             xmlAddChild(nodeItem, nodeLink);
