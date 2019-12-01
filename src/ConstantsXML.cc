@@ -92,7 +92,7 @@ namespace ConstantsXML {
 
 	// SVG XML TAGS
 	//const char *ATTR_NUMFORMAT = "%g";
-	const char *ATTR_NUMFORMAT = "%'.4f";
+	const char *ATTR_NUMFORMAT = "%1.4f";
 	const char *ATTR_SID = "sid";
 	const char *ATTR_SVGID = "id";
 	const char *ATTR_SVG_X = "x";
