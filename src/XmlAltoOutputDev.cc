@@ -6319,8 +6319,10 @@ void TextPage::createPath(GfxPath *path, GfxState *state, xmlNodePtr groupNode) 
     double xmin =0 , xmax = 0 , ymin = 0, ymax=0;
     int n, m, i, j;
     double a, b;
-    char *tmp;
-    tmp = (char *) malloc(500 * sizeof(char));
+    //char *tmp;
+    //tmp = (char *) malloc(500 * sizeof(*tmp));
+    static int SVG_VALUE_BUFFER_SIZE = 500;
+    char *tmp = (char *)malloc(SVG_VALUE_BUFFER_SIZE * sizeof(*tmp));
 
     GString *d;
     xmlNodePtr pathnode = NULL;
@@ -6337,7 +6339,8 @@ void TextPage::createPath(GfxPath *path, GfxState *state, xmlNodePtr groupNode) 
 
         // M tag : moveto
         pathnode = xmlNewNode(NULL, (const xmlChar *) TAG_PATH);
-        snprintf(tmp, sizeof(tmp), "M%g,%g", x0, y0);
+        //snprintf(tmp, SVG_VALUE_BUFFER_SIZE, "M%g,%g", x0, y0);
+        snprintf(tmp, SVG_VALUE_BUFFER_SIZE, "M%1.4f,%1.4f", x0, y0);
 
         d = new GString(tmp);
 
@@ -6364,7 +6367,7 @@ void TextPage::createPath(GfxPath *path, GfxState *state, xmlNodePtr groupNode) 
                 y3 = b;
                 // C tag  : curveto
 //                pathnode=xmlNewNode(NULL, (const xmlChar*)TAG_C);
-                snprintf(tmp, sizeof(tmp), " C%g,%g %g,%g %g,%g", x1, y1, x2, y2, x3, y3);
+                snprintf(tmp, SVG_VALUE_BUFFER_SIZE, " C%1.4f,%1.4f %1.4f,%1.4f %1.4f,%1.4f", x1, y1, x2, y2, x3, y3);
                 d->append(tmp);
                 if(xmax==0) {
                     double list_double[] = {x0, x1, x2, x3};
@@ -6415,7 +6418,7 @@ void TextPage::createPath(GfxPath *path, GfxState *state, xmlNodePtr groupNode) 
 //                xmlNewProp(pathnode, (const xmlChar*)ATTR_Y,
 //                           (const xmlChar*)tmp);
 //                xmlAddChild(groupNode, pathnode);
-                snprintf(tmp, sizeof(tmp)," L%g,%g", x1, y1);
+                snprintf(tmp, SVG_VALUE_BUFFER_SIZE," L%1.4f,%1.4f", x1, y1);
                 d->append(tmp);
                 if (xmax == 0) {
                     double list_double[] = {x0, x1};
