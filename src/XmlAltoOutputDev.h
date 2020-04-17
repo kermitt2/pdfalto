@@ -702,6 +702,8 @@ public:
     GBool isUnderlined() { return underlined; }
     GString *getLinkURI();
 
+    void setLineNumber(GBool theBool);
+
 private:
 
     TextWord(TextWord *word);
@@ -715,6 +717,8 @@ private:
     //TextLink *link;
 
     GBool invisible;		// set for invisible text (render mode 3)
+
+    GBool lineNumber = gFalse;;
 
     friend class TextBlock;
     friend class TextLine;
@@ -785,12 +789,16 @@ public:
 
     Unicode getChar(int idx);
 
+    // if the word token is a line number
+    void setLineNumber(GBool theBool);
 
 //private:
 
     /** Rank in the original flow */
     int indexmin;
     int indexmax;
+
+    GBool lineNumber;
 
     friend class TextPage;
 };
@@ -1190,6 +1198,8 @@ public:
      * @param state The state description */
     void restoreState(GfxState *state);
 
+    /** Identify line numbers and mark corresponding raw word */
+    void markLineNumber();
 
 //  void addLink(int xMin, int yMin, int xMax, int yMax, Link *link);
 

@@ -60,6 +60,7 @@ using namespace icu;
 
 #include "gmem.h"
 #include "GList.h"
+#include "GHash.h"
 #include "config.h"
 #include "Error.h"
 #include "GlobalParams.h"
@@ -496,6 +497,7 @@ TextWord::TextWord(GList *charsA, int start, int lenA,
     bold = gFalse;
     serif = gFalse;
     symbolic = gFalse;
+    lineNumber = gFalse;
 
     spaceAfter = spaceAfterA;
     dir = dirA;
@@ -788,6 +790,10 @@ TextWord::TextWord(GList *charsA, int start, int lenA,
 
 Unicode TextWord::getChar(int idx) { return ((TextChar *) chars->get(idx))->c; }
 
+void TextWord::setLineNumber(GBool theBool) {
+    lineNumber = theBool;
+}
+
 TextWord::TextWord(TextWord *word) {
     *this = *word;
 //    text = (Unicode *)gmallocn(len, sizeof(Unicode));
@@ -822,6 +828,8 @@ TextRawWord::TextRawWord(GfxState *state, double x0, double y0,
     serif = gFalse;
     symbolic = gFalse;
 
+    // the raw word is a line number
+    lineNumber = gFalse;
 
     double *fontm;
     double m[4];
@@ -1044,6 +1052,10 @@ TextRawWord::~TextRawWord() {
 }
 
 Unicode TextRawWord::getChar(int idx) { return ((TextChar *) chars->get(idx))->c; }
+
+void TextRawWord::setLineNumber(GBool theBool) {
+    lineNumber = theBool;
+}
 
 void TextRawWord::addChar(GfxState *state, double x, double y, double dx,
                           double dy, Unicode u, CharCode charCodeA, int charPosA, GBool overlap, TextFontInfo *fontA,
@@ -4647,7 +4659,7 @@ void TextPage::insertColumnIntoTree(TextBlock *column, TextBlock *tree) {
     tree->tag = blkTagMulticolumn;
 }
 
-// PL: this is apparently not used
+// PL: this is not used
 void TextPage::dumpInReadingOrder(GBool useBlocks, GBool fullFontName) {
     TextBlock *tree;
     TextColumn *col;
@@ -4958,6 +4970,239 @@ void TextPage::dumpInReadingOrder(GBool useBlocks, GBool fullFontName) {
         xmlAddChild(printSpace, node);
         free(tmp);
     }
+}
+
+bool is_digit(Unicode u) {
+    if (u == (Unicode) 48 ||
+        u == (Unicode) 49 ||
+        u == (Unicode) 50 ||
+        u == (Unicode) 51 ||
+        u == (Unicode) 52 ||
+        u == (Unicode) 53 ||
+        u == (Unicode) 54 ||
+        u == (Unicode) 55 ||
+        u == (Unicode) 56 ||
+        u == (Unicode) 57)
+        return true;
+    else 
+        return false;
+}
+
+bool is_number(TextWord *word) {
+    Unicode *text = NULL;
+    text = (Unicode *) grealloc(text, word->len * sizeof(Unicode));
+    for (int i = 0; i < word->len; i++) {
+        Unicode theU = ((TextChar *) word->chars->get(i))->c;
+        //cout << theU << endl;
+        if (!is_digit(theU)) {
+            return false;
+        }
+    }
+    return true;
+}
+
+int find_index(vector<double> positions, double val) {
+    //cout << "find_index: " << val << endl;
+    // simple double look-up, return index of val or -1
+    int index = -1;
+    for (int i = 0; i < positions.size(); i++) {
+        if (positions[i] == val) {
+            index = i;
+            break;
+        }
+    }
+
+    //cout << "       found: " << index << endl;
+    return index;
+}
+
+int find_index(vector<int> positions, int val) {
+    //cout << "find_index: " << val << endl;
+    // simple int look-up, return index of val or -1
+    int index = -1;
+    for (int i = 0; i < positions.size(); i++) {
+        if (positions[i] == val) {
+            index = i;
+            break;
+        }
+    }
+
+    //cout << "       found: " << index << endl;
+    return index;
+}
+
+void TextPage::markLineNumber() {
+    // Detect the presence of line number column in the page and mark the corresponding TextWord objects for further appropriate handling
+
+    // Line number conditions:
+    // - left-most or right-most alignment
+    // - only made of digits
+    // - vertical alignment along the page content
+    // - number increment (same increment, but not necessarly by +1)
+    // - same font (same font name and same font size)
+    // - immediate vertical gap with next token vertically aligned (note that this is actually complicated with the PDF stream order) 
+
+    int wordId = 0;
+    int nextVpos = 0;
+    int increment = 0;
+    
+    xmlChar *xcFontName;
+    GBool hasLineNumber = gFalse;
+
+    // at this stage we already have a block and line segmentation
+    int parIdx, lineIdx, wordI, n;
+    TextParagraph *par;
+    TextLine *line1;
+    TextWord *word;
+    TextWord *nextWord;
+    TextWord *previousWord;
+
+    GList *lineNumberWords = new GList();
+
+    // first pass is for number detection, it should stop very early in case of no line number
+    for (parIdx = 0; parIdx < blocks->getLength(); parIdx++) {
+        par = (TextParagraph *) blocks->get(parIdx);
+
+        for (lineIdx = 0; lineIdx < par->lines->getLength(); lineIdx++) {
+            line1 = (TextLine *) par->lines->get(lineIdx);
+
+            for (wordI = 0; wordI < line1->words->getLength(); wordI++) {
+
+                word = (TextWord *) line1->words->get(wordI);
+                if (wordI < line1->words->getLength() - 1)
+                    nextWord = (TextWord *) line1->words->get(wordI + 1);
+                else 
+                    nextWord = NULL;
+                if (wordId != 0)
+                    previousWord = (TextWord *) words->get(wordId - 1);
+                else 
+                    previousWord = NULL;
+
+                // first or last token in the line?
+                if (previousWord != NULL && nextWord != NULL)
+                    continue;
+
+                // numerical token?
+                if (is_number(word)) {
+                    //cout << "line number! " << word->xMin <<  " " << word->xMax<< endl;
+                    lineNumberWords->append(word);
+                    hasLineNumber = true;
+                } 
+            }
+        }
+    }
+
+    if (!hasLineNumber)
+        return;
+
+    // define the x alignment by clustering identified number tokens by x position
+    vector<vector<int>> clusters;
+    vector<int> positions;
+    for (wordI = 0; wordI < lineNumberWords->getLength(); wordI++) {
+        word = (TextWord *)lineNumberWords->get(wordI);
+        int vpos1 = word->xMin;
+        int vpos2 = word->xMax;
+
+        // we cluster by xMin and xMax positions
+        int index1 = find_index(positions, vpos1);;
+        int index2 = find_index(positions, vpos2);
+
+        if (index1 != -1) {
+            vector<int> the_cluster = clusters[index1];
+            the_cluster.push_back(wordI);
+            clusters[index1] = the_cluster;
+        } else {
+            // new cluster init
+            vector<int> the_cluster;
+            the_cluster.push_back(wordI);
+            clusters.push_back(the_cluster);
+            positions.push_back(vpos1);
+        }
+
+        if (index2 != -1) {
+            vector<int> the_cluster = clusters[index2];
+            the_cluster.push_back(wordI);
+            clusters[index2] = the_cluster;
+        } else {
+            // new cluster init
+            vector<int> the_cluster;
+            the_cluster.push_back(wordI);
+            clusters.push_back(the_cluster);
+            positions.push_back(vpos2);
+        }
+    }
+
+    //cout << "clusters size: " << clusters.size() << endl;
+
+    int bestClusterIndex = -1;
+    int largestclustersize = 0;
+    // select largest cluster of numbers, which will give the best x alignment and the corresponding list of number tokens
+    for (int i = 0; i < clusters.size(); i++) {
+        vector<int> theCluster = clusters[i];
+        //cout << "theCluster.size(): " << theCluster.size() << endl;
+        if (theCluster.size() > largestclustersize) {
+            bestClusterIndex = i;
+            largestclustersize = theCluster.size();
+        }
+    }
+
+    //cout << "bestClusterIndex: " << bestClusterIndex << endl;
+
+    if (bestClusterIndex == -1)
+        return;
+
+    vector<int> bestCluster = clusters[bestClusterIndex];
+    double final_vpos = positions[bestClusterIndex];
+
+    //cout << "final alignment vpos: " << final_vpos << endl;
+    //cout << "nb numbers: " << bestCluster.size() << endl;
+
+    // check the remaining constraints: 
+
+    // same font?
+    int font_size = 0;
+    xmlChar *xcFontName;
+    for (int i = 0; i < bestCluster.size(); i++) {
+        int index = bestCluster[i];
+        word = (TextWord *)lineNumberWords->get(index);
+        font_size = word->fontSize;    
+    
+        if (word->getFontName()) {
+            xcFontName = (xmlChar *) word->getFontName();
+
+        if (font_size != 0 && xcFontName != NULL)
+            break;
+    }
+
+    // increment? it's not possible to suppose any particular increments, it could be 1 by 1 or 
+    // 5 by 5 for instance, however number should be growing!
+
+
+
+    // immediate vertigal gap? this is important to avoid removing numbers corresponding typically to
+    // list, or to reference markers (callout to affiliation or to bibliographical entry)
+
+
+    // text areas at same alignment or more "side-positioned"?
+    // get left-most and right-most non trivial text block
+
+
+    // if succesful identification, second pass is for marking
+    /*for (wordI = 0; wordI < lineNumberWords->getLength(); wordI++) {
+        word = (TextWord *)lineNumberWords->get(wordI);
+        // consider only aligned tokens
+        if ( (fabs(word->xMin - final_vpos) < font_size) || (fabs(word->xMax - final_vpos) < font_size) )
+            word->setLineNumber(gTrue);
+    }*/
+
+    for (int i = 0; i < bestCluster.size(); i++) {
+        int index = bestCluster[i];
+        word = (TextWord *)lineNumberWords->get(index);
+        // consider only aligned tokens
+        //if ( (fabs(word->xMin - final_vpos) < font_size) || (fabs(word->xMax - final_vpos) < font_size) )
+            word->setLineNumber(gTrue);
+    }
+    
 }
 
 void TextPage::dump(GBool useBlocks, GBool fullFontName) {
@@ -5491,6 +5736,7 @@ void TextPage::dump(GBool useBlocks, GBool fullFontName) {
         free(tmp);
     } // end FOR
 
+    markLineNumber();
 
     xmlNodePtr node = NULL;
     xmlNodePtr nodeline = NULL;
@@ -5545,7 +5791,7 @@ void TextPage::dump(GBool useBlocks, GBool fullFontName) {
 
             free(tmp);
         }
-        for (lineIdx = 0; lineIdx < par->lines->getLength(); ++lineIdx) {
+        for (lineIdx = 0; lineIdx < par->lines->getLength(); lineIdx++) {
             line1 = (TextLine *) par->lines->get(lineIdx);
 
             // this is the max font size for the line
@@ -5584,7 +5830,7 @@ void TextPage::dump(GBool useBlocks, GBool fullFontName) {
                 --n;
             }
 
-            for (wordI = 0; wordI < line1->words->getLength(); ++wordI) {
+            for (wordI = 0; wordI < line1->words->getLength(); wordI++) {
 
                 word = (TextWord *) line1->words->get(wordI);
                 if (wordI < line1->words->getLength() - 1)
@@ -5725,11 +5971,12 @@ void TextPage::dump(GBool useBlocks, GBool fullFontName) {
                 }
 
                 //testLinkedText(nodeline,minLineX,minLineY,minLineX+lineWidth,minLineY+lineHeight);
-//			if (testAnnotatedText(minLineX,minLineY,minLineX+lineWidth,minLineY+lineHeight)){
-//				xmlNewProp(nodeline, (const xmlChar*)ATTR_HIGHLIGHT,(const xmlChar*)"yes");
-//			}
+//			    if (testAnnotatedText(minLineX,minLineY,minLineX+lineWidth,minLineY+lineHeight)){
+//				    xmlNewProp(nodeline, (const xmlChar*)ATTR_HIGHLIGHT,(const xmlChar*)"yes");
+//			    }
 
-                xmlAddChild(nodeline, node);
+                if (word->lineNumber == gFalse || (!is_number(word)))
+                    xmlAddChild(nodeline, node);
 
                 if (wordI < line1->words->getLength() - 1 and (word->spaceAfter == gTrue)) {
                     xmlNodePtr spacingNode = xmlNewNode(NULL, (const xmlChar *) TAG_SPACING);
