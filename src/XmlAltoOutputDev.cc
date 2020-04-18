@@ -5043,8 +5043,8 @@ void TextPage::markLineNumber() {
     // - immediate vertical gap with next token vertically aligned (note that this is actually complicated with the PDF stream order) 
 
     int wordId = 0;
-    int nextVpos = 0;
-    int increment = 0;
+    //int nextVpos = 0;
+    //int increment = 0;
     
     bool hasLineNumber = false;
 
@@ -5185,8 +5185,6 @@ void TextPage::markLineNumber() {
         }
     }
 
-    //cout << "bestClusterIndex: " << bestClusterIndex << endl;
-
     if (bestClusterIndex == -1)
         return;
 
@@ -5213,26 +5211,47 @@ void TextPage::markLineNumber() {
             break;
     }
 
-    if (!hasLineNumber)
-        return;
+    //if (!hasLineNumber)
+    //    return;
 
     // text areas at same alignment or more "side-positioned"?
     // see the left-most and right-most non trivial text block with the text token clusters
     int nonTrivialClusterSize = largestclustersize / 4;
     if (nonTrivialClusterSize == 0)
         nonTrivialClusterSize = 1;
+    int leftMostNonTrivialTextCluster = 99999;
+    int rightMostNonTrivialTextCluster = 0;
     // select largest cluster of numbers, which will give the best x alignment and the corresponding list of number tokens
     for (int i = 0; i < textClusters.size(); i++) {
         vector<int> theCluster = textClusters[i];
-        //cout << "theCluster.size(): " << theCluster.size() << endl;
         if (theCluster.size() >= nonTrivialClusterSize) {
             word = (TextWord *)textWords->get(theCluster[0]);
             int vpos1 = word->xMin;
             int vpos2 = word->xMax;
             if (vpos1 <= final_vpos && vpos2 >= final_vpos)
                 hasLineNumber = false;
+
+            if (vpos1 < leftMostNonTrivialTextCluster)
+                leftMostNonTrivialTextCluster = vpos1;
+            word = (TextWord *)textWords->get(theCluster[theCluster.size()-1]);
+            vpos2 = word->xMax;
+            if (vpos2 > rightMostNonTrivialTextCluster)
+                rightMostNonTrivialTextCluster = vpos2;
         }
     }
+
+    if (!hasLineNumber)
+        return;
+
+    //cout << "final alignment vpos: " << final_vpos << endl;
+    //cout << "        leftMostNonTrivialTextCluster: " << leftMostNonTrivialTextCluster << 
+    //    ", rightMostNonTrivialTextCluster: " << rightMostNonTrivialTextCluster << endl;
+
+    // neutralize candidate line numbers in the middle of a page with 2 columns 
+    // (these are ref numbers in the biblio or something else, but can't be line numbers)
+    int quarterWidth = (rightMostNonTrivialTextCluster - leftMostNonTrivialTextCluster) / 4;
+    if (quarterWidth < final_vpos && (rightMostNonTrivialTextCluster) > final_vpos+20)
+        hasLineNumber = false;
 
     if (!hasLineNumber)
         return;
@@ -5244,21 +5263,11 @@ void TextPage::markLineNumber() {
     // immediate vertigal gap? this is important to avoid removing numbers corresponding typically to
     // list, or to reference markers (callout to affiliation or to bibliographical entry)
 
-
-    // if succesful identification, second pass is for marking
-    /*for (wordI = 0; wordI < lineNumberWords->getLength(); wordI++) {
-        word = (TextWord *)lineNumberWords->get(wordI);
-        // consider only aligned tokens
-        if ( (fabs(word->xMin - final_vpos) < font_size) || (fabs(word->xMax - final_vpos) < font_size) )
-            word->setLineNumber(gTrue);
-    }*/
-
     for (int i = 0; i < bestCluster.size(); i++) {
         int index = bestCluster[i];
         word = (TextWord *)lineNumberWords->get(index);
         // consider only aligned tokens
-        //if ( (fabs(word->xMin - final_vpos) < font_size) || (fabs(word->xMax - final_vpos) < font_size) )
-            word->setLineNumber(gTrue);
+        word->setLineNumber(gTrue);
     }
     
 }
