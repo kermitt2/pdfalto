@@ -5046,8 +5046,7 @@ void TextPage::markLineNumber() {
     int nextVpos = 0;
     int increment = 0;
     
-    xmlChar *xcFontName;
-    GBool hasLineNumber = gFalse;
+    bool hasLineNumber = false;
 
     // at this stage we already have a block and line segmentation
     int parIdx, lineIdx, wordI, n;
@@ -5058,6 +5057,7 @@ void TextPage::markLineNumber() {
     TextWord *previousWord;
 
     GList *lineNumberWords = new GList();
+    GList *textWords = new GList();
 
     // first pass is for number detection, it should stop very early in case of no line number
     for (parIdx = 0; parIdx < blocks->getLength(); parIdx++) {
@@ -5087,7 +5087,9 @@ void TextPage::markLineNumber() {
                     //cout << "line number! " << word->xMin <<  " " << word->xMax<< endl;
                     lineNumberWords->append(word);
                     hasLineNumber = true;
-                } 
+                } else {
+                    textWords->append(word);
+                }
             }
         }
     }
@@ -5132,6 +5134,43 @@ void TextPage::markLineNumber() {
         }
     }
 
+    // apply a similar clustering for selected non-numerical tokens 
+    vector<vector<int>> textClusters;
+    vector<int> textPositions;
+    for (wordI = 0; wordI < textWords->getLength(); wordI++) {
+        word = (TextWord *)textWords->get(wordI);
+        int vpos1 = word->xMin;
+        int vpos2 = word->xMax;
+
+        // we cluster by xMin and xMax positions
+        int index1 = find_index(textPositions, vpos1);;
+        int index2 = find_index(textPositions, vpos2);
+
+        if (index1 != -1) {
+            vector<int> the_cluster = textClusters[index1];
+            the_cluster.push_back(wordI);
+            textClusters[index1] = the_cluster;
+        } else {
+            // new cluster init
+            vector<int> the_cluster;
+            the_cluster.push_back(wordI);
+            textClusters.push_back(the_cluster);
+            textPositions.push_back(vpos1);
+        }
+
+        if (index2 != -1) {
+            vector<int> the_cluster = textClusters[index2];
+            the_cluster.push_back(wordI);
+            textClusters[index2] = the_cluster;
+        } else {
+            // new cluster init
+            vector<int> the_cluster;
+            the_cluster.push_back(wordI);
+            textClusters.push_back(the_cluster);
+            textPositions.push_back(vpos2);
+        }
+    }
+
     //cout << "clusters size: " << clusters.size() << endl;
 
     int bestClusterIndex = -1;
@@ -5159,7 +5198,7 @@ void TextPage::markLineNumber() {
 
     // check the remaining constraints: 
 
-    // same font?
+    // same font? we normally never have line number using different font
     int font_size = 0;
     xmlChar *xcFontName;
     for (int i = 0; i < bestCluster.size(); i++) {
@@ -5167,24 +5206,43 @@ void TextPage::markLineNumber() {
         word = (TextWord *)lineNumberWords->get(index);
         font_size = word->fontSize;    
     
-        if (word->getFontName()) {
+        if (word->getFontName())
             xcFontName = (xmlChar *) word->getFontName();
 
         if (font_size != 0 && xcFontName != NULL)
             break;
     }
 
+    if (!hasLineNumber)
+        return;
+
+    // text areas at same alignment or more "side-positioned"?
+    // see the left-most and right-most non trivial text block with the text token clusters
+    int nonTrivialClusterSize = largestclustersize / 4;
+    if (nonTrivialClusterSize == 0)
+        nonTrivialClusterSize = 1;
+    // select largest cluster of numbers, which will give the best x alignment and the corresponding list of number tokens
+    for (int i = 0; i < textClusters.size(); i++) {
+        vector<int> theCluster = textClusters[i];
+        //cout << "theCluster.size(): " << theCluster.size() << endl;
+        if (theCluster.size() >= nonTrivialClusterSize) {
+            word = (TextWord *)textWords->get(theCluster[0]);
+            int vpos1 = word->xMin;
+            int vpos2 = word->xMax;
+            if (vpos1 <= final_vpos && vpos2 >= final_vpos)
+                hasLineNumber = false;
+        }
+    }
+
+    if (!hasLineNumber)
+        return;
+
     // increment? it's not possible to suppose any particular increments, it could be 1 by 1 or 
     // 5 by 5 for instance, however number should be growing!
 
 
-
     // immediate vertigal gap? this is important to avoid removing numbers corresponding typically to
     // list, or to reference markers (callout to affiliation or to bibliographical entry)
-
-
-    // text areas at same alignment or more "side-positioned"?
-    // get left-most and right-most non trivial text block
 
 
     // if succesful identification, second pass is for marking
