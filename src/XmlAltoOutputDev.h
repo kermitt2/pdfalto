@@ -78,8 +78,8 @@ struct T3FontCacheTag {
 };
 
 class T3FontCache {
-public:
 
+public:
     T3FontCache(Ref *fontID, double m11A, double m12A,
                 double m21A, double m22A,
                 int glyphXA, int glyphYA, int glyphWA, int glyphHA,
@@ -104,25 +104,16 @@ public:
     Guchar *cacheData;        // glyph pixmap cache
     T3FontCacheTag *cacheTags;    // cache tags, i.e., char codes
 };
-//------------------------------------------------------------------------
 
+//------------------------------------------------------------------------
 typedef void (*TextOutputFunc)(void *stream, char *text, int len);
 
 //------------------------------------------------------------------------
 // TextFontInfo
 //------------------------------------------------------------------------
-/**
- * TextFontInfo class (based on TextOutputDev.h, Copyright 1997-2003 Glyph & Cog, LLC)<br></br>
- * Xerox Research Centre Europe <br></br>
- * @date 04-2006
- * @author Herv� D�jean
- * @author Sophie Andrieu
- * @version xpdf 3.01
- */
-
 class TextFontInfo {
-public:
 
+public:
     TextFontInfo(GfxState *state);
     ~TextFontInfo();
 
@@ -141,7 +132,6 @@ public:
 //#endif
 
 private:
-
     Ref fontID;
     GfxFont *gfxFont;
 //#if TEXTOUT_WORD_LIST
@@ -158,10 +148,9 @@ private:
 };
 
 
-
 class TextFontStyleInfo {
-public:
 
+public:
     ~TextFontStyleInfo();
 
     // Get the font name (which may be NULL).
@@ -201,7 +190,6 @@ public:
 //#endif
 
 private:
-
     int id;
     GString* fontName;
     double fontSize;
@@ -251,16 +239,10 @@ private:
 //------------------------------------------------------------------------
 // ImageInline
 //------------------------------------------------------------------------
-/**
- * ImageInline class <br></br>
- * Xerox Research Centre Europe <br></br>
- * @date 04-2006
- * @author Sophie Andrieu
- * @version xpdf 3.01
- */
-class ImageInline {
-public:
 
+class ImageInline {
+
+public:
     /** Construct a new <code>ImageInline</code><br></br>
      * An <code>ImageInline</code> is an image which is localized in the stream and it is composed<br></br>
      * by a x position, a y position, a width, a height and href which get the path of this image.<br></br>
@@ -327,7 +309,6 @@ public:
     void setHrefImage(GString *href){hrefImage = href;}
 
 private:
-
     /** The absolute object index in the stream **/
     int idx;
     /** The x position of the image */
@@ -354,8 +335,8 @@ private:
 
 
 class Image {
-public:
 
+public:
     /** Construct a new <code>Image</code><br></br>
      * An <code>Image</code> is an image which is localized in the stream and it is composed<br></br>
      * by a x position, a y position, a width, a height and href which get the path of this image.<br></br>
@@ -445,7 +426,6 @@ public:
     void setType(GString *typeA){type = typeA;}
 
 private:
-
     /** The absolute object index in the stream **/
     int idx;
     /** The x position of the image */
@@ -480,10 +460,9 @@ private:
 //------------------------------------------------------------------------
 // TextChar
 //------------------------------------------------------------------------
-
 class TextChar {
-public:
 
+public:
     TextChar(GfxState *state, Unicode cA, CharCode charCodeA, int charPosA, int charLenA,
              double xMinA, double yMinA, double xMaxA, double yMaxA,
              int rotA, GBool clippedA, GBool invisibleA,
@@ -516,8 +495,8 @@ public:
 // IWord
 //------------------------------------------------------------------------
 class IWord {
-public:
 
+public:
     /** The id of the word (used to include and localize the image inline in the stream) */
     int idWord;
 
@@ -596,8 +575,6 @@ public:
     float leading;
 
     GBool isNonUnicodeGlyph;
-//public:
-
 
     /** Get the absolute object index in the stream
      * @return The absolute object index in the stream */
@@ -625,8 +602,9 @@ public:
      * @param r The Red color value
      * @param g The Green color value
      * @param b The Blue color value */
-    void getColor(double *r, double *g, double *b)
-    { *r = colorR; *g = colorG; *b = colorB; }
+    void getColor(double *r, double *g, double *b) { 
+        *r = colorR; *g = colorG; *b = colorB; 
+    }
 
     /** Normalize the font name :<br></br>
      *  - remove the prefix (if it is present) which is the basefont of subsetted fonts.
@@ -679,10 +657,9 @@ public:
 //------------------------------------------------------------------------
 // TextWord
 //------------------------------------------------------------------------
-
 class TextWord : public IWord {
-public:
 
+public:
     TextWord(GList *chars, int start, int lenA,
              int rotA, int dirA, GBool spaceAfterA, GfxState *state,
              TextFontInfo *fontA, double fontSizeA, int idCurrentWord,
@@ -705,7 +682,6 @@ public:
     void setLineNumber(GBool theBool);
 
 private:
-
     TextWord(TextWord *word);
     static int cmpYX(const void *p1, const void *p2);
     static int cmpCharPos(const void *p1, const void *p2);
@@ -718,7 +694,7 @@ private:
 
     GBool invisible;		// set for invisible text (render mode 3)
 
-    GBool lineNumber = gFalse;;
+    GBool lineNumber = gFalse;
 
     friend class TextBlock;
     friend class TextLine;
@@ -728,16 +704,9 @@ private:
 //------------------------------------------------------------------------
 // TextRawWord
 //------------------------------------------------------------------------
-/**
- * TextRawWord class<br></br>
- * Represents the words as a character sequence from stream order separated by a space character (U+0020) each word pointing to next one<br></br>
- * @date 07-2018
- * @author Achraf Azhar
- * @version xpdf 3.01 */
-
 class TextRawWord : public IWord {
-public:
 
+public:
     /** Construct a new <code>TextRawWord</code>
      * @param state The state description
      * @param rotA The rotation value of the current word
@@ -789,16 +758,10 @@ public:
 
     Unicode getChar(int idx);
 
-    // if the word token is a line number
-    void setLineNumber(GBool theBool);
-
 //private:
-
     /** Rank in the original flow */
     int indexmin;
     int indexmax;
-
-    GBool lineNumber;
 
     friend class TextPage;
 };
@@ -807,8 +770,8 @@ public:
 //------------------------------------------------------------------------
 // TextLine
 //------------------------------------------------------------------------
-
 class TextLine {
+
 public:
     TextLine();
     TextLine(GList *wordsA, double xMinA, double yMinA,
@@ -831,8 +794,8 @@ public:
     void setYMax(double yMaxA) { yMax = yMaxA; }
     void setWords(GList *wordsA) { words = wordsA; }
     void setFontSize(double fontSizeA) { fontSize = fontSizeA; }
-private:
 
+private:
     static int cmpX(const void *p1, const void *p2);
 
     GList *words;			// [TextWord]
@@ -860,8 +823,8 @@ private:
 //------------------------------------------------------------------------
 // TextParagraph
 //------------------------------------------------------------------------
-
 class TextParagraph {
+
 public:
     TextParagraph();
     TextParagraph(GList *linesA, GBool dropCapA);
@@ -883,7 +846,6 @@ public:
     void setLines(GList *linesA) { lines = linesA; }
 
 private:
-
     GList *lines;			// [TextLine]
     GBool dropCap;		// paragraph starts with a drop capital
     double xMin, xMax;		// bounding box x coordinates
@@ -895,10 +857,9 @@ private:
 //------------------------------------------------------------------------
 // TextColumn
 //------------------------------------------------------------------------
-
 class TextColumn {
-public:
 
+public:
     TextColumn(GList *paragraphsA, double xMinA, double yMinA,
                double xMaxA, double yMaxA);
     ~TextColumn();
@@ -914,7 +875,6 @@ public:
     int getRotation();
 
 private:
-
     static int cmpX(const void *p1, const void *p2);
     static int cmpY(const void *p1, const void *p2);
     static int cmpPX(const void *p1, const void *p2);
@@ -931,22 +891,12 @@ private:
 };
 
 
-
 //------------------------------------------------------------------------
 // TextPage
 //------------------------------------------------------------------------
-/**
- * TextPage class (based on TextOutputDev.h, Copyright 1997-2003 Glyph & Cog, LLC)<br></br>
- * Xerox Research Centre Europe <br></br>
- * @date 04-2006
- * @author Herv� D�jean
- * @author Sophie Andrieu
- * @version xpdf 3.01
- */
-
 class TextPage {
-public:
 
+public:
     /** Construct a new <code>TextPage</code>
      * @param verboseA The value of the verbose option
      * @param node The root node
@@ -1106,8 +1056,7 @@ public:
 
     void buildSuperLines(TextBlock *blk, GList *superLines);
 
-    void assignSimpleLayoutPositions(GList *superLines,
-                                               UnicodeMap *uMap);
+    void assignSimpleLayoutPositions(GList *superLines, UnicodeMap *uMap);
 
     void generateUnderlinesAndLinks(GList *columns);
 
@@ -1201,8 +1150,13 @@ public:
     /** Identify line numbers and mark corresponding raw word */
     void markLineNumber();
 
-//  void addLink(int xMin, int yMin, int xMax, int yMax, Link *link);
+    /** Set if the page contains a column of line numbers*/
+    void setLineNumber(GBool theBool);
 
+    /** get the presence of a column of line numbers in the text page */
+    GBool getLineNumber();
+
+//  void addLink(int xMin, int yMin, int xMax, int yMax, Link *link);
 
     //from mobi
     const char* drawImageOrMask(GfxState *state, Object* ref, Stream *str,
@@ -1216,8 +1170,6 @@ public:
                    unsigned char* data,
                    unsigned char bpp = 24, unsigned char color_type = PNG_COLOR_TYPE_RGB,
                    png_color* palette = NULL, unsigned short color_count = 0);
-
-
 
     /** Draw the image
      * @param state The state description
@@ -1282,7 +1234,6 @@ public:
 //    TextRawWord * getRawWords(){ return rawWords;}
 
 private:
-
     /** Clear all */
     void clear();
 
@@ -1344,8 +1295,6 @@ private:
     GBool testAnnotatedText(double xMin,double yMin,double xMax,double yMax);
     void testLinkedText(xmlNodePtr node,double xMin,double yMin,double xMax,double yMax);
 
-
-
     /** The numero of the current <i>PAGE</i> */
     int num;
     /** The <i>IMAGE</i> numero in the current page */
@@ -1399,8 +1348,7 @@ private:
     /** The directory name which contain all data */
     GString *dataDirectory;
 
-    /**   */
-
+    /** */
     void *vecOutputStream;
 
     /** PL: To modify the blocks in reading order */
@@ -1478,18 +1426,20 @@ private:
 
 
     GList *getChars(GList *charsA, double xMin, double yMin, double xMax, double yMax);
-//
+
+    ModifierClass classifyChar(Unicode u);
+
+    Unicode getCombiningDiacritic(ModifierClass modifierClass);
+
+    /** if the page contains a column of line numbers */
+    GBool lineNumber = gFalse;
+
 //    friend class TextBlock;
 //    friend class TextColumn;
 //    friend class TextLine;
 //    friend class TextRawWord;
 //    friend class TextWord;
-
-    ModifierClass classifyChar(Unicode u);
-
-    Unicode getCombiningDiacritic(ModifierClass modifierClass);
 };
-
 
 // Simple class to save picture references
 class PictureReference
@@ -1510,24 +1460,12 @@ public:
 };
 
 
-
-
 //------------------------------------------------------------------------
 // XmlAltoOutputDev
 //------------------------------------------------------------------------
-/**
- * XmlAltoOutputDev.h (based on TextOutputDev.h, Copyright 1997-2003 Glyph & Cog, LLC)<br></br>
- * Xerox Research Centre Europe <br></br>
- * @date 04-2006
- * @author Herv� D�jean
- * @author Sophie Andrieu
- * @version xpdf 3.01
- * @see OutputDev
- */
-
 class XmlAltoOutputDev: public OutputDev {
-public:
 
+public:
     /**
      * Construct a new <code>XmlOutputDev</code><br></br>
      * Open a text output file. If <i>fileName</i> is NULL, no file is written
@@ -1654,7 +1592,6 @@ public:
                                int width, int height, GBool invert, GBool inlineImg,
                                GBool interpolate);
 
-
 //    virtual void drawImageMask(GfxState *state, Object *ref, Stream *str,
 //    int width, int height, GBool invert,
 //    GBool inlineImg, GBool interpolate);
@@ -1688,7 +1625,6 @@ public:
 //
 //    void writeImageInfo(int width, int height, GfxState *state,
 //                                          GfxImageColorMap *colorMap);
-
 
 
     virtual void drawSoftMaskedImage(GfxState *state, Object *ref,
@@ -1777,7 +1713,6 @@ public:
                                      double m31, double m32);
 
 private:
-
     /** Generate the path
      * @param path The current path
      * @param state The state description
@@ -1787,12 +1722,10 @@ private:
     double curstate[6];//this is the ctm
     //double *curstate[1000];
 
-
     /** The XML document */
     xmlDocPtr  doc;
     /** The root node */
     xmlNodePtr docroot;
-
 
     /** The XML document outline */
     xmlDocPtr  docOutline;
@@ -1816,7 +1749,7 @@ private:
     GBool verbose;
     /** To keep text in content stream order */
     //GBool rawOrder;
-/** To make text in reading order */
+    /** To make text in reading order */
     GBool readingOrder;
     /** To know if the blocks option is selected */
     GBool useBlocks;
@@ -1845,7 +1778,6 @@ private:
 
     /** list of pictures references*/
     GList *lPictureReferences;
-
 
     /** The item id for each toc items */
     int idItemToc;

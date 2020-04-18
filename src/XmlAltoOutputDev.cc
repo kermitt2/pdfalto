@@ -828,9 +828,6 @@ TextRawWord::TextRawWord(GfxState *state, double x0, double y0,
     serif = gFalse;
     symbolic = gFalse;
 
-    // the raw word is a line number
-    lineNumber = gFalse;
-
     double *fontm;
     double m[4];
     double m2[4];
@@ -1052,10 +1049,6 @@ TextRawWord::~TextRawWord() {
 }
 
 Unicode TextRawWord::getChar(int idx) { return ((TextChar *) chars->get(idx))->c; }
-
-void TextRawWord::setLineNumber(GBool theBool) {
-    lineNumber = theBool;
-}
 
 void TextRawWord::addChar(GfxState *state, double x, double y, double dx,
                           double dy, Unicode u, CharCode charCodeA, int charPosA, GBool overlap, TextFontInfo *fontA,
@@ -1827,6 +1820,16 @@ TextPage::~TextPage() {
     }
 }
 
+/** Set if the page contains a column of line numbers*/
+void TextPage::setLineNumber(GBool theBool) {
+    lineNumber = theBool;
+}
+
+/** get the presence of a column of line numbers in the text page */
+GBool TextPage::getLineNumber() {
+    return lineNumber;
+}
+
 void TextPage::startPage(int pageNum, GfxState *state, GBool cut) {
     clear();
     words = new GList();
@@ -1844,7 +1847,6 @@ void TextPage::startPage(int pageNum, GfxState *state, GBool cut) {
     PDFRectangle *trimBox = myCat->getPage(pageNum)->getTrimBox();
     PDFRectangle *bleedBox = myCat->getPage(pageNum)->getBleedBox();
     PDFRectangle *artBox = myCat->getPage(pageNum)->getArtBox();
-
 
     page = xmlNewNode(NULL, (const xmlChar *) TAG_PAGE);
     page->type = XML_ELEMENT_NODE;
@@ -5242,10 +5244,6 @@ void TextPage::markLineNumber() {
 
     if (!hasLineNumber)
         return;
-
-    //cout << "final alignment vpos: " << final_vpos << endl;
-    //cout << "        leftMostNonTrivialTextCluster: " << leftMostNonTrivialTextCluster << 
-    //    ", rightMostNonTrivialTextCluster: " << rightMostNonTrivialTextCluster << endl;
 
     // neutralize candidate line numbers in the middle of a page with 2 columns 
     // (these are ref numbers in the biblio or something else, but can't be line numbers)
