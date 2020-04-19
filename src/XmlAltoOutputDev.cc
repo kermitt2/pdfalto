@@ -5112,8 +5112,11 @@ bool TextPage::markLineNumber() {
             rightMostBoundary = par->xMax;
     }
 
-    if (!hasLineNumber)
+    if (!hasLineNumber) {
+        delete lineNumberWords;
+        delete textWords;
         return false;
+    }
 
     // define the x alignment by clustering identified number tokens by x position
     vector<vector<int>> clusters;
@@ -5203,8 +5206,11 @@ bool TextPage::markLineNumber() {
         }
     }
 
-    if (bestClusterIndex == -1)
+    if (bestClusterIndex == -1) {
+        delete lineNumberWords;
+        delete textWords;
         return false;
+    }
 
     vector<int> bestCluster = clusters[bestClusterIndex];
     double final_vpos = positions[bestClusterIndex];
@@ -5258,8 +5264,11 @@ bool TextPage::markLineNumber() {
         }
     }
 
-    if (!hasLineNumber)
+    if (!hasLineNumber) {
+        delete lineNumberWords;
+        delete textWords;
         return false;
+    }
 
     //cout << "leftMostBoundary: " << leftMostBoundary << endl;
     //cout << "rightMostBoundary: " << rightMostBoundary << endl;
@@ -5270,8 +5279,11 @@ bool TextPage::markLineNumber() {
     if (quarterWidth+leftMostBoundary < final_vpos && final_vpos < leftMostBoundary+(quarterWidth*3))
         hasLineNumber = false;
     
-    if (!hasLineNumber)
+    if (!hasLineNumber) {
+        delete lineNumberWords;
+        delete textWords;
         return false;
+    }
 
     // increment? it's not possible to suppose any particular increments, it could be 1 by 1 or 
     // 5 by 5 for instance, however number should be growing!
@@ -5284,6 +5296,9 @@ bool TextPage::markLineNumber() {
         // consider only aligned tokens
         word->setLineNumber(true);
     }
+
+    delete lineNumberWords;
+    delete textWords;
 
     return hasLineNumber;
 }
