@@ -4979,6 +4979,7 @@ void TextPage::dumpInReadingOrder(GBool noLineNumbers, GBool fullFontName) {
 }
 
 bool is_digit(Unicode u) {
+    // simply match Unicode for ASCII digit... should we add more unicode variants of numbers?
     if (u == (Unicode) 48 ||
         u == (Unicode) 49 ||
         u == (Unicode) 50 ||
@@ -4999,7 +5000,6 @@ bool is_number(TextWord *word) {
     text = (Unicode *) grealloc(text, word->len * sizeof(Unicode));
     for (int i = 0; i < word->len; i++) {
         Unicode theU = ((TextChar *) word->chars->get(i))->c;
-        //cout << theU << endl;
         if (!is_digit(theU)) {
             return false;
         }
@@ -5008,7 +5008,6 @@ bool is_number(TextWord *word) {
 }
 
 int find_index(vector<double> positions, double val) {
-    //cout << "find_index: " << val << endl;
     // simple double look-up, return index of val or -1
     int index = -1;
     for (int i = 0; i < positions.size(); i++) {
@@ -5017,13 +5016,10 @@ int find_index(vector<double> positions, double val) {
             break;
         }
     }
-
-    //cout << "       found: " << index << endl;
     return index;
 }
 
 int find_index(vector<int> positions, int val) {
-    //cout << "find_index: " << val << endl;
     // simple int look-up, return index of val or -1
     int index = -1;
     for (int i = 0; i < positions.size(); i++) {
@@ -5032,8 +5028,6 @@ int find_index(vector<int> positions, int val) {
             break;
         }
     }
-
-    //cout << "       found: " << index << endl;
     return index;
 }
 
@@ -5193,15 +5187,12 @@ bool TextPage::markLineNumber() {
         }
     }
 
-    //cout << "clusters size: " << clusters.size() << endl;
-
     vector<int> bestClusterIndex;
     vector<int> largestClusterSize;
     int nonTrivialClusterSize = 3;
-    // select largest cluster of numbers, which will give the best x alignment and the corresponding list of number tokens
+    // select largest cluster of numbers, which will give the best x alignments and the corresponding lists of number tokens
     for (int i = 0; i < clusters.size(); i++) {
         vector<int> theCluster = clusters[i];
-        //cout << "theCluster.size(): " << theCluster.size() << endl;
 
         if (theCluster.size() < nonTrivialClusterSize)
             continue;
@@ -5222,8 +5213,7 @@ bool TextPage::markLineNumber() {
                         break;
                     }            
                 } else {
-                    // insert just before j
-                    //cout << "insert just before j: " << theCluster.size() << endl;
+                    // this is sorted based on the cluster siez, so we insert just before j
                     bestClusterIndex.insert(it1, i);
                     largestClusterSize.insert(it2, theCluster.size());
                     break;
@@ -5250,25 +5240,23 @@ bool TextPage::markLineNumber() {
     // check the remaining constraints: 
 
     // same font? we normally never have line number using different font
-    /*int font_size = 0;
-    xmlChar *xcFontName;
+    /*
     for (int i = 0; i < bestCluster.size(); i++) {
         int index = bestCluster[i];
         word = (TextWord *)lineNumberWords->get(index);
+        int font_size = 0;
+        xmlChar *xcFontName;
         font_size = word->fontSize;    
-    
         if (word->getFontName())
             xcFontName = (xmlChar *) word->getFontName();
+        // to be finished if needed...
+    }
+    if (!hasLineNumber)
+        return false;
+    */
 
-        if (font_size != 0 && xcFontName != NULL)
-            break;
-    }*/
-
-    //if (!hasLineNumber)
-    //    return false;
-
-    // text areas at same alignment or more "side-positioned"?
-    // see the left-most and right-most non trivial text block with the text token clusters
+    // Do we have text areas at same alignment or positioned more on the side than the number cluster?
+    // -> see the left-most and right-most non trivial text block with the text token clusters
     nonTrivialClusterSize = largestClusterSize[0] / 4;
     if (nonTrivialClusterSize == 0)
         nonTrivialClusterSize = 1;
@@ -5280,7 +5268,7 @@ bool TextPage::markLineNumber() {
         final_vpos = positions[bestClusterIndex[j]];
         hasLineNumber = true;
 
-        //cout << "move to best" << endl;
+        //cout << "move to next best" << endl;
         //cout << "     final alignment vpos: " << final_vpos << endl;
         //cout << "     nb numbers best cluster: " << bestCluster.size() << endl;
 
@@ -5307,9 +5295,6 @@ bool TextPage::markLineNumber() {
         return false;
     }
 
-    //cout << "leftMostBoundary: " << leftMostBoundary << endl;
-    //cout << "rightMostBoundary: " << rightMostBoundary << endl;
-
     // neutralize candidate line numbers in the middle of a page with 2 columns 
     // (these are ref numbers in the biblio or something else, but can't be line numbers)
     int quarterWidth = (rightMostBoundary - leftMostBoundary) / 4;
@@ -5324,9 +5309,11 @@ bool TextPage::markLineNumber() {
 
     // increment? it's not possible to suppose any particular increments, it could be 1 by 1 or 
     // 5 by 5 for instance, however number should be growing!
+    // to be done if needed...
 
     // immediate vertigal gap? 
 
+    // final marking of TextWord corresponding to line numbers
     for (int i = 0; i < bestCluster.size(); i++) {
         int index = bestCluster[i];
         word = (TextWord *)lineNumberWords->get(index);
