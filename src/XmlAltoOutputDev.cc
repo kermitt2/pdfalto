@@ -4665,7 +4665,7 @@ void TextPage::insertColumnIntoTree(TextBlock *column, TextBlock *tree) {
 }
 
 // PL: this is not used
-void TextPage::dumpInReadingOrder(GBool useBlocks, GBool fullFontName) {
+void TextPage::dumpInReadingOrder(GBool noLineNumbers, GBool fullFontName) {
     TextBlock *tree;
     TextColumn *col;
     TextParagraph *par;
@@ -4718,7 +4718,8 @@ void TextPage::dumpInReadingOrder(GBool useBlocks, GBool fullFontName) {
         col = (TextColumn *) columns->get(colIdx);
         for (parIdx = 0; parIdx < col->paragraphs->getLength(); ++parIdx) {
 
-            if (useBlocks) {
+            //if (useBlocks) 
+            {
                 nodeblocks = xmlNewNode(NULL, (const xmlChar *) TAG_BLOCK);
                 nodeblocks->type = XML_ELEMENT_NODE;
 
@@ -4916,14 +4917,14 @@ void TextPage::dumpInReadingOrder(GBool useBlocks, GBool fullFontName) {
                     free(tmp);
                 }
 
-                if (useBlocks)
-                    xmlAddChild(nodeblocks, nodeline);
-                else
-                    xmlAddChild(printSpace, nodeline);
+                //if (useBlocks)
+                xmlAddChild(nodeblocks, nodeline);
+                //else
+                //    xmlAddChild(printSpace, nodeline);
             }
 
-            if (useBlocks)
-                xmlAddChild(printSpace, nodeblocks);
+            //if (useBlocks)
+            xmlAddChild(printSpace, nodeblocks);
         }
         //(*outputFunc)(outputStream, eol, eolLen);
     }
@@ -5303,7 +5304,7 @@ bool TextPage::markLineNumber() {
     return hasLineNumber;
 }
 
-void TextPage::dump(GBool useBlocks, GBool fullFontName, vector<bool> lineNumberStatus) {
+void TextPage::dump(GBool noLineNumbers, GBool fullFontName, vector<bool> lineNumberStatus) {
     // Output the page in raw (content stream) order
     blocks = new GList(); //these are blocks in alto schema
 
@@ -5883,7 +5884,8 @@ void TextPage::dump(GBool useBlocks, GBool fullFontName, vector<bool> lineNumber
     for (parIdx = 0; parIdx < blocks->getLength(); parIdx++) {
         par = (TextParagraph *) blocks->get(parIdx);
 
-        if (useBlocks) {
+        //if (useBlocks) 
+        {
             nodeblocks = xmlNewNode(NULL, (const xmlChar *) TAG_BLOCK);
             nodeblocks->type = XML_ELEMENT_NODE;
 
@@ -6124,14 +6126,14 @@ void TextPage::dump(GBool useBlocks, GBool fullFontName, vector<bool> lineNumber
                 free(tmp);
             }
 
-            if (useBlocks)
-                xmlAddChild(nodeblocks, nodeline);
-            else
-                xmlAddChild(printSpace, nodeline);
+            //if (useBlocks)
+            xmlAddChild(nodeblocks, nodeline);
+            //else
+            //    xmlAddChild(printSpace, nodeline);
         }
 
-        if (useBlocks)
-            xmlAddChild(printSpace, nodeblocks);
+        //if (useBlocks)
+        xmlAddChild(printSpace, nodeblocks);
     }
 
     int imageCount = listeImages.size();
@@ -7556,7 +7558,7 @@ XmlAltoOutputDev::XmlAltoOutputDev(GString *fileName, GString *fileNamePdf,
     UnicodeMap *uMap;
 
     //useBlocks = parameters->getDisplayBlocks();
-    useBlocks = gTrue;
+    //useBlocks = gTrue;
     noLineNumbers = parameters->getNoLineNumbers();
     fullFontName = parameters->getFullFontName();
     noImageInline = parameters->getImageInline();
@@ -8107,9 +8109,9 @@ void XmlAltoOutputDev::endPage() {
     text->configuration();
     if (parameters->getDisplayText()) {
 //        if (readingOrder) {
-//            text->dumpInReadingOrder(useBlocks, fullFontName);
+//            text->dumpInReadingOrder(noLineNumbers, fullFontName);
 //        } else
-        text->dump(useBlocks, fullFontName, lineNumberStatus);
+        text->dump(noLineNumbers, fullFontName, lineNumberStatus);
         appendLineNumberStatus(text->getLineNumber());
     }
 

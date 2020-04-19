@@ -990,7 +990,7 @@ public:
     /** Dump contents of the current page
      * @param blocks To know if the blocks option is selected
      * @param fullFontName To know if the fullFontName option is selected */
-    void dump(GBool blocks, GBool fullFontName, vector<bool> lineNumberStatus);
+    void dump(GBool noLineNumbers, GBool fullFontName, vector<bool> lineNumberStatus);
 
     /** Dump contents of the current page following the reading order.
      * @param blocks To know if the blocks option is selected
@@ -1776,7 +1776,7 @@ private:
     /** To make text in reading order */
     GBool readingOrder;
     /** To know if the blocks option is selected */
-    GBool useBlocks;
+    //GBool useBlocks;
 
     /** To know if line numbers must be displayed or not */
     GBool noLineNumbers;
