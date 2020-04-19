@@ -5195,28 +5195,56 @@ bool TextPage::markLineNumber() {
 
     //cout << "clusters size: " << clusters.size() << endl;
 
-    int bestClusterIndex = -1;
-    int largestclustersize = 0;
+    vector<int> bestClusterIndex;
+    vector<int> largestClusterSize;
+    int nonTrivialClusterSize = 3;
     // select largest cluster of numbers, which will give the best x alignment and the corresponding list of number tokens
     for (int i = 0; i < clusters.size(); i++) {
         vector<int> theCluster = clusters[i];
         //cout << "theCluster.size(): " << theCluster.size() << endl;
-        if (theCluster.size() > largestclustersize) {
-            bestClusterIndex = i;
-            largestclustersize = theCluster.size();
+
+        if (theCluster.size() < nonTrivialClusterSize)
+            continue;
+
+        if (bestClusterIndex.size() == 0) {
+            bestClusterIndex.push_back(i);
+            largestClusterSize.push_back(theCluster.size());
+        } else {
+            vector<int>::const_iterator it1 = bestClusterIndex.begin();
+            vector<int>::const_iterator it2 = largestClusterSize.begin();
+            vector<int>::const_iterator last = bestClusterIndex.end();
+            int j = 0;
+            while(it1 != last) {
+                if (theCluster.size() < largestClusterSize[j]) {
+                    if (j == bestClusterIndex.size()-1) {
+                        bestClusterIndex.push_back(i);
+                        largestClusterSize.push_back(theCluster.size());
+                        break;
+                    }            
+                } else {
+                    // insert just before j
+                    //cout << "insert just before j: " << theCluster.size() << endl;
+                    bestClusterIndex.insert(it1, i);
+                    largestClusterSize.insert(it2, theCluster.size());
+                    break;
+                } 
+                j++;
+                ++it1;
+                ++it2;
+            }
         }
     }
 
-    if (bestClusterIndex == -1) {
+    if (bestClusterIndex.size() == 0) {
         delete lineNumberWords;
         delete textWords;
         return false;
     }
 
-    vector<int> bestCluster = clusters[bestClusterIndex];
-    double final_vpos = positions[bestClusterIndex];
+    vector<int> bestCluster = clusters[bestClusterIndex[0]];
+    double final_vpos = positions[bestClusterIndex[0]];
 
-    //cout << "final alignment vpos: " << final_vpos << endl;
+    //cout << "best alignment vpos: " << final_vpos << endl;
     //cout << "nb numbers best cluster: " << bestCluster.size() << endl;
 
     // check the remaining constraints: 
@@ -5241,32 +5269,37 @@ bool TextPage::markLineNumber() {
 
     // text areas at same alignment or more "side-positioned"?
     // see the left-most and right-most non trivial text block with the text token clusters
-    int nonTrivialClusterSize = largestclustersize / 4;
+    nonTrivialClusterSize = largestClusterSize[0] / 4;
     if (nonTrivialClusterSize == 0)
         nonTrivialClusterSize = 1;
-    //int leftMostNonTrivialTextCluster = 999999;
-    //int rightMostNonTrivialTextCluster = 0;
-    // select largest cluster of numbers, which will give the best x alignment and the corresponding list of number tokens
-    for (int i = 0; i < textClusters.size(); i++) {
-        vector<int> theCluster = textClusters[i];
-        if (theCluster.size() >= nonTrivialClusterSize) {
-            word = (TextWord *)textWords->get(theCluster[0]);
-            int vpos1 = word->xMin;
-            int vpos2 = word->xMax;
-            if (vpos1 <= final_vpos && vpos2 >= final_vpos)
-                hasLineNumber = false;
 
-            /*if (vpos1 < leftMostNonTrivialTextCluster)
-                leftMostNonTrivialTextCluster = vpos1;
-            word = (TextWord *)textWords->get(theCluster[theCluster.size()-1]);
-            vpos2 = word->xMax;
-            if (vpos2 > rightMostNonTrivialTextCluster)
-                rightMostNonTrivialTextCluster = vpos2;*/
+    //cout << "bestClusterIndex.size(): " << bestClusterIndex.size() << endl;
+
+    for(int j=0; j<bestClusterIndex.size(); j++) {
+        bestCluster = clusters[bestClusterIndex[j]];
+        final_vpos = positions[bestClusterIndex[j]];
+        hasLineNumber = true;
+
+        //cout << "move to best" << endl;
+        //cout << "     final alignment vpos: " << final_vpos << endl;
+        //cout << "     nb numbers best cluster: " << bestCluster.size() << endl;
+
+        for (int i = 0; i < textClusters.size(); i++) {
+            vector<int> theCluster = textClusters[i];
+            if (theCluster.size() >= nonTrivialClusterSize) {
+                word = (TextWord *)textWords->get(theCluster[0]);
+                int vpos1 = word->xMin;
+                int vpos2 = word->xMax;
+                //cout << "vpos1: " << vpos1 << ", vpos2: " << vpos2 << endl;
+                if (vpos1 <= final_vpos && vpos2 >= final_vpos) {
+                    hasLineNumber = false;
+                    break;
+                }
+            }
         }
+        if (hasLineNumber)
+            break;
     }
-
-    // TODO instead of simply discarding the best number cluster based on its position and move on, we 
-    // should consider the next largest number cluster as candidate
 
     if (!hasLineNumber) {
         delete lineNumberWords;
@@ -5996,7 +6029,7 @@ void TextPage::dump(GBool noLineNumbers, GBool fullFontName, vector<bool> lineNu
 
             xmlAddChild(printSpace, nodeblocks);
         }
-        
+
         delete lineNumberWords;
     }
 
