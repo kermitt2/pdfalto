@@ -497,7 +497,7 @@ TextWord::TextWord(GList *charsA, int start, int lenA,
     bold = gFalse;
     serif = gFalse;
     symbolic = gFalse;
-    lineNumber = gFalse;
+    lineNumber = false;
 
     spaceAfter = spaceAfterA;
     dir = dirA;
@@ -790,7 +790,7 @@ TextWord::TextWord(GList *charsA, int start, int lenA,
 
 Unicode TextWord::getChar(int idx) { return ((TextChar *) chars->get(idx))->c; }
 
-void TextWord::setLineNumber(GBool theBool) {
+void TextWord::setLineNumber(bool theBool) {
     lineNumber = theBool;
 }
 
@@ -1046,6 +1046,10 @@ TextRawWord::TextRawWord(GfxState *state, double x0, double y0,
 TextRawWord::~TextRawWord() {
     //gfree(text);
     gfree(edge);
+}
+
+void TextRawWord::setLineNumber(bool theBool) {
+    lineNumber = theBool;
 }
 
 Unicode TextRawWord::getChar(int idx) { return ((TextChar *) chars->get(idx))->c; }
@@ -1809,7 +1813,6 @@ TextPage::TextPage(GBool verboseA, Catalog *catalog, xmlNodePtr node,
         }
         dataDirectory = new GString(cp);
     }
-
 }
 
 TextPage::~TextPage() {
@@ -1821,12 +1824,12 @@ TextPage::~TextPage() {
 }
 
 /** Set if the page contains a column of line numbers*/
-void TextPage::setLineNumber(GBool theBool) {
+void TextPage::setLineNumber(bool theBool) {
     lineNumber = theBool;
 }
 
 /** get the presence of a column of line numbers in the text page */
-GBool TextPage::getLineNumber() {
+bool TextPage::getLineNumber() {
     return lineNumber;
 }
 
@@ -5033,7 +5036,7 @@ int find_index(vector<int> positions, int val) {
     return index;
 }
 
-void TextPage::markLineNumber() {
+bool TextPage::markLineNumber() {
     // Detect the presence of line number column in the page and mark the corresponding TextWord objects for further appropriate handling
 
     // Line number conditions:
@@ -5061,7 +5064,11 @@ void TextPage::markLineNumber() {
     GList *lineNumberWords = new GList();
     GList *textWords = new GList();
 
+    int rightMostBoundary = 0;
+    int leftMostBoundary = 999990;
+
     // first pass is for number detection, it should stop very early in case of no line number
+    // we also keep track of the left and right text boundaries for the page
     for (parIdx = 0; parIdx < blocks->getLength(); parIdx++) {
         par = (TextParagraph *) blocks->get(parIdx);
 
@@ -5093,11 +5100,20 @@ void TextPage::markLineNumber() {
                     textWords->append(word);
                 }
             }
+            if (line1->xMin < leftMostBoundary)
+                leftMostBoundary = line1->xMin;
+            if (line1->xMax > rightMostBoundary)
+                rightMostBoundary = line1->xMax;
         }
+
+        if (par->xMin < leftMostBoundary)
+            leftMostBoundary = par->xMin;
+        if (par->xMax > rightMostBoundary)
+            rightMostBoundary = par->xMax;
     }
 
     if (!hasLineNumber)
-        return;
+        return false;
 
     // define the x alignment by clustering identified number tokens by x position
     vector<vector<int>> clusters;
@@ -5188,18 +5204,18 @@ void TextPage::markLineNumber() {
     }
 
     if (bestClusterIndex == -1)
-        return;
+        return false;
 
     vector<int> bestCluster = clusters[bestClusterIndex];
     double final_vpos = positions[bestClusterIndex];
 
     //cout << "final alignment vpos: " << final_vpos << endl;
-    //cout << "nb numbers: " << bestCluster.size() << endl;
+    //cout << "nb numbers best cluster: " << bestCluster.size() << endl;
 
     // check the remaining constraints: 
 
     // same font? we normally never have line number using different font
-    int font_size = 0;
+    /*int font_size = 0;
     xmlChar *xcFontName;
     for (int i = 0; i < bestCluster.size(); i++) {
         int index = bestCluster[i];
@@ -5211,18 +5227,18 @@ void TextPage::markLineNumber() {
 
         if (font_size != 0 && xcFontName != NULL)
             break;
-    }
+    }*/
 
     //if (!hasLineNumber)
-    //    return;
+    //    return false;
 
     // text areas at same alignment or more "side-positioned"?
     // see the left-most and right-most non trivial text block with the text token clusters
     int nonTrivialClusterSize = largestclustersize / 4;
     if (nonTrivialClusterSize == 0)
         nonTrivialClusterSize = 1;
-    int leftMostNonTrivialTextCluster = 99999;
-    int rightMostNonTrivialTextCluster = 0;
+    //int leftMostNonTrivialTextCluster = 999999;
+    //int rightMostNonTrivialTextCluster = 0;
     // select largest cluster of numbers, which will give the best x alignment and the corresponding list of number tokens
     for (int i = 0; i < textClusters.size(); i++) {
         vector<int> theCluster = textClusters[i];
@@ -5233,46 +5249,47 @@ void TextPage::markLineNumber() {
             if (vpos1 <= final_vpos && vpos2 >= final_vpos)
                 hasLineNumber = false;
 
-            if (vpos1 < leftMostNonTrivialTextCluster)
+            /*if (vpos1 < leftMostNonTrivialTextCluster)
                 leftMostNonTrivialTextCluster = vpos1;
             word = (TextWord *)textWords->get(theCluster[theCluster.size()-1]);
             vpos2 = word->xMax;
             if (vpos2 > rightMostNonTrivialTextCluster)
-                rightMostNonTrivialTextCluster = vpos2;
+                rightMostNonTrivialTextCluster = vpos2;*/
         }
     }
 
     if (!hasLineNumber)
-        return;
+        return false;
+
+    //cout << "leftMostBoundary: " << leftMostBoundary << endl;
+    //cout << "rightMostBoundary: " << rightMostBoundary << endl;
 
     // neutralize candidate line numbers in the middle of a page with 2 columns 
     // (these are ref numbers in the biblio or something else, but can't be line numbers)
-    int quarterWidth = (rightMostNonTrivialTextCluster - leftMostNonTrivialTextCluster) / 4;
-    if (quarterWidth < final_vpos && (rightMostNonTrivialTextCluster) > final_vpos+20)
+    int quarterWidth = (rightMostBoundary - leftMostBoundary) / 4;
+    if (quarterWidth+leftMostBoundary < final_vpos && final_vpos < leftMostBoundary+(quarterWidth*3))
         hasLineNumber = false;
-
+    
     if (!hasLineNumber)
-        return;
+        return false;
 
     // increment? it's not possible to suppose any particular increments, it could be 1 by 1 or 
     // 5 by 5 for instance, however number should be growing!
 
-
-    // immediate vertigal gap? this is important to avoid removing numbers corresponding typically to
-    // list, or to reference markers (callout to affiliation or to bibliographical entry)
+    // immediate vertigal gap? 
 
     for (int i = 0; i < bestCluster.size(); i++) {
         int index = bestCluster[i];
         word = (TextWord *)lineNumberWords->get(index);
         // consider only aligned tokens
-        word->setLineNumber(gTrue);
+        word->setLineNumber(true);
     }
-    
+
+    return hasLineNumber;
 }
 
-void TextPage::dump(GBool useBlocks, GBool fullFontName) {
+void TextPage::dump(GBool useBlocks, GBool fullFontName, vector<bool> lineNumberStatus) {
     // Output the page in raw (content stream) order
-
     blocks = new GList(); //these are blocks in alto schema
 
     UnicodeMap *uMap;
@@ -5338,12 +5355,12 @@ void TextPage::dump(GBool useBlocks, GBool fullFontName) {
     TextParagraph *paragraph = new TextParagraph;
     paragraph->setLines(parLines);
 
-    minBlockX = 999999999;
+    minBlockX = 999999;
     maxBlockLineWidth = 0;
 
     xMin = yMin = xMax = yMax = 0;
-    minLineX = 999999999;
-    minLineY = 999999999;
+    minLineX = 999999;
+    minLineY = 999999;
 
     int wordId = 0;
     for (wordId = 0; wordId < words->getLength(); wordId++) {
@@ -5615,8 +5632,8 @@ void TextPage::dump(GBool useBlocks, GBool fullFontName) {
             firstword = 1;
             xMin = yMin = xMax = yMax = yMinRot = yMaxRot = xMaxRot = xMinRot
                     = 0;
-            minLineY = 99999999;
-            minLineX = 99999999;
+            minLineY = 999999;
+            minLineX = 999999;
         }
 
         // IF it's the end of line or the end of page
@@ -5679,7 +5696,7 @@ void TextPage::dump(GBool useBlocks, GBool fullFontName) {
                     parLines = new GList();
                     paragraph->setLines(parLines);
 
-                    minBlockX = 999999999;
+                    minBlockX = 999999;
                     maxBlockLineWidth = 0;
 
                     if (lineX != 0 && minBlockX > lineX) {
@@ -5749,7 +5766,7 @@ void TextPage::dump(GBool useBlocks, GBool fullFontName) {
                         parLines = new GList();
                         paragraph->setLines(parLines);
 
-                        minBlockX = 999999999;
+                        minBlockX = 999999;
                         maxBlockLineWidth = 0;
 
                         // PL: new block X and Y
@@ -5791,8 +5808,8 @@ void TextPage::dump(GBool useBlocks, GBool fullFontName) {
             linePreviousWidth = lineWidth;
             linePreviousHeight = lineHeight;
             linePreviousFontSize = lineFontSize;
-            minLineY = 99999999;
-            minLineX = 99999999;
+            minLineY = 999999;
+            minLineX = 999999;
             line = new TextLine;
             lineWords = new GList();
             line->setWords(lineWords);
@@ -5801,7 +5818,28 @@ void TextPage::dump(GBool useBlocks, GBool fullFontName) {
         free(tmp);
     } // end FOR
 
-    markLineNumber();
+    // if no line number was found in the first half of the document and the number of pages of the document is large enough,
+    // we do don't need to look for line numbers any more
+    int nbTotalPage = myCat->getNumPages();
+    int currentPageNumber = getPageNumber();
+
+    //cout << "nbTotalPage: " << nbTotalPage << endl;
+    //cout << "currentPageNumber: " << currentPageNumber << endl;
+
+    // check if the previous pages have line numbers
+    bool previousLineNumber = true;
+    for(int i=0; i<lineNumberStatus.size(); i++) {
+        previousLineNumber = lineNumberStatus[i];
+        if (previousLineNumber)
+            break;
+    }
+    
+    bool hasLineNumber = false;
+    if ( (currentPageNumber < nbTotalPage/2) || (previousLineNumber && nbTotalPage>4)) {
+        hasLineNumber = markLineNumber();
+        //cout << "result markLineNumber: " << hasLineNumber << endl;
+    }
+    setLineNumber(hasLineNumber);
 
     xmlNodePtr node = NULL;
     xmlNodePtr nodeline = NULL;
@@ -6040,7 +6078,7 @@ void TextPage::dump(GBool useBlocks, GBool fullFontName) {
 //				    xmlNewProp(nodeline, (const xmlChar*)ATTR_HIGHLIGHT,(const xmlChar*)"yes");
 //			    }
 
-                if (word->lineNumber == gFalse || (!is_number(word)))
+                if (word->lineNumber == false || (!is_number(word)))
                     xmlAddChild(nodeline, node);
 
                 if (wordI < line1->words->getLength() - 1 and (word->spaceAfter == gTrue)) {
@@ -7997,7 +8035,6 @@ GString *XmlAltoOutputDev::getInfoDate(Dict *infoDict, const char *key) {
     return s1;
 }
 
-
 GString *XmlAltoOutputDev::toUnicode(GString *s, UnicodeMap *uMap) {
 
     GString *news;
@@ -8055,10 +8092,19 @@ void XmlAltoOutputDev::endPage() {
 //        if (readingOrder) {
 //            text->dumpInReadingOrder(useBlocks, fullFontName);
 //        } else
-        text->dump(useBlocks, fullFontName);
+        text->dump(useBlocks, fullFontName, lineNumberStatus);
+        appendLineNumberStatus(text->getLineNumber());
     }
 
     text->endPage(dataDir);
+}
+
+vector<bool> XmlAltoOutputDev::getLineNumberStatus() {
+    return lineNumberStatus;
+}
+    
+void XmlAltoOutputDev::appendLineNumberStatus(bool hasLineNumber) {
+    lineNumberStatus.push_back(hasLineNumber);
 }
 
 void XmlAltoOutputDev::updateFont(GfxState *state) {

@@ -679,7 +679,7 @@ public:
     GBool isUnderlined() { return underlined; }
     GString *getLinkURI();
 
-    void setLineNumber(GBool theBool);
+    void setLineNumber(bool theBool);
 
 private:
     TextWord(TextWord *word);
@@ -694,7 +694,7 @@ private:
 
     GBool invisible;		// set for invisible text (render mode 3)
 
-    GBool lineNumber = gFalse;
+    bool lineNumber = false;
 
     friend class TextBlock;
     friend class TextLine;
@@ -758,10 +758,14 @@ public:
 
     Unicode getChar(int idx);
 
+    void setLineNumber(bool theBool);
+
 //private:
     /** Rank in the original flow */
     int indexmin;
     int indexmax;
+
+    bool lineNumber = false;
 
     friend class TextPage;
 };
@@ -986,7 +990,7 @@ public:
     /** Dump contents of the current page
      * @param blocks To know if the blocks option is selected
      * @param fullFontName To know if the fullFontName option is selected */
-    void dump(GBool blocks, GBool fullFontName);
+    void dump(GBool blocks, GBool fullFontName, vector<bool> lineNumberStatus);
 
     /** Dump contents of the current page following the reading order.
      * @param blocks To know if the blocks option is selected
@@ -1148,13 +1152,13 @@ public:
     void restoreState(GfxState *state);
 
     /** Identify line numbers and mark corresponding raw word */
-    void markLineNumber();
+    bool markLineNumber();
 
     /** Set if the page contains a column of line numbers*/
-    void setLineNumber(GBool theBool);
+    void setLineNumber(bool theBool);
 
     /** get the presence of a column of line numbers in the text page */
-    GBool getLineNumber();
+    bool getLineNumber();
 
 //  void addLink(int xMin, int yMin, int xMax, int yMax, Link *link);
 
@@ -1165,7 +1169,7 @@ public:
                                 int* /* maskColors */, GBool inlineImg, GBool mask,int imageIndex);
 
     // utility function to save raw data to a png file using the ong lib
-    bool save_png (GString* file_name,
+    bool save_png(GString* file_name,
                    unsigned int width, unsigned int height, unsigned int row_stride,
                    unsigned char* data,
                    unsigned char bpp = 24, unsigned char color_type = PNG_COLOR_TYPE_RGB,
@@ -1222,8 +1226,7 @@ public:
     GList *blocks;
 
     // clamp to uint8
-    static inline int clamp (int x)
-    {
+    static inline int clamp (int x) {
         if (x > 255) return 255;
         if (x < 0) return 0;
         return x;
@@ -1326,6 +1329,7 @@ private:
 
     /** The XML document for page */
     xmlDocPtr docPage;
+
     /** The page element */
     xmlNodePtr page;
 
@@ -1337,6 +1341,7 @@ private:
 
     /** The XML document for vectorials instructions */
     xmlDocPtr vecdoc;
+
     /** The vectorials intructions element */
     xmlNodePtr vecroot;
 
@@ -1353,49 +1358,66 @@ private:
 
     /** PL: To modify the blocks in reading order */
     GBool readingOrder;
+
     /** To know if the verbose option is selected */
     GBool verbose;
+
     /** To know if the cutPages option is selected */
     GBool cutter;
 
     /** The width of current page */
     double pageWidth;
+
     /** The height of current page */
     double pageHeight;
+
     /** The currently active string */
     TextRawWord *curWord;
+
     /** The next character position (within content stream) */
     int charPos;
+
     /** The current font */
     TextFontInfo *curFont;
 
     int curRot;			// current rotation
     GBool diagonal;		// set if rotation is not close to
+
     //   0/90/180/270 degrees
     /** The current font size */
     double curFontSize;
+
     /** The current nesting level (for Type 3 fonts) */
     int nest;
+
     /** The number of "tiny" chars seen so far */
     int nTinyChars;
+
     /** To set if the last added char overlapped the previous char */
     GBool lastCharOverlap;
 
     /** The primary rotation */
     int primaryRot;
+
     /** The primary direction (<code>true</code> means L-to-R, <code>false</code> means R-to-L) */
     GBool primaryLR;
     GList *chars;			// [TextChar]
+
     /** The list of words */
     GList *words;
+
     /** The list of words, in raw order (only if rawOrder is set) */
     //TextRawWord *rawWords;
+
     /** The last word on rawWords list */
     //TextRawWord *rawLastWord;
+
     /** All fonts info objects used on this page <code>TextFontInfo</code> */
     GList *fonts;
+
     /** The <b>x</b> value coordinate of the last "find" result */
     double lastFindXMin;
+
     /** The <b>y</b> value coordinate of the last "find" result */
     double lastFindYMin;
     GBool haveLastFind;
@@ -1415,7 +1437,6 @@ private:
     vector<Dict*>highlightedObject;
     Links *pageLinks;
 
-
     Unicode *actualText;		// current "ActualText" span
     int actualTextLen;
     double actualTextX0,
@@ -1424,7 +1445,6 @@ private:
             actualTextY1;
     int actualTextNBytes;
 
-
     GList *getChars(GList *charsA, double xMin, double yMin, double xMax, double yMax);
 
     ModifierClass classifyChar(Unicode u);
@@ -1432,7 +1452,7 @@ private:
     Unicode getCombiningDiacritic(ModifierClass modifierClass);
 
     /** if the page contains a column of line numbers */
-    GBool lineNumber = gFalse;
+    bool lineNumber = false;
 
 //    friend class TextBlock;
 //    friend class TextColumn;
@@ -1444,8 +1464,8 @@ private:
 // Simple class to save picture references
 class PictureReference
 {
-public:
 
+public:
     PictureReference (int ref, int flip, int number, const char* const extension) :
             reference_number(ref),
             picture_flip(flip),
@@ -1712,6 +1732,10 @@ public:
                                      double m21, double m22,
                                      double m31, double m32);
 
+    /** to keep track at document level of identified line numbers in each page */
+    vector<bool> getLineNumberStatus();
+    void appendLineNumberStatus(bool hasLineNumber);
+
 private:
     /** Generate the path
      * @param path The current path
@@ -1810,6 +1834,9 @@ private:
     SplashPath *convertPath(GfxState *state, GfxPath *path, GBool dropEmptySubpaths);
 
     bool isUTF8(Unicode *u, int uLen);
+
+    /** give for each page if line numbers have been found */
+    vector<bool> lineNumberStatus;
 };
 
 #endif
