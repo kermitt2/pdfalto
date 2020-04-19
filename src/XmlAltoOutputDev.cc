@@ -5265,6 +5265,9 @@ bool TextPage::markLineNumber() {
         }
     }
 
+    // TODO instead of simply discarding the best number cluster based on its position and move on, we 
+    // should consider the next largest number cluster as candidate
+
     if (!hasLineNumber) {
         delete lineNumberWords;
         delete textWords;
@@ -5881,11 +5884,50 @@ void TextPage::dump(GBool noLineNumbers, GBool fullFontName, vector<bool> lineNu
     double currentLineYmin = 0;
     double currentLineYmax = 0;
 
-    for (parIdx = 0; parIdx < blocks->getLength(); parIdx++) {
-        par = (TextParagraph *) blocks->get(parIdx);
+    if (hasLineNumber && !noLineNumbers) {
+        // we preliminary introduce a block for line numbers, if any and if we have to display them
 
-        //if (useBlocks) 
-        {
+        // first grab the line numbers
+        GList *lineNumberWords = new GList();
+        for(parIdx = 0; parIdx < blocks->getLength(); parIdx++) {
+            par = (TextParagraph *) blocks->get(parIdx);
+
+            for(lineIdx = 0; lineIdx < par->lines->getLength(); lineIdx++) {
+                line1 = (TextLine *) par->lines->get(lineIdx);
+
+                for(wordI = 0; wordI < line1->words->getLength(); wordI++) {
+                    word = (TextWord *) line1->words->get(wordI);
+
+                    if (word->lineNumber && (is_number(word))) {
+                        lineNumberWords->append(word);
+                    }
+                }
+            }
+        }
+
+        if (lineNumberWords->getLength() > 0) {
+
+            // compute the dim of the block
+            double blockXMin = 999999;
+            double blockXMax = 0;
+            double blockYMin = 999999;
+            double blockYMax = 0;
+
+            for(wordI = 0; wordI < lineNumberWords->getLength(); wordI++) {
+                word = (TextWord *) lineNumberWords->get(wordI);
+
+                if (word->xMin < blockXMin)
+                    blockXMin = word->xMin;
+                if (word->yMin < blockYMin)
+                    blockYMin = word->yMin;
+
+                if (word->xMax > blockXMax)
+                    blockXMax = word->xMax;
+                if (word->yMax > blockYMax)
+                    blockYMax = word->yMax;
+            }
+
+            // create custom block for line numbers
             nodeblocks = xmlNewNode(NULL, (const xmlChar *) TAG_BLOCK);
             nodeblocks->type = XML_ELEMENT_NODE;
 
@@ -5896,21 +5938,92 @@ void TextPage::dump(GBool noLineNumbers, GBool fullFontName, vector<bool> lineNu
             numBlock = numBlock + 1;
 
             char *tmp;
-
             tmp = (char *) malloc(10 * sizeof(char));
-            snprintf(tmp, sizeof(tmp),ATTR_NUMFORMAT, par->getXMin());
+            snprintf(tmp, sizeof(tmp),ATTR_NUMFORMAT, blockXMin);
             xmlNewProp(nodeblocks, (const xmlChar*)ATTR_X, (const xmlChar*)tmp);
-
-            snprintf(tmp, sizeof(tmp),ATTR_NUMFORMAT, par->getYMin());
+            snprintf(tmp, sizeof(tmp),ATTR_NUMFORMAT, blockYMin);
             xmlNewProp(nodeblocks, (const xmlChar*)ATTR_Y, (const xmlChar*)tmp);
-
-            snprintf(tmp, sizeof(tmp),ATTR_NUMFORMAT, par->getYMax() - par->getYMin());
+            snprintf(tmp, sizeof(tmp),ATTR_NUMFORMAT, blockYMax - blockYMin);
             xmlNewProp(nodeblocks, (const xmlChar*)ATTR_HEIGHT, (const xmlChar*)tmp);
-            snprintf(tmp, sizeof(tmp),ATTR_NUMFORMAT, par->getXMax() - par->getXMin());
+            snprintf(tmp, sizeof(tmp),ATTR_NUMFORMAT, blockXMax - blockXMin);
             xmlNewProp(nodeblocks, (const xmlChar*)ATTR_WIDTH, (const xmlChar*)tmp);
-
             free(tmp);
+
+            for(wordI = 0; wordI < lineNumberWords->getLength(); wordI++) {
+                word = (TextWord *) lineNumberWords->get(wordI);
+                
+                // create lines with one number
+                nodeline = xmlNewNode(NULL, (const xmlChar *) TAG_TEXT);
+                nodeline->type = XML_ELEMENT_NODE;
+
+                id = new GString("p");
+                xmlNewProp(nodeline, (const xmlChar*)ATTR_ID,
+                           (const xmlChar*)buildIdText(num, numText, id)->getCString());
+                delete id;
+                numText = numText + 1;
+
+                char *tmp;
+                tmp = (char *) malloc(10 * sizeof(char));
+                snprintf(tmp, sizeof(tmp),ATTR_NUMFORMAT, word->xMax - word->xMin);
+                xmlNewProp(nodeline, (const xmlChar*)ATTR_WIDTH, (const xmlChar*)tmp);
+                snprintf(tmp, sizeof(tmp),ATTR_NUMFORMAT, word->yMax - word->yMin);
+                xmlNewProp(nodeline, (const xmlChar*)ATTR_HEIGHT, (const xmlChar*)tmp);
+                snprintf(tmp, sizeof(tmp),ATTR_NUMFORMAT, word->xMin);
+                xmlNewProp(nodeline, (const xmlChar*)ATTR_X, (const xmlChar*)tmp);
+                snprintf(tmp, sizeof(tmp),ATTR_NUMFORMAT, word->yMin);
+                xmlNewProp(nodeline, (const xmlChar*)ATTR_Y, (const xmlChar*)tmp);
+                free(tmp);
+
+                // create the number token
+                node = xmlNewNode(NULL, (const xmlChar *) TAG_TOKEN);
+                node->type = XML_ELEMENT_NODE;
+
+                fontStyleInfo = new TextFontStyleInfo;
+
+                tmp = (char *) malloc(10 * sizeof(char));
+
+                // if option verbose is selected
+                if (verbose) {
+                    addAttributsNodeVerbose(node, tmp, word);
+                }
+                addAttributsNode(node, word, fontStyleInfo, uMap, fullFontName);
+                addAttributTypeReadingOrder(node, tmp, word);    
+                free(tmp);
+
+                xmlAddChild(nodeline, node);
+                xmlAddChild(nodeblocks, nodeline);
+            }
+
+            xmlAddChild(printSpace, nodeblocks);
         }
+        
+        delete lineNumberWords;
+    }
+
+    for(parIdx = 0; parIdx < blocks->getLength(); parIdx++) {
+        par = (TextParagraph *) blocks->get(parIdx);
+
+        nodeblocks = xmlNewNode(NULL, (const xmlChar *) TAG_BLOCK);
+        nodeblocks->type = XML_ELEMENT_NODE;
+
+        id = new GString("p");
+        xmlNewProp(nodeblocks, (const xmlChar *) ATTR_ID,
+                   (const xmlChar *) buildIdBlock(num, numBlock, id)->getCString());
+        delete id;
+        numBlock = numBlock + 1;
+
+        char *tmp;
+        tmp = (char *) malloc(10 * sizeof(char));
+        snprintf(tmp, sizeof(tmp),ATTR_NUMFORMAT, par->getXMin());
+        xmlNewProp(nodeblocks, (const xmlChar*)ATTR_X, (const xmlChar*)tmp);
+        snprintf(tmp, sizeof(tmp),ATTR_NUMFORMAT, par->getYMin());
+        xmlNewProp(nodeblocks, (const xmlChar*)ATTR_Y, (const xmlChar*)tmp);
+        snprintf(tmp, sizeof(tmp),ATTR_NUMFORMAT, par->getYMax() - par->getYMin());
+        xmlNewProp(nodeblocks, (const xmlChar*)ATTR_HEIGHT, (const xmlChar*)tmp);
+        snprintf(tmp, sizeof(tmp),ATTR_NUMFORMAT, par->getXMax() - par->getXMin());
+        xmlNewProp(nodeblocks, (const xmlChar*)ATTR_WIDTH, (const xmlChar*)tmp);
+        free(tmp);
+
         for (lineIdx = 0; lineIdx < par->lines->getLength(); lineIdx++) {
             line1 = (TextLine *) par->lines->get(lineIdx);
 
@@ -5951,7 +6064,6 @@ void TextPage::dump(GBool noLineNumbers, GBool fullFontName, vector<bool> lineNu
             }
 
             for (wordI = 0; wordI < line1->words->getLength(); wordI++) {
-
                 word = (TextWord *) line1->words->get(wordI);
                 if (wordI < line1->words->getLength() - 1)
                     nextWord = (TextWord *) line1->words->get(wordI + 1);
@@ -6022,11 +6134,10 @@ void TextPage::dump(GBool noLineNumbers, GBool fullFontName, vector<bool> lineNu
                 // because otherwise the token next to a subscript is always superscript even when normal, in addition for 
                 // several tokens as superscript or subscript, only the first one will be set as superscript or subscript
 
-                // If option verbose is selected
+                // if option verbose is selected
                 if (verbose) {
                     addAttributsNodeVerbose(node, tmp, word);
                 }
-
                 addAttributsNode(node, word, fontStyleInfo, uMap, fullFontName);
                 addAttributTypeReadingOrder(node, tmp, word);
                 // PL: not clear why reading order? we are working with stream order here
@@ -6126,13 +6237,9 @@ void TextPage::dump(GBool noLineNumbers, GBool fullFontName, vector<bool> lineNu
                 free(tmp);
             }
 
-            //if (useBlocks)
             xmlAddChild(nodeblocks, nodeline);
-            //else
-            //    xmlAddChild(printSpace, nodeline);
         }
 
-        //if (useBlocks)
         xmlAddChild(printSpace, nodeblocks);
     }
 

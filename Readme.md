@@ -95,7 +95,7 @@ The executable `pdfalto` is generated in the root directory. Additionally, this 
 
 New in version 0.3 (apart various bug fixes):
 
-- line number detection: line numbers (typically added for review in manuscripts/preprints) are specifically identified and not anymore mixed with content, they will be grouped in a separate block or, optionally, not outputted in the ALTO file (`noLineNumbers` option)
+- line number detection: line numbers (typically added for review in manuscripts/preprints) are specifically identified and not anymore mixed with the rest of text content, they will be grouped in a separate block or, optionally, not outputted in the ALTO file (`noLineNumbers` option)
 
 - removal of `-blocks` option, the block information are always returned for ensuring ALTO validation (`<TextBlock>` element)
 
