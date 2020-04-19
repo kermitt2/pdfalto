@@ -7555,7 +7555,9 @@ XmlAltoOutputDev::XmlAltoOutputDev(GString *fileName, GString *fileNamePdf,
     myCatalog = catalog;
     UnicodeMap *uMap;
 
-    useBlocks = parameters->getDisplayBlocks();
+    //useBlocks = parameters->getDisplayBlocks();
+    useBlocks = gTrue;
+    noLineNumbers = parameters->getNoLineNumbers();
     fullFontName = parameters->getFullFontName();
     noImageInline = parameters->getImageInline();
 

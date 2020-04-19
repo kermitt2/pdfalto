@@ -21,29 +21,29 @@ The latest stable version is *0.2*. Working version (master) is *0.3*.
 General usage is as follow: 
 
 ```
- pdfalto [options] <PDF-file> [<xml-file>]
-  -f <int>               : first page to convert
-  -l <int>               : last page to convert
-  -verbose               : display pdf attributes
-  -noText                : do not extract textual objects
-  -noImage               : do not extract Images (Bitmap and Vectorial)
-  -noImageInline         : do not include images inline in the stream
-  -outline               : create an outline file xml (i.e. a table of content) as additional file
-  -annotation            : create an annotations file xml as additional file
-  -blocks                : add blocks informations whithin the structure
-  -readingOrder          : blocks follow the reading order
-  -fullFontName          : fonts names are not normalized
-  -nsURI <string>        : add the specified namespace URI
-  -opw <string>          : owner password (for encrypted files)
-  -upw <string>          : user password (for encrypted files)
-  -filesLimit <int>      : limit of asset files be extracted to the value specified
-  -q                     : don't print any messages or errors
-  -v                     : print version info
-  -h                     : print usage information
-  -help                  : print usage information
-  --help                 : print usage information
-  -?                     : print usage information
-  --saveconf <string>    : save all command line parameters in the specified XML <file>
+Usage: pdfalto [options] <PDF-file> [<xml-file>]
+  -f <int>                      : first page to convert
+  -l <int>                      : last page to convert
+  -verbose                      : display pdf attributes
+  -noImage                      : do not extract Images (Bitmap and Vectorial)
+  -noImageInline                : do not include images inline in the stream
+  -outline                      : create an outline file xml
+  -annotation                   : create an annotations file xml
+  -noLineNumbers                : do not output line numbers added in manuscript-style textual documents
+  -readingOrder                 : blocks follow the reading order
+  -noText                       : do not extract textual objects (might be useful, but non-valid ALTO)
+  -charReadingOrderAttr         : include TYPE attribute to String elements to indicate right-to-left reading order (might be useful, but non-valid ALTO)
+  -fullFontName                 : fonts names are not normalized
+  -nsURI <string>               : add the specified namespace URI
+  -opw <string>                 : owner password (for encrypted files)
+  -upw <string>                 : user password (for encrypted files)
+  -filesLimit <int>             : limit of asset files be extracted
+  -q                            : don't print any messages or errors
+  -v                            : print version info
+  -h                            : print usage information
+  -help                         : print usage information
+  --help                        : print usage information
+  -?                            : print usage information
 ```
 
 In addition to the [ALTO](https://github.com/altoxml/documentation/wiki) file describing the PDF content, the following files are generated:
@@ -92,6 +92,12 @@ The executable `pdfalto` is generated in the root directory. Additionally, this 
 - see the issue tracker for further tasks
 
 # Changes
+
+New in version 0.3 (apart various bug fixes):
+
+- line number detection: line numbers (typically added for review in manuscripts/preprints) are specifically identified and not anymore mixed with content, they will be grouped in a separate block or, optionally, not outputted in the ALTO file (`noLineNumbers` option)
+
+- removal of `-blocks` option, the block information are always returned for ensuring ALTO validation (`<TextBlock>` element)
 
 New in version 0.2 (apart various bug fixes):
 

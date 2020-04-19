@@ -1777,6 +1777,10 @@ private:
     GBool readingOrder;
     /** To know if the blocks option is selected */
     GBool useBlocks;
+
+    /** To know if line numbers must be displayed or not */
+    GBool noLineNumbers;
+
     /** To know if the fullFontName option is selected */
     GBool fullFontName;
     /** To know if the noImageInline option is selected */

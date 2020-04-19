@@ -34,11 +34,11 @@ void Parameters::setDisplayText(GBool text) {
   unlockGlobalParams;
 }
 
-void Parameters::setDisplayBlocks(GBool block) {
+/*void Parameters::setDisplayBlocks(GBool block) {
   lockGlobalParams;
   displayBlocks = block;
   unlockGlobalParams;
-}
+}*/
 
 void Parameters::setDisplayOutline(GBool outl) {
   lockGlobalParams;
@@ -83,6 +83,12 @@ void Parameters::setOcr(GBool ocrA) {
 	unlockGlobalParams;
 }
 
+void Parameters::setNoLineNumbers(GBool noLineNumberAttrs) {
+  lockGlobalParams;
+  noLineNumbers = noLineNumberAttrs;
+  unlockGlobalParams;
+}
+
 void Parameters::saveToXML(const char *fileName,int firstPage,int lastPage){
 	char* tmp;
   	tmp=(char*)malloc(10*sizeof(char));
@@ -108,27 +114,6 @@ void Parameters::saveToXML(const char *fileName,int firstPage,int lastPage){
 	xmlAddChild(tool,name);
 	xmlAddChild(tool,version);
 	xmlAddChild(tool,desc);
-	
-// * -f <int> : first page to convert<br/>
-// * -l <int> : last page to convert<br/>
-// * -verbose : display pdf attributes<br/>
-// * -noText : do not extract textual objects<br/>
-// * -noImage : do not extract images (Bitmap and Vectorial)<br/>
-// * -noImageInline : do not include images inline in the stream<br/>
-// * -outline : create an outline file xml<br/>
-// * -annots : create an annotaitons file xml<br/>
-// * -cutPages : cut all pages in separately files<br/>
-// * -blocks : add blocks informations whithin the structure<br/>
-// * -readingOrder : blocks follow the reading order<br/>	
-// * -fullFontName : fonts names are not normalized<br/>
-// * -nsURI : add the specified namespace URI<br/>
-// * -q : don't print any messages or errors<br/>
-// * -v : print copyright and version information<br/>
-// * -h : print usage information<br/>
-// * -help : print usage information<br/>
-// * --help : print usage information<br/>
-// * -? : print usage information<br/>	
-	
 	
 	param = xmlNewNode(NULL,(const xmlChar*)TAG_PAR_PARAM);
 	xmlNewProp(param,(const xmlChar*)"name",(const xmlChar*)"first page");
