@@ -5194,9 +5194,9 @@ bool TextPage::markLineNumber() {
             bestClusterIndex.push_back(i);
             largestClusterSize.push_back(theCluster.size());
         } else {
-            vector<int>::const_iterator it1 = bestClusterIndex.begin();
-            vector<int>::const_iterator it2 = largestClusterSize.begin();
-            vector<int>::const_iterator last = bestClusterIndex.end();
+            vector<int>::iterator it1 = bestClusterIndex.begin();
+            vector<int>::iterator it2 = largestClusterSize.begin();
+            vector<int>::iterator last = bestClusterIndex.end();
             int j = 0;
             while(it1 != last) {
                 if (theCluster.size() < largestClusterSize[j]) {
