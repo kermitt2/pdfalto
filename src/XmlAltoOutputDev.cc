@@ -2640,7 +2640,7 @@ void TextPage::addCharToPageChars(GfxState *state, double x, double y, double dx
 void TextPage::addCharToRawWord(GfxState *state, double x, double y, double dx,
                                 double dy, CharCode c, int nBytes, Unicode *u, int uLen, SplashFont *splashFont,
                                 GBool isNonUnicodeGlyph) {
-
+    //cout << "addCharToRawWord" << endl;
     double x1, y1, w1, h1, dx2, dy2, base, sp, delta;
     GBool overlap;
     int i;
@@ -2665,14 +2665,14 @@ void TextPage::addCharToRawWord(GfxState *state, double x, double y, double dx,
         return;
     }
 
-    // subtract char and word spacing from the dx,dy values // HD why ??
+    // subtract char and word spacing from the dx,dy values 
     sp = state->getCharSpace();
     if (c == (CharCode) 0x20) {
         sp += state->getWordSpace();
     }
     state->textTransformDelta(sp * state->getHorizScaling(), 0, &dx2, &dy2);
-    dx -= dx2; //HD
-    dy -= dy2; //HD
+    dx -= dx2; 
+    dy -= dy2; 
     state->transformDelta(dx, dy, &w1, &h1);
 
     // check the tiny chars limit
@@ -2743,7 +2743,7 @@ void TextPage::addCharToRawWord(GfxState *state, double x, double y, double dx,
                                                                            - curWord->base) <
                                                                       dupMaxSecDelta * curWord->fontSize;
 
-        //Avoid splitting token when overlaping is surrounded by diacritic
+        // avoid splitting token when overlaping is surrounded by diacritic
         ModifierClass modifierClass = NOT_A_MODIFIER;
         if (curWord->len > 0)
             modifierClass = classifyChar(((TextChar *) curWord->chars->get(curWord->getLength() - 1))->c);
@@ -2820,7 +2820,6 @@ void TextPage::addChar(GfxState *state, double x, double y, double dx,
 
 void TextPage::endWord() {
     // This check is needed because Type 3 characters can contain
-    // This check is needed because Type 3 characters can contain
     // text-drawing operations (when TextPage is being used via
     // {X,Win}SplashOutputDev rather than TextOutputDev).
     if (nest > 0) {
@@ -2834,7 +2833,6 @@ void TextPage::endWord() {
         curWord = NULL;
         idWORD++;
     }
-
 }
 
 void TextPage::addWord(TextRawWord *word) {
@@ -2884,7 +2882,6 @@ void TextPage::addAttributTypeReadingOrder(xmlNodePtr node, char *tmp,
 
 void TextPage::addAttributsNodeVerbose(xmlNodePtr node, char *tmp,
                                        IWord *word) {
-
     GString *id = new GString("p");
     xmlNewProp(node, (const xmlChar *) ATTR_SID, (const xmlChar *) buildSID(num, word->getIdx(), id)->getCString());
     delete id;
@@ -2912,7 +2909,6 @@ void TextPage::addAttributsNodeVerbose(xmlNodePtr node, char *tmp,
 
 void TextPage::addAttributsNode(xmlNodePtr node, IWord *word, TextFontStyleInfo *fontStyleInfo, UnicodeMap *uMap,
                                 GBool fullFontName) {
-
     char *tmp;
     tmp = (char *) malloc(10 * sizeof(char));
 
@@ -3161,9 +3157,7 @@ void TextPage::testLinkedText(xmlNodePtr node, double xMin, double yMin, double 
 
 }
 
-
-GBool
-TextPage::testOverlap(double x11, double y11, double x12, double y12, double x21, double y21, double x22, double y22) {
+GBool TextPage::testOverlap(double x11, double y11, double x12, double y12, double x21, double y21, double x22, double y22) {
     return ((min(x12, x22) >= max(x11, x21)) &&
             (min(y12, y22) >= max(y11, y21)));
 }
@@ -3236,27 +3230,26 @@ GBool TextFontStyleInfo::cmp(TextFontStyleInfo *tsi) {
     )
             )
         return gTrue;
-    else return gFalse;
+    else 
+        return gFalse;
 }
 
 //------------------------------------------------------------------------
 // TextGap
 //------------------------------------------------------------------------
-
 class TextGap {
-public:
 
+public:
     TextGap(double aXY, double aW) : xy(aXY), w(aW) {}
 
-    double xy;            // center of gap: x for vertical gaps,
-    //   y for horizontal gaps
-    double w;            // width of gap
+    double xy;  // center of gap: x for vertical gaps,
+                //   y for horizontal gaps
+    double w;   // width of gap
 };
 
 //------------------------------------------------------------------------
 // TextPage: layout analysis
 //------------------------------------------------------------------------
-
 // Determine primary (most common) rotation value.  Rotate all chars
 // to that primary rotation.
 int TextPage::rotateChars(GList *charsA) {
@@ -6160,7 +6153,6 @@ void TextPage::dump(GBool noLineNumbers, GBool fullFontName, vector<bool> lineNu
                 }
                 addAttributsNode(node, word, fontStyleInfo, uMap, fullFontName);
                 addAttributTypeReadingOrder(node, tmp, word);
-                // PL: not clear why reading order? we are working with stream order here
 
 //                    encodeFragment(line->text, n, uMap, primaryLR, s);
 //                    if (lineIdx + 1 < par->lines->getLength() && !line->hyphenated) {
@@ -6778,7 +6770,6 @@ void TextPage::doPathForClip(GfxPath *path, GfxState *state,
 }
 
 void TextPage::doPath(GfxPath *path, GfxState *state, GString *gattributes) {
-
     // Increment the absolute object index
     idx++;
     //printf("path %d\n",idx);
@@ -7536,7 +7527,6 @@ void file_write_data(png_structp png_ptr, png_bytep data, png_size_t length) {
         png_error(png_ptr, "Write Error");
 }
 
-//------------------------------------------------------------
 
 void file_flush_data(png_structp png_ptr) {
     FILE *file = (FILE *) png_ptr->io_ptr;
@@ -7633,11 +7623,9 @@ bool TextPage::save_png(GString *file_name,
 }
 
 
-
 //------------------------------------------------------------------------
 // XmlAltoOutputDev
 //------------------------------------------------------------------------
-
 XmlAltoOutputDev::XmlAltoOutputDev(GString *fileName, GString *fileNamePdf,
                                    Catalog *catalog, GBool physLayoutA, GBool verboseA, GString *nsURIA,
                                    GString *cmdA) {
@@ -7750,7 +7738,6 @@ XmlAltoOutputDev::XmlAltoOutputDev(GString *fileName, GString *fileNamePdf,
     }
 
     xmlDocSetRootElement(doc, docroot);
-
 
     // here we add basic structure : see https://www.loc.gov/standards/alto/techcenter/structure.html
     xmlNodePtr nodeDescription = xmlNewNode(NULL, (const xmlChar *) TAG_DESCRIPTION);
@@ -8284,8 +8271,8 @@ void XmlAltoOutputDev::startDoc(XRef *xrefA) {
 }
 
 class SplashOutFontFileID : public SplashFontFileID {
-public:
 
+public:
     SplashOutFontFileID(Ref *rA) {
         r = *rA;
         substIdx = -1;
@@ -8308,7 +8295,6 @@ public:
     int getSubstIdx() { return substIdx; }
 
 private:
-
     Ref r;
     double oblique;
     int substIdx;
@@ -8886,8 +8872,6 @@ void XmlAltoOutputDev::updateCTM(GfxState *state, double m11, double m12,
 //------------------------------------------------------------------------
 // T3FontCache
 //------------------------------------------------------------------------
-
-
 T3FontCache::T3FontCache(Ref *fontIDA, double m11A, double m12A,
                          double m21A, double m22A,
                          int glyphXA, int glyphYA, int glyphWA, int glyphHA,
@@ -9500,9 +9484,7 @@ int XmlAltoOutputDev::dumpFragment(Unicode *text, int len, UnicodeMap *uMap,
 
 GBool XmlAltoOutputDev::dumpOutline(xmlNodePtr parentNode, GList *itemsA, PDFDoc *docA, UnicodeMap *uMapA,
                                     int levelA, int idItemTocParentA) {
-
     // store them in a list
-
     xmlNodePtr nodeTocItem = NULL;
     xmlNodePtr nodeItem = NULL;
     xmlNodePtr nodeString = NULL;
@@ -9721,7 +9703,7 @@ void XmlAltoOutputDev::tilingPatternFill(GfxState *state, Gfx *gfx,
 }
 
 /**
- * Checks if the unicode sequence is utf8 complied
+ * Checks if the unicode sequence is valid utf8 
  * @param u unicode sequence
  * @param uLen
  * @return true it is complied
