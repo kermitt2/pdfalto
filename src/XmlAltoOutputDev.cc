@@ -5081,7 +5081,6 @@ bool TextPage::markLineNumber() {
 
                 // numerical token?
                 if (is_number(word)) {
-                    //cout << "line number! " << word->xMin <<  " " << word->xMax<< endl;
                     lineNumberWords->append(word);
                     hasLineNumber = true;
                 } else {
@@ -5254,8 +5253,6 @@ bool TextPage::markLineNumber() {
     if (nonTrivialClusterSize == 0)
         nonTrivialClusterSize = 1;
 
-    //cout << "bestClusterIndex.size(): " << bestClusterIndex.size() << endl;
-
     for(int j=0; j<bestClusterIndex.size(); j++) {
         bestCluster = clusters[bestClusterIndex[j]];
         final_vpos = positions[bestClusterIndex[j]];
@@ -5271,7 +5268,6 @@ bool TextPage::markLineNumber() {
                 word = (TextWord *)textWords->get(theCluster[0]);
                 int vpos1 = word->xMin;
                 int vpos2 = word->xMax;
-                //cout << "vpos1: " << vpos1 << ", vpos2: " << vpos2 << endl;
                 if (vpos1 <= final_vpos && vpos2 >= final_vpos) {
                     hasLineNumber = false;
                     break;
@@ -6452,11 +6448,9 @@ GBool TextPage::addBlockInReadingOrder(TextParagraph * block, double fontSize, G
 
     if (notInserted) {
         blocks->append(block);
-//cout << "append" << endl;
         return gFalse;
     } else {
-        blocks->insert(insertIndex, block);// be ware , the order can be the opposite if next block in next column..
-//cout << "prev inserted" << endl;
+        blocks->insert(insertIndex, block); // beware, the order can be the opposite if next block in next column..
         return gTrue;
     }
 }
