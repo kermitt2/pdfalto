@@ -9372,8 +9372,7 @@ void XmlAltoOutputDev::initOutline(int nbPage) {
     globalParams->setTextEncoding((char *) ENCODING_UTF8);
     docOutlineRoot = xmlNewNode(NULL, (const xmlChar *) TAG_TOCITEMS);
     sprintf(tmp, "%d", nbPage);
-    xmlNewProp(docOutlineRoot, (const xmlChar *) ATTR_NB_PAGES,
-               (const xmlChar *) tmp);
+    xmlNewProp(docOutlineRoot, (const xmlChar *) ATTR_NB_PAGES, (const xmlChar *) tmp);
     xmlDocSetRootElement(docOutline, docOutlineRoot);
 }
 
@@ -9496,7 +9495,7 @@ GBool XmlAltoOutputDev::dumpOutline(xmlNodePtr parentNode, GList *itemsA, PDFDoc
         return 0;
     }
     int i;
-    GString *title;
+    //GString *title;
 
     nodeTocItem = xmlNewNode(NULL, (const xmlChar *) TAG_TOCITEMLIST);
     sprintf(tmp, "%d", levelA);
@@ -9511,12 +9510,12 @@ GBool XmlAltoOutputDev::dumpOutline(xmlNodePtr parentNode, GList *itemsA, PDFDoc
     xmlAddChild(parentNode, nodeTocItem);
 
     for (i = 0; i < itemsA->getLength(); ++i) {
-
-        title = new GString();
+        GString* title = new GString();
 
         ((OutlineItem *) itemsA->get(i))->open(); // open the kids
         dumpFragment(((OutlineItem *) itemsA->get(i))->getTitle(), ((OutlineItem *) itemsA->get(i))->getTitleLength(),
                      uMapA, title);
+
         //printf("%s\n",title->getCString());
         LinkActionKind kind;
 
@@ -9536,7 +9535,6 @@ GBool XmlAltoOutputDev::dumpOutline(xmlNodePtr parentNode, GList *itemsA, PDFDoc
         y2 = 0;
 
         if (((OutlineItem *) itemsA->get(i))->getAction()) {
-
             switch (kind = ((OutlineItem *) itemsA->get(i))->getAction()->getKind()) {
 
                 // GOTO action
@@ -9587,8 +9585,8 @@ GBool XmlAltoOutputDev::dumpOutline(xmlNodePtr parentNode, GList *itemsA, PDFDoc
 
                     // LAUNCH action
                 case actionLaunch:
-                    fileName = ((LinkLaunch *) ((OutlineItem *) itemsA->get(i))->getAction())->getFileName();
-                    delete fileName;
+                    //fileName = ((LinkLaunch *) ((OutlineItem *) itemsA->get(i))->getAction())->getFileName();
+                    //delete fileName;
                     break;
 
                     // URI action
@@ -9665,11 +9663,11 @@ GBool XmlAltoOutputDev::dumpOutline(xmlNodePtr parentNode, GList *itemsA, PDFDoc
         int idItemCurrent = idItemToc;
         idItemToc++;
         if (((OutlineItem *) itemsA->get(i))->hasKids()) {
-            dumpOutline(nodeItem, ((OutlineItem *) itemsA->get(i))->getKids(), docA, uMapA, levelA + 1,
-                        idItemCurrent);
+            dumpOutline(nodeItem, ((OutlineItem *) itemsA->get(i))->getKids(), docA, uMapA, levelA + 1, idItemCurrent);
         }
 
         delete title;
+
         ((OutlineItem *) itemsA->get(i))->close(); // close the kids
 
         atLeastOne = gTrue;

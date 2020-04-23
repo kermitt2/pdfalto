@@ -207,13 +207,6 @@ int main(int argc, char *argv[]) {
         parameters->setCutAllPages(gTrue);
     }
 
-    /*if (blocks) {
-        parameters->setDisplayBlocks(gTrue);
-        cmd->append("-blocks ");
-    } else {
-        parameters->setDisplayBlocks(gFalse);
-    }*/
-
     if (noLineNumbers) {
         parameters->setNoLineNumbers(gTrue);
         cmd->append("-noLineNumbers ");
@@ -286,11 +279,6 @@ int main(int argc, char *argv[]) {
     } else {
         nsURI = NULL;
     }
-
-    //store paramneters in a given XML file
-    /*if (XMLcfgFileName[0]) {
-        parameters->saveToXML(XMLcfgFileName, firstPage, lastPage);
-    }*/
 
     if (argc < 2) { goto err0; }
     fileName = new GString(argv[1]);
@@ -379,7 +367,6 @@ int main(int argc, char *argv[]) {
     xmlAltoOut->addMetadataInfo(doc);
     xmlAltoOut->closeMetadataInfoDoc(shortFileName);
 
-
     if (xmlAltoOut->isOk()) {
 
         // We clean the data directory if it is already exist
@@ -438,6 +425,7 @@ int main(int argc, char *argv[]) {
     // check for memory leaks
     Object::memCheck(stderr);
     gMemReport(stderr);
+    
     return exitCode;
 }
 
