@@ -827,6 +827,7 @@ TextRawWord::TextRawWord(GfxState *state, double x0, double y0,
     bold = gFalse;
     serif = gFalse;
     symbolic = gFalse;
+    lineNumber = false;
 
     double *fontm;
     double m[4];
@@ -5049,8 +5050,8 @@ bool TextPage::markLineNumber() {
     TextWord *nextWord;
     TextWord *previousWord;
 
-    GList *lineNumberWords = new GList();
-    GList *textWords = new GList();
+    vector<TextWord*> lineNumberWords;
+    vector<TextWord*> textWords;
 
     int rightMostBoundary = 0;
     int leftMostBoundary = 999990;
@@ -5064,7 +5065,6 @@ bool TextPage::markLineNumber() {
             line1 = (TextLine *) par->lines->get(lineIdx);
 
             for (wordI = 0; wordI < line1->words->getLength(); wordI++) {
-
                 word = (TextWord *) line1->words->get(wordI);
                 if (wordI < line1->words->getLength() - 1)
                     nextWord = (TextWord *) line1->words->get(wordI + 1);
@@ -5081,10 +5081,12 @@ bool TextPage::markLineNumber() {
 
                 // numerical token?
                 if (is_number(word)) {
-                    lineNumberWords->append(word);
+                    //lineNumberWords->append(word);
+                    lineNumberWords.push_back(word);
                     hasLineNumber = true;
                 } else {
-                    textWords->append(word);
+                    //textWords->append(word);
+                    textWords.push_back(word);
                 }
             }
             if (line1->xMin < leftMostBoundary)
@@ -5100,16 +5102,14 @@ bool TextPage::markLineNumber() {
     }
 
     if (!hasLineNumber) {
-        delete lineNumberWords;
-        delete textWords;
         return false;
     }
 
     // define the x alignment by clustering identified number tokens by x position
     vector<vector<int>> clusters;
     vector<int> positions;
-    for (wordI = 0; wordI < lineNumberWords->getLength(); wordI++) {
-        word = (TextWord *)lineNumberWords->get(wordI);
+    for (wordI = 0; wordI < lineNumberWords.size(); wordI++) {
+        word = lineNumberWords[wordI];
         int vpos1 = word->xMin;
         int vpos2 = word->xMax;
 
@@ -5145,8 +5145,8 @@ bool TextPage::markLineNumber() {
     // apply a similar clustering for selected non-numerical tokens 
     vector<vector<int>> textClusters;
     vector<int> textPositions;
-    for (wordI = 0; wordI < textWords->getLength(); wordI++) {
-        word = (TextWord *)textWords->get(wordI);
+    for (wordI = 0; wordI < textWords.size(); wordI++) {
+        word = textWords[wordI];
         int vpos1 = word->xMin;
         int vpos2 = word->xMax;
 
@@ -5218,8 +5218,6 @@ bool TextPage::markLineNumber() {
     }
 
     if (bestClusterIndex.size() == 0) {
-        delete lineNumberWords;
-        delete textWords;
         return false;
     }
 
@@ -5265,9 +5263,12 @@ bool TextPage::markLineNumber() {
         for (int i = 0; i < textClusters.size(); i++) {
             vector<int> theCluster = textClusters[i];
             if (theCluster.size() >= nonTrivialClusterSize) {
-                word = (TextWord *)textWords->get(theCluster[0]);
+                //word = (TextWord *)textWords->get(theCluster[0]);
+                word = textWords[theCluster[0]];
                 int vpos1 = word->xMin;
                 int vpos2 = word->xMax;
+                //int vpos1 = word.xMin;
+                //int vpos2 = word.xMax;
                 if (vpos1 <= final_vpos && vpos2 >= final_vpos) {
                     hasLineNumber = false;
                     break;
@@ -5279,8 +5280,6 @@ bool TextPage::markLineNumber() {
     }
 
     if (!hasLineNumber) {
-        delete lineNumberWords;
-        delete textWords;
         return false;
     }
 
@@ -5291,8 +5290,6 @@ bool TextPage::markLineNumber() {
         hasLineNumber = false;
     
     if (!hasLineNumber) {
-        delete lineNumberWords;
-        delete textWords;
         return false;
     }
 
@@ -5305,13 +5302,10 @@ bool TextPage::markLineNumber() {
     // final marking of TextWord corresponding to line numbers
     for (int i = 0; i < bestCluster.size(); i++) {
         int index = bestCluster[i];
-        word = (TextWord *)lineNumberWords->get(index);
+        word = lineNumberWords[index];
         // consider only aligned tokens
         word->setLineNumber(true);
     }
-
-    delete lineNumberWords;
-    delete textWords;
 
     return hasLineNumber;
 }
