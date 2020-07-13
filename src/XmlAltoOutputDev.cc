@@ -8493,6 +8493,7 @@ SplashFont *XmlAltoOutputDev::getSplashFont(GfxState *state, SplashCoord *matrix
                         fileName->getCString(),
                         fileName == tmpFileName,
 #endif
+                        codeToGID,
                         (const char **) ((Gfx8BitFont *) gfxFont)->getEncoding()))) {
                     error(errSyntaxError, -1, "Couldn't create a font for '{0:s}'",
                           gfxFont->getName() ? gfxFont->getName()->getCString()
@@ -8510,6 +8511,7 @@ SplashFont *XmlAltoOutputDev::getSplashFont(GfxState *state, SplashCoord *matrix
                         fileName->getCString(),
                         fileName == tmpFileName,
 #endif
+                        codeToGID,
                         (const char **) ((Gfx8BitFont *) gfxFont)->getEncoding()))) {
                     error(errSyntaxError, -1, "Couldn't create a font for '{0:s}'",
                           gfxFont->getName() ? gfxFont->getName()->getCString()
