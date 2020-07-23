@@ -79,7 +79,7 @@ See [compiling dependencies procedures](Dependencies_INSTALL.md) for further det
 
 > make
 
-The executable `pdfalto` is generated in the root directory. Additionally, this will create a static library for xpdf-4.00 at the following path `xpdf-4.00/build/xpdf/lib/libxpdf.a` and all the libraries and their respective subdirectory. 
+The executable `pdfalto` is generated in the root directory. Additionally, this will create a static library for xpdf at the following path `xpdf/build/xpdf/lib/libxpdf.a` and all the libraries and their respective subdirectory. 
 
 # Future work
 

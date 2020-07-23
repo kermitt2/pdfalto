@@ -4,7 +4,7 @@ project(pdfalto)
 set(CMAKE_CXX_STANDARD 11)
 
 #build xpdf
-set ( XPDF_SUBDIR ${CMAKE_CURRENT_SOURCE_DIR}/xpdf-4.00)
+set ( XPDF_SUBDIR ${CMAKE_CURRENT_SOURCE_DIR}/xpdf)
 
 set ( IMAGE_SUBDIR ${CMAKE_CURRENT_SOURCE_DIR}/libs/image)
 
