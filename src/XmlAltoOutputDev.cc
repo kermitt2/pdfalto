@@ -8340,10 +8340,12 @@ void XmlAltoOutputDev::drawChar(GfxState *state, double x, double y, double dx,
 //        mat[5] = (SplashCoord) (curstate[5]);
         //splashFont = getSplashFont(state, mat);
         if (
+                //TODO: why there is needs to replace with a placeholder, when the sequence is of size 0?
                 (uLen == 0 ||
+
                 (
                         (u[0] < (Unicode) 32) && uLen == 1) ||
-                        //TODO: not clear why uLen > 1 (to be checked)
+                        //TODO: not clear, this seems the same as the other "if-else" down below.
                         (uLen > 1 && (globalParams->getTextEncodingName()->cmp(ENCODING_UTF8)==0) && !isUTF8(u, uLen))
                 )
         ) {
@@ -8369,15 +8371,19 @@ void XmlAltoOutputDev::drawChar(GfxState *state, double x, double y, double dx,
             Unicode mapped_unicode = unicode_map->lookupInt(fontName_charcode);
             if (!mapped_unicode) {
                 mapped_unicode = placeholders[0]; //no special need for random
-                if (placeholders.size() > 1) {
-                    placeholders.erase(placeholders.begin());
-                }
+
+                // LF: for now we replace with the first placeholder only.
+//                if (placeholders.size() > 1) {
+//                    placeholders.erase(placeholders.begin());
+//                }
                 unicode_map->add(fontName_charcode, mapped_unicode);
             }
             u[0] = mapped_unicode;
             uLen = 1;
             isNonUnicodeGlyph = gTrue;
         }
+
+        //TODO: clarify this if
     } else if(uLen > 1 && (globalParams->getTextEncodingName()->cmp(ENCODING_UTF8)==0) && !isUTF8(u, uLen))
         return;
 
