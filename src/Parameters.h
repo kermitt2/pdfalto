@@ -79,9 +79,9 @@ public:
 	GBool getCharReadingOrderAttr() {return charReadingOrderAttr;}
 
 	/** Return a boolean which inform if OCR should be applied to recognize non unicode glyphs
-	 * @return <code>true</code> if the ocr option is selected, <code>false</code> otherwise
+	 * @return <code>true</code> if the placeholder option is selected, <code>false</code> otherwise
 	 */
-	GBool getOcr() {return ocr;}
+	GBool getPlaceholder() {return placeholder;}
 
 	/** Return the limit of files to be extracted.
 	 * @return <code>true</code> if the readingOrder option is selected, <code>false</code> otherwise
@@ -137,7 +137,7 @@ public:
 	/** Modifiy the boolean which inform ocr should be applied or not
 	 * @param readingOrder <code>true</code> if the readingOrder option is selected, <code>false</code> otherwise
 	 */
-	void setOcr(GBool ocrA);
+	void setPlaceholder(GBool placeholderFlag);
 
 	void setFilesCountLimit(int count);
 	
@@ -164,7 +164,7 @@ private:
 	/** PL: The value of the charReadingOrderAttr option */
 	GBool charReadingOrderAttr;
 	/** The value of ocr option */
-	GBool ocr;
+	GBool placeholder;
 	/** the count limit of files */
 	int filesCountLimit;
   

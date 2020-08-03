@@ -7171,6 +7171,7 @@ XmlAltoOutputDev::XmlAltoOutputDev(GString *fileName, GString *fileNamePdf,
     nT3Fonts = 0;
 
     unicode_map = new GHash(gTrue);
+    //placeholder list
     //initialise some special unicodes 9 to begin with as placeholders, from https://unicode.org/charts/PDF/U2B00.pdf
     placeholders.push_back((Unicode) 9724);
     placeholders.push_back((Unicode) 9650);
@@ -7385,7 +7386,7 @@ void XmlAltoOutputDev::beginActualText(GfxState *state, Unicode *u, int uLen) {
 
 void XmlAltoOutputDev::endActualText(GfxState *state) {
     SplashFont *splashFont = NULL;
-    if (parameters->getOcr() == gTrue) {
+    if (parameters->getPlaceholder() == gTrue) {
         SplashCoord mat[6];
 //        mat[0] = (SplashCoord) curstate[0];
 //        mat[1] = (SplashCoord) curstate[1];
@@ -8318,6 +8319,9 @@ SplashFont *XmlAltoOutputDev::getSplashFont(GfxState *state, SplashCoord *matrix
     return font;
 }
 
+/**
+ *  implements the interface from xpdf to aggregate the characters
+ */
 void XmlAltoOutputDev::drawChar(GfxState *state, double x, double y, double dx,
                                 double dy, double originX, double originY, CharCode c, int nBytes,
                                 Unicode *u, int uLen) {
@@ -8326,7 +8330,7 @@ void XmlAltoOutputDev::drawChar(GfxState *state, double x, double y, double dx,
 
     SplashFont *splashFont = NULL;
 
-    if (parameters->getOcr() == gTrue) {
+    if (parameters->getPlaceholder() == gTrue) {
         SplashCoord mat[6];
 //        mat[0] = (SplashCoord) (curstate[0]);
 //        mat[1] = (SplashCoord) (curstate[1]);
@@ -8335,12 +8339,17 @@ void XmlAltoOutputDev::drawChar(GfxState *state, double x, double y, double dx,
 //        mat[4] = (SplashCoord) (curstate[4]);
 //        mat[5] = (SplashCoord) (curstate[5]);
         //splashFont = getSplashFont(state, mat);
-        if ((uLen == 0 ||
-             ((u[0] == (Unicode) 0 || u[0] < (Unicode) 32) && uLen == 1) ||
-             (uLen > 1 && (globalParams->getTextEncodingName()->cmp(ENCODING_UTF8)==0)&& !isUTF8(u, uLen)))) {
+        if (
+                (uLen == 0 ||
+                (
+                        (u[0] < (Unicode) 32) && uLen == 1) ||
+                        //TODO: not clear why uLen > 1 (to be checked)
+                        (uLen > 1 && (globalParams->getTextEncodingName()->cmp(ENCODING_UTF8)==0) && !isUTF8(u, uLen))
+                )
+        ) {
         //when len is gt 1 check if sequence is valid, if not replace by placeholder
             //&& globalParams->getApplyOCR())
-            // as a first iteration for dictionnaries, placing a placeholder, which means creating a map based on the font-code mapping to unicode from : https://unicode.org/charts/PDF/U2B00.pdf
+            // as a first iteration for dictionaries, placing a placeholder, which means creating a map based on the font-code mapping to unicode from : https://unicode.org/charts/PDF/U2B00.pdf
             GString *fontName = new GString();
             if (state->getFont()->getName()) { //AA : Here if fontName is NULL is problematic
                 fontName = state->getFont()->getName()->copy();
@@ -8352,10 +8361,14 @@ void XmlAltoOutputDev::drawChar(GfxState *state, double x, double y, double dx,
                 printf("ToBeOCRISEChar: x=%.2f y=%.2f c=%3d=0x%02x='%c' u=%3d fontName=%s \n",
                        (double) x, (double) y, c, c, c, u[0], fontName->getCString());
             }
-            // do map every char to a unicode, depending on charcode and font name
+            // do map every char to a unicode, depending on charcode and font name, if the character is not mapped, then
+            // I use the first avaiable placeholder, and then remove it from the placeholder list
+
+            // The placeholders are used in sequence, therefore the mapping to one or another placeholder is ensured only
+            // within the pdf.
             Unicode mapped_unicode = unicode_map->lookupInt(fontName_charcode);
             if (!mapped_unicode) {
-                mapped_unicode = placeholders[0];//no special need for random
+                mapped_unicode = placeholders[0]; //no special need for random
                 if (placeholders.size() > 1) {
                     placeholders.erase(placeholders.begin());
                 }
@@ -8365,7 +8378,7 @@ void XmlAltoOutputDev::drawChar(GfxState *state, double x, double y, double dx,
             uLen = 1;
             isNonUnicodeGlyph = gTrue;
         }
-    } else if(uLen > 1 && (globalParams->getTextEncodingName()->cmp(ENCODING_UTF8)==0)&& !isUTF8(u, uLen))
+    } else if(uLen > 1 && (globalParams->getTextEncodingName()->cmp(ENCODING_UTF8)==0) && !isUTF8(u, uLen))
         return;
 
     text->addChar(state, x, y, dx, dy, c, nBytes, u, uLen, splashFont, isNonUnicodeGlyph);

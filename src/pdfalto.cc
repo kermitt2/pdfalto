@@ -66,7 +66,7 @@ static GBool noImageInline = gFalse;
 static GBool annots = gFalse;
 static GBool readingOrder = gFalse;
 static GBool charReadingOrderAttr = gFalse;
-static GBool ocr = gFalse;
+static GBool placeholder = gFalse;
 
 static char ownerPassword[33] = "\001";
 static char userPassword[33] = "\001";
@@ -101,8 +101,8 @@ static ArgDesc argDesc[] = {
                 "blocks follow the reading order"},
         {"-charReadingOrderAttr",  argFlag,   &charReadingOrderAttr,    0,
                 "include TYPE attribute to String elements to indicate right-to-left reading order (not valid ALTO)"},
-//        {"-ocr",           argFlag,   &ocr,             0,
-//                "recognises all characters that are missing from unicode."},
+        {"-placeholder",           argFlag,   &placeholder, 0,
+                "replace invalid utf8 characters with one or more placeholders."},
         {"-fullFontName",  argFlag,   &fullFontName,    0,
                 "fonts names are not normalized"},
         {"-nsURI",         argString, namespaceUri,     sizeof(namespaceUri),
@@ -223,9 +223,9 @@ int main(int argc, char *argv[]) {
         cmd->append("-charReadingOrderAttr ");
     }
 
-    if (ocr) {
-        parameters->setOcr(gTrue);
-        cmd->append("-ocr ");
+    if (placeholder) {
+        parameters->setPlaceholder(gTrue);
+        cmd->append("-placeholder ");
         //we avoid using heuristic mapping (not reliable)
         globalParams->setMapNumericCharNames(gFalse);
     } else
