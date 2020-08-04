@@ -8341,12 +8341,10 @@ void XmlAltoOutputDev::drawChar(GfxState *state, double x, double y, double dx,
         //splashFont = getSplashFont(state, mat);
         if (
                 //TODO: why there is needs to replace with a placeholder, when the sequence is of size 0?
-                (uLen == 0 ||
-
                 (
-                        (u[0] < (Unicode) 32) && uLen == 1) ||
-                        //TODO: not clear, this seems the same as the other "if-else" down below.
-                        (uLen > 1 && (globalParams->getTextEncodingName()->cmp(ENCODING_UTF8)==0) && !isUTF8(u, uLen))
+                        uLen == 0
+                        || (uLen == 1 && (u[0] < (Unicode) 32))
+                        || (uLen > 1 && (globalParams->getTextEncodingName()->cmp(ENCODING_UTF8)==0) && !isUTF8(u, uLen))
                 )
         ) {
         //when len is gt 1 check if sequence is valid, if not replace by placeholder
