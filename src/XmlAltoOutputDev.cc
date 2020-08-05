@@ -8341,16 +8341,17 @@ void XmlAltoOutputDev::drawChar(GfxState *state, double x, double y, double dx,
         //splashFont = getSplashFont(state, mat);
         if (
                 //TODO: why there is needs to replace with a placeholder, when the sequence is of size 0?
-		// because this function is launched when we have a (postscript) operation to print some character, while the raw text is not provided (uLen=0) !
+		        // because this function is launched when we have a (postscript) operation to print some character,
+		        // while the raw text is not provided (uLen=0) !
                 (
                         uLen == 0
-                        || (uLen == 1 && (u[0] < (Unicode) 32))
-                        || (uLen > 1 && (globalParams->getTextEncodingName()->cmp(ENCODING_UTF8)==0) && !isUTF8(u, uLen))
+//                        || (uLen == 1 && (u[0] < (Unicode) 32))
+                        || ((globalParams->getTextEncodingName()->cmp(ENCODING_UTF8)==0) && !isUTF8(u, uLen))
                 )
         ) {
-        //when len is gt 1 check if sequence is valid, if not replace by placeholder
-            //&& globalParams->getApplyOCR())
-            // as a first iteration for dictionaries, placing a placeholder, which means creating a map based on the font-code mapping to unicode from : https://unicode.org/charts/PDF/U2B00.pdf
+            // AA: when len > 1 check if sequence is valid, if not replace by placeholder
+            // as a first iteration for dictionaries, placing a placeholder, which means creating a map based on the
+            // font-code mapping to unicode from : https://unicode.org/charts/PDF/U2B00.pdf
             GString *fontName = new GString();
             if (state->getFont()->getName()) { //AA : Here if fontName is NULL is problematic
                 fontName = state->getFont()->getName()->copy();
@@ -8363,7 +8364,7 @@ void XmlAltoOutputDev::drawChar(GfxState *state, double x, double y, double dx,
                        (double) x, (double) y, c, c, c, u[0], fontName->getCString());
             }
             // do map every char to a unicode, depending on charcode and font name, if the character is not mapped, then
-            // I use the first avaiable placeholder, and then remove it from the placeholder list
+            // I use the first available placeholder, and then remove it from the placeholder list
 
             // The placeholders are used in sequence, therefore the mapping to one or another placeholder is ensured only
             // within the pdf.
@@ -8382,10 +8383,10 @@ void XmlAltoOutputDev::drawChar(GfxState *state, double x, double y, double dx,
             isNonUnicodeGlyph = gTrue;
         }
 
-        //TODO: clarify this if
-	    // when the placeholder replacement is not activated , we want to strip all invalid utf 8 characters, since it will make the xml alto invalid..
+	    // When the placeholder replacement is not activated, we want to strip all invalid utf 8 characters,
+	    // since it will make the xml alto invalid..
 	    // also here (like below) , uLen > 1 is not necessary
-    } else if(uLen > 1 && (globalParams->getTextEncodingName()->cmp(ENCODING_UTF8)==0) && !isUTF8(u, uLen))
+    } else if((globalParams->getTextEncodingName()->cmp(ENCODING_UTF8)==0) && !isUTF8(u, uLen))
         return;
 
     text->addChar(state, x, y, dx, dy, c, nBytes, u, uLen, splashFont, isNonUnicodeGlyph);
@@ -9245,13 +9246,14 @@ void XmlAltoOutputDev::tilingPatternFill(GfxState *state, Gfx *gfx,
 bool XmlAltoOutputDev::isUTF8(Unicode *u, int uLen) {
     char buf[8];
     int n;
-    int j = 0;
     GString *s = new GString();
     UnicodeMap *uMap;
     // get the output encoding
     if (!(uMap = globalParams->getTextEncoding())) {
-        return 0;
+        return false;
     }
+
+    int j = 0;
     while (j < uLen) {
         n = uMap->mapUnicode(u[j], buf, sizeof(buf));
         s->append(buf, n);
@@ -9282,19 +9284,19 @@ bool XmlAltoOutputDev::isUTF8(Unicode *u, int uLen) {
             code_length = 4;
         else {
             /* invalid first byte of a multibyte character */
-            return 0;
+            return false;
         }
 
         if (str + (code_length - 1) >= end) {
             /* truncated string or invalid byte sequence */
-            return 0;
+            return false;
         }
 
         /* Check continuation bytes: bit 7 should be set, bit 6 should be
          * unset (b10xxxxxx). */
         for (i=1; i < code_length; i++) {
             if ((str[i] & 0xC0) != 0x80)
-                return 0;
+                return false;
         }
 
         if (code_length == 2) {
@@ -9309,20 +9311,20 @@ bool XmlAltoOutputDev::isUTF8(Unicode *u, int uLen) {
             /* (0xff & 0x0f) << 12 | (0xff & 0x3f) << 6 | (0xff & 0x3f) = 0xffff,
                so ch <= 0xffff */
             if (ch < 0x0800)
-                return 0;
+                return false;
 
             /* surrogates (U+D800-U+DFFF) are invalid in UTF-8:
                test if (0xD800 <= ch && ch <= 0xDFFF) */
             if ((ch >> 11) == 0x1b)
-                return 0;
+                return false;
         } else if (code_length == 4) {
             /* 4 bytes sequence: U+10000..U+10FFFF */
             ch = ((str[0] & 0x07) << 18) + ((str[1] & 0x3f) << 12) +
                  ((str[2] & 0x3f) << 6) + (str[3] & 0x3f);
             if ((ch < 0x10000) || (0x10FFFF < ch))
-                return 0;
+                return false;
         }
         str += code_length;
     }
-    return 1;
+    return true;
 }
