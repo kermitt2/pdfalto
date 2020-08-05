@@ -8341,6 +8341,7 @@ void XmlAltoOutputDev::drawChar(GfxState *state, double x, double y, double dx,
         //splashFont = getSplashFont(state, mat);
         if (
                 //TODO: why there is needs to replace with a placeholder, when the sequence is of size 0?
+		// because this function is launched when we have a (postscript) operation to print some character, while the raw text is not provided (uLen=0) !
                 (
                         uLen == 0
                         || (uLen == 1 && (u[0] < (Unicode) 32))
@@ -8382,6 +8383,8 @@ void XmlAltoOutputDev::drawChar(GfxState *state, double x, double y, double dx,
         }
 
         //TODO: clarify this if
+	    // when the placeholder replacement is not activated , we want to strip all invalid utf 8 characters, since it will make the xml alto invalid..
+	    // also here (like below) , uLen > 1 is not necessary
     } else if(uLen > 1 && (globalParams->getTextEncodingName()->cmp(ENCODING_UTF8)==0) && !isUTF8(u, uLen))
         return;
 
