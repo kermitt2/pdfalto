@@ -8,7 +8,7 @@
 
 **pdfalto** is initially a fork of [pdf2xml](http://sourceforge.net/projects/pdf2xml), developed at XRCE, with modifications for robustness, addition of features and output enhanced format in [ALTO](https://github.com/altoxml/documentation/wiki) (including in particular space information, useful for instance for further machine learning processing). It is based on the [Xpdf](http://www.xpdfreader.com/) library.  
 
-The latest stable version is *0.2*. Working version (master) is *0.3*.
+The latest stable version is *0.3*. Working version (master) is *0.4*.
 
 # Requirements
 
@@ -98,6 +98,8 @@ New in version 0.3 (apart various bug fixes):
 - line number detection: line numbers (typically added for review in manuscripts/preprints) are specifically identified and not anymore mixed with the rest of text content, they will be grouped in a separate block or, optionally, not outputted in the ALTO file (`noLineNumbers` option)
 
 - removal of `-blocks` option, the block information are always returned for ensuring ALTO validation (`<TextBlock>` element)
+
+- bug fixing on reading order
 
 New in version 0.2 (apart various bug fixes):
 
