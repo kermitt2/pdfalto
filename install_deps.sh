@@ -18,7 +18,9 @@ DEP_INSTALL_DIR=install
 
 LIBXML_URI=http://xmlsoft.org/sources/libxml2-2.9.8.tar.gz
 FREETYPE_URI=https://download.savannah.gnu.org/releases/freetype/freetype-2.9.tar.gz
-ICU_URI=http://download.icu-project.org/files/icu4c/62.1/icu4c-62_1-src.tgz
+#ICU_URI=http://download.icu-project.org/files/icu4c/62.1/icu4c-62_1-src.tgz
+ICU_URI=https://github.com/unicode-org/icu/releases/download/release-62-2/icu4c-62_2-src.tgz
+#ICU_URI=https://github.com/unicode-org/icu/releases/download/release-66-1/icu4c-66_1-src.tgz
 
 mkdir -p $DEP_INSTALL_DIR
 

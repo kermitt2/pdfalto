@@ -31,6 +31,8 @@ public:
 	/** Destructor */
 	~Parameters();
   
+	// getters
+
 	/** Return a boolean which inform if the text is displayed 
 	 * @return <code>true</code> if the toText option is selected, <code>false</code> otherwise
 	 */
@@ -39,7 +41,7 @@ public:
 	/** Return a boolean which inform if blocks informations are diplayed
 	 * @return <code>true</code> if the blocks option is selected, <code>false</code> otherwise
 	 */
-	GBool getDisplayBlocks() { return displayBlocks;};
+	//GBool getDisplayBlocks() { return displayBlocks;};
 	
 	/** Return a boolean which inform if the images are displayed
 	 * @return <code>true</code> if the noImage option is not selected, <code>false</code> otherwise
@@ -88,6 +90,13 @@ public:
 	 */
 	int getFilesCountLimit() {return filesCountLimit;}
 
+	/** Return a boolean which inform if line numbers tokens are diplayed
+	 * @return <code>true</code> if the noLineNumbers option is selected, <code>false</code> otherwise
+	 */
+	GBool getNoLineNumbers() { return noLineNumbers;};
+
+	// setters
+
 	/** Modify the boolean which inform if the images are displayed
 	 * @param noImage <code>true</code> if the noImage option is not selected, <code>false</code> otherwise
 	 */
@@ -101,7 +110,7 @@ public:
 	/** Modify the boolean which inform if blocks informations are diplayed
 	 * @param noblock <code>true</code> if the blocks option is selected, <code>false</code> otherwise
 	 */	
-	void setDisplayBlocks(GBool noblock);
+	//void setDisplayBlocks(GBool noblock);
 	
 	/** Modify the boolean which inform if the bookmark is displayed
 	 * @param outline <code>true</code> if the outline option is selected, <code>false</code> otherwise
@@ -140,6 +149,11 @@ public:
 	void setOcr(GBool ocrA);
 
 	void setFilesCountLimit(int count);
+
+	/** Modify the boolean which inform if line numbers must be diplayed
+	 * @param noLineNumberAttrs <code>true</code> if the noLineNumbers option is selected, <code>false</code> otherwise
+	 */	
+	void setNoLineNumbers(GBool noLineNumberAttrs);
 	
 	void saveToXML(const char *fileName,int firstPage,int lastPage);
 	
@@ -150,7 +164,7 @@ private:
 	/** The value of the noText option */
 	GBool displayText;
 	/** The value of the blocks option */
-	GBool displayBlocks;
+	//GBool displayBlocks;
 	/** The value of the outline option */
 	GBool displayOutline;
 	/** The value of the cutPages option */
@@ -167,7 +181,8 @@ private:
 	GBool ocr;
 	/** the count limit of files */
 	int filesCountLimit;
-  
+  	/** PL: the value of the noLineNumbers option*/
+  	GBool noLineNumbers;
 };
 
 #endif /*PARAMETERS_H_*/

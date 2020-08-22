@@ -60,7 +60,8 @@ static GBool noText = gFalse;
 static GBool noImage = gFalse;
 static GBool outline = gFalse;
 static GBool cutPages = gFalse;
-static GBool blocks = gFalse;
+//static GBool blocks = gFalse;
+static GBool noLineNumbers = gFalse;
 static GBool fullFontName = gFalse;
 static GBool noImageInline = gFalse;
 static GBool annots = gFalse;
@@ -82,8 +83,6 @@ static ArgDesc argDesc[] = {
                 "last page to convert"},
         {"-verbose",       argFlag,   &verbose,         0,
                 "display pdf attributes"},
-        {"-noText",        argFlag,   &noText,          0,
-                "do not extract textual objects"},
         {"-noImage",       argFlag,   &noImage,         0,
                 "do not extract Images (Bitmap and Vectorial)"},
         {"-noImageInline", argFlag,   &noImageInline,   0,
@@ -95,12 +94,16 @@ static ArgDesc argDesc[] = {
 // PL: code for supporting cut pages need to be put back
 //        {"-cutPages",      argFlag,   &cutPages,        0,
 //                "cut all pages in separately files"},
-        {"-blocks",        argFlag,   &blocks,          0,
-                "add blocks informations within the structure"},
+//        {"-blocks",        argFlag,   &blocks,          0,
+//                "add blocks informations within the structure"},
+        {"-noLineNumbers",        argFlag,   &noLineNumbers,          0,
+                "do not output line numbers added in manuscript-style textual documents"},
         {"-readingOrder",  argFlag,   &readingOrder,    0,
                 "blocks follow the reading order"},
+        {"-noText",        argFlag,   &noText,          0,
+                "do not extract textual objects (might be useful, but non-valid ALTO)"},
         {"-charReadingOrderAttr",  argFlag,   &charReadingOrderAttr,    0,
-                "include TYPE attribute to String elements to indicate right-to-left reading order (not valid ALTO)"},
+                "include TYPE attribute to String elements to indicate right-to-left reading order (might be useful, but non-valid ALTO)"},
 //        {"-ocr",           argFlag,   &ocr,             0,
 //                "recognises all characters that are missing from unicode."},
         {"-fullFontName",  argFlag,   &fullFontName,    0,
@@ -111,6 +114,8 @@ static ArgDesc argDesc[] = {
                 "owner password (for encrypted files)"},
         {"-upw",           argString, userPassword,     sizeof(userPassword),
                 "user password (for encrypted files)"},
+        {"-filesLimit",    argInt,    &filesCountLimit, 0,
+                "limit of asset files be extracted"},
         {"-q",             argFlag,   &quiet,           0,
                 "don't print any messages or errors"},
         {"-v",             argFlag,   &printVersion,    0,
@@ -123,13 +128,10 @@ static ArgDesc argDesc[] = {
                 "print usage information"},
         {"-?",             argFlag,   &printHelp,       0,
                 "print usage information"},
-        {"--saveconf",     argString, XMLcfgFileName,   sizeof(XMLcfgFileName),
-                "save all command line parameters in the specified XML <file>"},
-        {"-conf",          argString, cfgFileName,      sizeof(cfgFileName),
-                "configuration file to use in place of xpdfrc"},
-
-        {"-filesLimit",    argInt,    &filesCountLimit, 0,
-                "limit of asset files be extracted"},
+//        {"--saveconf",     argString, XMLcfgFileName,   sizeof(XMLcfgFileName),
+//                "save all command line parameters in the specified XML <file>"},
+//        {"-conf",          argString, cfgFileName,      sizeof(cfgFileName),
+//                "configuration file to use in place of xpdfrc"},
         {NULL}
 };
 
@@ -164,7 +166,6 @@ int main(int argc, char *argv[]) {
             fprintf(stderr, " version ");
             fprintf(stderr, "%s", PDFALTO_VERSION);
             fprintf(stderr, "\n");
-            //fprintf(stderr, "(Based on Xpdf version %s, %s)\n", xpdfVersion, xpdfCopyright);
             if (!printVersion) {
                 printUsage("pdfalto", "<PDF-file> [<xml-file>]", argDesc);
             }
@@ -206,11 +207,11 @@ int main(int argc, char *argv[]) {
         parameters->setCutAllPages(gTrue);
     }
 
-    if (blocks) {
-        parameters->setDisplayBlocks(gTrue);
-        cmd->append("-blocks ");
+    if (noLineNumbers) {
+        parameters->setNoLineNumbers(gTrue);
+        cmd->append("-noLineNumbers ");
     } else {
-        parameters->setDisplayBlocks(gFalse);
+        parameters->setNoLineNumbers(gFalse);
     }
 
     if (readingOrder) {
@@ -279,12 +280,6 @@ int main(int argc, char *argv[]) {
         nsURI = NULL;
     }
 
-    //store paramneters in a given XML file
-    if (XMLcfgFileName[0]) {
-        parameters->saveToXML(XMLcfgFileName, firstPage, lastPage);
-//   	goto err0;
-    }
-
     if (argc < 2) { goto err0; }
     fileName = new GString(argv[1]);
     // Create the object PDF doc
@@ -314,7 +309,7 @@ int main(int argc, char *argv[]) {
             shortFileName = new GString(textFileName);
         }
     }
-        // ELSE we build the output XML file name with the PDF file name
+    // ELSE we build the output XML file name with the PDF file name
     else {
         p = fileName->getCString() + fileName->getLength() - 4;
         if (!strcmp(p, EXTENSION_PDF) || !strcmp(p, EXTENSION_PDF_MAJ)) {
@@ -371,7 +366,6 @@ int main(int argc, char *argv[]) {
     xmlAltoOut->initMetadataInfoDoc();
     xmlAltoOut->addMetadataInfo(doc);
     xmlAltoOut->closeMetadataInfoDoc(shortFileName);
-
 
     if (xmlAltoOut->isOk()) {
 
@@ -431,6 +425,7 @@ int main(int argc, char *argv[]) {
     // check for memory leaks
     Object::memCheck(stderr);
     gMemReport(stderr);
+    
     return exitCode;
 }
 

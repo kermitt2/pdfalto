@@ -60,6 +60,7 @@ using namespace icu;
 
 #include "gmem.h"
 #include "GList.h"
+#include "GHash.h"
 #include "config.h"
 #include "Error.h"
 #include "GlobalParams.h"
@@ -496,6 +497,7 @@ TextWord::TextWord(GList *charsA, int start, int lenA,
     bold = gFalse;
     serif = gFalse;
     symbolic = gFalse;
+    lineNumber = false;
 
     spaceAfter = spaceAfterA;
     dir = dirA;
@@ -788,6 +790,10 @@ TextWord::TextWord(GList *charsA, int start, int lenA,
 
 Unicode TextWord::getChar(int idx) { return ((TextChar *) chars->get(idx))->c; }
 
+void TextWord::setLineNumber(bool theBool) {
+    lineNumber = theBool;
+}
+
 TextWord::TextWord(TextWord *word) {
     *this = *word;
 //    text = (Unicode *)gmallocn(len, sizeof(Unicode));
@@ -821,7 +827,7 @@ TextRawWord::TextRawWord(GfxState *state, double x0, double y0,
     bold = gFalse;
     serif = gFalse;
     symbolic = gFalse;
-
+    lineNumber = false;
 
     double *fontm;
     double m[4];
@@ -1041,6 +1047,10 @@ TextRawWord::TextRawWord(GfxState *state, double x0, double y0,
 TextRawWord::~TextRawWord() {
     //gfree(text);
     gfree(edge);
+}
+
+void TextRawWord::setLineNumber(bool theBool) {
+    lineNumber = theBool;
 }
 
 Unicode TextRawWord::getChar(int idx) { return ((TextChar *) chars->get(idx))->c; }
@@ -1804,7 +1814,6 @@ TextPage::TextPage(GBool verboseA, Catalog *catalog, xmlNodePtr node,
         }
         dataDirectory = new GString(cp);
     }
-
 }
 
 TextPage::~TextPage() {
@@ -1813,6 +1822,16 @@ TextPage::~TextPage() {
     if (namespaceURI) {
         delete namespaceURI;
     }
+}
+
+/** Set if the page contains a column of line numbers*/
+void TextPage::setLineNumber(bool theBool) {
+    lineNumber = theBool;
+}
+
+/** get the presence of a column of line numbers in the text page */
+bool TextPage::getLineNumber() {
+    return lineNumber;
 }
 
 void TextPage::startPage(int pageNum, GfxState *state, GBool cut) {
@@ -1832,7 +1851,6 @@ void TextPage::startPage(int pageNum, GfxState *state, GBool cut) {
     PDFRectangle *trimBox = myCat->getPage(pageNum)->getTrimBox();
     PDFRectangle *bleedBox = myCat->getPage(pageNum)->getBleedBox();
     PDFRectangle *artBox = myCat->getPage(pageNum)->getArtBox();
-
 
     page = xmlNewNode(NULL, (const xmlChar *) TAG_PAGE);
     page->type = XML_ELEMENT_NODE;
@@ -2623,7 +2641,7 @@ void TextPage::addCharToPageChars(GfxState *state, double x, double y, double dx
 void TextPage::addCharToRawWord(GfxState *state, double x, double y, double dx,
                                 double dy, CharCode c, int nBytes, Unicode *u, int uLen, SplashFont *splashFont,
                                 GBool isNonUnicodeGlyph) {
-
+    //cout << "addCharToRawWord" << endl;
     double x1, y1, w1, h1, dx2, dy2, base, sp, delta;
     GBool overlap;
     int i;
@@ -2648,14 +2666,14 @@ void TextPage::addCharToRawWord(GfxState *state, double x, double y, double dx,
         return;
     }
 
-    // subtract char and word spacing from the dx,dy values // HD why ??
+    // subtract char and word spacing from the dx,dy values 
     sp = state->getCharSpace();
     if (c == (CharCode) 0x20) {
         sp += state->getWordSpace();
     }
     state->textTransformDelta(sp * state->getHorizScaling(), 0, &dx2, &dy2);
-    dx -= dx2; //HD
-    dy -= dy2; //HD
+    dx -= dx2; 
+    dy -= dy2; 
     state->transformDelta(dx, dy, &w1, &h1);
 
     // check the tiny chars limit
@@ -2726,7 +2744,7 @@ void TextPage::addCharToRawWord(GfxState *state, double x, double y, double dx,
                                                                            - curWord->base) <
                                                                       dupMaxSecDelta * curWord->fontSize;
 
-        //Avoid splitting token when overlaping is surrounded by diacritic
+        // avoid splitting token when overlaping is surrounded by diacritic
         ModifierClass modifierClass = NOT_A_MODIFIER;
         if (curWord->len > 0)
             modifierClass = classifyChar(((TextChar *) curWord->chars->get(curWord->getLength() - 1))->c);
@@ -2803,7 +2821,6 @@ void TextPage::addChar(GfxState *state, double x, double y, double dx,
 
 void TextPage::endWord() {
     // This check is needed because Type 3 characters can contain
-    // This check is needed because Type 3 characters can contain
     // text-drawing operations (when TextPage is being used via
     // {X,Win}SplashOutputDev rather than TextOutputDev).
     if (nest > 0) {
@@ -2817,7 +2834,6 @@ void TextPage::endWord() {
         curWord = NULL;
         idWORD++;
     }
-
 }
 
 void TextPage::addWord(TextRawWord *word) {
@@ -2867,7 +2883,6 @@ void TextPage::addAttributTypeReadingOrder(xmlNodePtr node, char *tmp,
 
 void TextPage::addAttributsNodeVerbose(xmlNodePtr node, char *tmp,
                                        IWord *word) {
-
     GString *id = new GString("p");
     xmlNewProp(node, (const xmlChar *) ATTR_SID, (const xmlChar *) buildSID(num, word->getIdx(), id)->getCString());
     delete id;
@@ -2895,7 +2910,6 @@ void TextPage::addAttributsNodeVerbose(xmlNodePtr node, char *tmp,
 
 void TextPage::addAttributsNode(xmlNodePtr node, IWord *word, TextFontStyleInfo *fontStyleInfo, UnicodeMap *uMap,
                                 GBool fullFontName) {
-
     char *tmp;
     tmp = (char *) malloc(10 * sizeof(char));
 
@@ -3144,9 +3158,7 @@ void TextPage::testLinkedText(xmlNodePtr node, double xMin, double yMin, double 
 
 }
 
-
-GBool
-TextPage::testOverlap(double x11, double y11, double x12, double y12, double x21, double y21, double x22, double y22) {
+GBool TextPage::testOverlap(double x11, double y11, double x12, double y12, double x21, double y21, double x22, double y22) {
     return ((min(x12, x22) >= max(x11, x21)) &&
             (min(y12, y22) >= max(y11, y21)));
 }
@@ -3219,27 +3231,26 @@ GBool TextFontStyleInfo::cmp(TextFontStyleInfo *tsi) {
     )
             )
         return gTrue;
-    else return gFalse;
+    else 
+        return gFalse;
 }
 
 //------------------------------------------------------------------------
 // TextGap
 //------------------------------------------------------------------------
-
 class TextGap {
-public:
 
+public:
     TextGap(double aXY, double aW) : xy(aXY), w(aW) {}
 
-    double xy;            // center of gap: x for vertical gaps,
-    //   y for horizontal gaps
-    double w;            // width of gap
+    double xy;  // center of gap: x for vertical gaps,
+                //   y for horizontal gaps
+    double w;   // width of gap
 };
 
 //------------------------------------------------------------------------
 // TextPage: layout analysis
 //------------------------------------------------------------------------
-
 // Determine primary (most common) rotation value.  Rotate all chars
 // to that primary rotation.
 int TextPage::rotateChars(GList *charsA) {
@@ -4647,8 +4658,8 @@ void TextPage::insertColumnIntoTree(TextBlock *column, TextBlock *tree) {
     tree->tag = blkTagMulticolumn;
 }
 
-// PL: this is apparently not used
-void TextPage::dumpInReadingOrder(GBool useBlocks, GBool fullFontName) {
+// PL: this is not used
+void TextPage::dumpInReadingOrder(GBool noLineNumbers, GBool fullFontName) {
     TextBlock *tree;
     TextColumn *col;
     TextParagraph *par;
@@ -4701,7 +4712,8 @@ void TextPage::dumpInReadingOrder(GBool useBlocks, GBool fullFontName) {
         col = (TextColumn *) columns->get(colIdx);
         for (parIdx = 0; parIdx < col->paragraphs->getLength(); ++parIdx) {
 
-            if (useBlocks) {
+            //if (useBlocks) 
+            {
                 nodeblocks = xmlNewNode(NULL, (const xmlChar *) TAG_BLOCK);
                 nodeblocks->type = XML_ELEMENT_NODE;
 
@@ -4899,14 +4911,14 @@ void TextPage::dumpInReadingOrder(GBool useBlocks, GBool fullFontName) {
                     free(tmp);
                 }
 
-                if (useBlocks)
-                    xmlAddChild(nodeblocks, nodeline);
-                else
-                    xmlAddChild(printSpace, nodeline);
+                //if (useBlocks)
+                xmlAddChild(nodeblocks, nodeline);
+                //else
+                //    xmlAddChild(printSpace, nodeline);
             }
 
-            if (useBlocks)
-                xmlAddChild(printSpace, nodeblocks);
+            //if (useBlocks)
+            xmlAddChild(printSpace, nodeblocks);
         }
         //(*outputFunc)(outputStream, eol, eolLen);
     }
@@ -4960,9 +4972,346 @@ void TextPage::dumpInReadingOrder(GBool useBlocks, GBool fullFontName) {
     }
 }
 
-void TextPage::dump(GBool useBlocks, GBool fullFontName) {
-    // Output the page in raw (content stream) order
+bool is_digit(Unicode u) {
+    // simply match Unicode for ASCII digit... should we add more unicode variants of numbers?
+    if (u == (Unicode) 48 ||
+        u == (Unicode) 49 ||
+        u == (Unicode) 50 ||
+        u == (Unicode) 51 ||
+        u == (Unicode) 52 ||
+        u == (Unicode) 53 ||
+        u == (Unicode) 54 ||
+        u == (Unicode) 55 ||
+        u == (Unicode) 56 ||
+        u == (Unicode) 57)
+        return true;
+    else 
+        return false;
+}
 
+bool is_number(TextWord *word) {
+    Unicode *text = NULL;
+    text = (Unicode *) grealloc(text, word->len * sizeof(Unicode));
+    for (int i = 0; i < word->len; i++) {
+        Unicode theU = ((TextChar *) word->chars->get(i))->c;
+        if (!is_digit(theU)) {
+            return false;
+        }
+    }
+    return true;
+}
+
+int find_index(vector<double> positions, double val) {
+    // simple double look-up, return index of val or -1
+    int index = -1;
+    for (int i = 0; i < positions.size(); i++) {
+        if (positions[i] == val) {
+            index = i;
+            break;
+        }
+    }
+    return index;
+}
+
+int find_index(vector<int> positions, int val) {
+    // simple int look-up, return index of val or -1
+    int index = -1;
+    for (int i = 0; i < positions.size(); i++) {
+        if (positions[i] == val) {
+            index = i;
+            break;
+        }
+    }
+    return index;
+}
+
+bool TextPage::markLineNumber() {
+    // Detect the presence of line number column in the page and mark the corresponding TextWord objects for further appropriate handling
+
+    // Line number conditions:
+    // - left-most or right-most alignment
+    // - only made of digits
+    // - vertical alignment along the page content
+    // - number increment (same increment, but not necessarly by +1)
+    // - same font (same font name and same font size)
+    // - immediate vertical gap with next token vertically aligned (note that this is actually complicated with the PDF stream order) 
+
+    int wordId = 0;
+    //int nextVpos = 0;
+    //int increment = 0;
+    
+    bool hasLineNumber = false;
+
+    // at this stage we already have a block and line segmentation
+    int parIdx, lineIdx, wordI, n;
+    TextParagraph *par;
+    TextLine *line1;
+    TextWord *word;
+    TextWord *nextWord;
+    TextWord *previousWord;
+
+    vector<TextWord*> lineNumberWords;
+    vector<TextWord*> textWords;
+
+    int rightMostBoundary = 0;
+    int leftMostBoundary = 999990;
+
+    // first pass is for number detection, it should stop very early in case of no line number
+    // we also keep track of the left and right text boundaries for the page
+    for (parIdx = 0; parIdx < blocks->getLength(); parIdx++) {
+        par = (TextParagraph *) blocks->get(parIdx);
+
+        for (lineIdx = 0; lineIdx < par->lines->getLength(); lineIdx++) {
+            line1 = (TextLine *) par->lines->get(lineIdx);
+
+            for (wordI = 0; wordI < line1->words->getLength(); wordI++) {
+                word = (TextWord *) line1->words->get(wordI);
+                if (wordI < line1->words->getLength() - 1)
+                    nextWord = (TextWord *) line1->words->get(wordI + 1);
+                else 
+                    nextWord = NULL;
+                if (wordId != 0)
+                    previousWord = (TextWord *) words->get(wordId - 1);
+                else 
+                    previousWord = NULL;
+
+                // first or last token in the line?
+                if (previousWord != NULL && nextWord != NULL)
+                    continue;
+
+                // numerical token?
+                if (is_number(word)) {
+                    //lineNumberWords->append(word);
+                    lineNumberWords.push_back(word);
+                    hasLineNumber = true;
+                } else {
+                    //textWords->append(word);
+                    textWords.push_back(word);
+                }
+            }
+            if (line1->xMin < leftMostBoundary)
+                leftMostBoundary = line1->xMin;
+            if (line1->xMax > rightMostBoundary)
+                rightMostBoundary = line1->xMax;
+        }
+
+        if (par->xMin < leftMostBoundary)
+            leftMostBoundary = par->xMin;
+        if (par->xMax > rightMostBoundary)
+            rightMostBoundary = par->xMax;
+    }
+
+    if (!hasLineNumber) {
+        return false;
+    }
+
+    // define the x alignment by clustering identified number tokens by x position
+    vector<vector<int>> clusters;
+    vector<int> positions;
+    for (wordI = 0; wordI < lineNumberWords.size(); wordI++) {
+        word = lineNumberWords[wordI];
+        int vpos1 = word->xMin;
+        int vpos2 = word->xMax;
+
+        // we cluster by xMin and xMax positions
+        int index1 = find_index(positions, vpos1);;
+        int index2 = find_index(positions, vpos2);
+
+        if (index1 != -1) {
+            vector<int> the_cluster = clusters[index1];
+            the_cluster.push_back(wordI);
+            clusters[index1] = the_cluster;
+        } else {
+            // new cluster init
+            vector<int> the_cluster;
+            the_cluster.push_back(wordI);
+            clusters.push_back(the_cluster);
+            positions.push_back(vpos1);
+        }
+
+        if (index2 != -1) {
+            vector<int> the_cluster = clusters[index2];
+            the_cluster.push_back(wordI);
+            clusters[index2] = the_cluster;
+        } else {
+            // new cluster init
+            vector<int> the_cluster;
+            the_cluster.push_back(wordI);
+            clusters.push_back(the_cluster);
+            positions.push_back(vpos2);
+        }
+    }
+
+    // apply a similar clustering for selected non-numerical tokens 
+    vector<vector<int>> textClusters;
+    vector<int> textPositions;
+    for (wordI = 0; wordI < textWords.size(); wordI++) {
+        word = textWords[wordI];
+        int vpos1 = word->xMin;
+        int vpos2 = word->xMax;
+
+        // we cluster by xMin and xMax positions
+        int index1 = find_index(textPositions, vpos1);;
+        int index2 = find_index(textPositions, vpos2);
+
+        if (index1 != -1) {
+            vector<int> the_cluster = textClusters[index1];
+            the_cluster.push_back(wordI);
+            textClusters[index1] = the_cluster;
+        } else {
+            // new cluster init
+            vector<int> the_cluster;
+            the_cluster.push_back(wordI);
+            textClusters.push_back(the_cluster);
+            textPositions.push_back(vpos1);
+        }
+
+        if (index2 != -1) {
+            vector<int> the_cluster = textClusters[index2];
+            the_cluster.push_back(wordI);
+            textClusters[index2] = the_cluster;
+        } else {
+            // new cluster init
+            vector<int> the_cluster;
+            the_cluster.push_back(wordI);
+            textClusters.push_back(the_cluster);
+            textPositions.push_back(vpos2);
+        }
+    }
+
+    vector<int> bestClusterIndex;
+    vector<int> largestClusterSize;
+    int nonTrivialClusterSize = 3;
+    // select largest cluster of numbers, which will give the best x alignments and the corresponding lists of number tokens
+    for (int i = 0; i < clusters.size(); i++) {
+        vector<int> theCluster = clusters[i];
+
+        if (theCluster.size() < nonTrivialClusterSize)
+            continue;
+
+        if (bestClusterIndex.size() == 0) {
+            bestClusterIndex.push_back(i);
+            largestClusterSize.push_back(theCluster.size());
+        } else {
+            vector<int>::iterator it1 = bestClusterIndex.begin();
+            vector<int>::iterator it2 = largestClusterSize.begin();
+            vector<int>::iterator last = bestClusterIndex.end();
+            int j = 0;
+            while(it1 != last) {
+                if (theCluster.size() < largestClusterSize[j]) {
+                    if (j == bestClusterIndex.size()-1) {
+                        bestClusterIndex.push_back(i);
+                        largestClusterSize.push_back(theCluster.size());
+                        break;
+                    }            
+                } else {
+                    // this is sorted based on the cluster siez, so we insert just before j
+                    bestClusterIndex.insert(it1, i);
+                    largestClusterSize.insert(it2, theCluster.size());
+                    break;
+                } 
+                j++;
+                ++it1;
+                ++it2;
+            }
+        }
+    }
+
+    if (bestClusterIndex.size() == 0) {
+        return false;
+    }
+
+    vector<int> bestCluster = clusters[bestClusterIndex[0]];
+    double final_vpos = positions[bestClusterIndex[0]];
+
+    //cout << "best alignment vpos: " << final_vpos << endl;
+    //cout << "nb numbers best cluster: " << bestCluster.size() << endl;
+
+    // check the remaining constraints: 
+
+    // same font? we normally never have line number using different font
+    /*
+    for (int i = 0; i < bestCluster.size(); i++) {
+        int index = bestCluster[i];
+        word = (TextWord *)lineNumberWords->get(index);
+        int font_size = 0;
+        xmlChar *xcFontName;
+        font_size = word->fontSize;    
+        if (word->getFontName())
+            xcFontName = (xmlChar *) word->getFontName();
+        // to be finished if needed...
+    }
+    if (!hasLineNumber)
+        return false;
+    */
+
+    // Do we have text areas at same alignment or positioned more on the side than the number cluster?
+    // -> see the left-most and right-most non trivial text block with the text token clusters
+    nonTrivialClusterSize = largestClusterSize[0] / 4;
+    if (nonTrivialClusterSize == 0)
+        nonTrivialClusterSize = 1;
+
+    for(int j=0; j<bestClusterIndex.size(); j++) {
+        bestCluster = clusters[bestClusterIndex[j]];
+        final_vpos = positions[bestClusterIndex[j]];
+        hasLineNumber = true;
+
+        //cout << "move to next best" << endl;
+        //cout << "     final alignment vpos: " << final_vpos << endl;
+        //cout << "     nb numbers best cluster: " << bestCluster.size() << endl;
+
+        for (int i = 0; i < textClusters.size(); i++) {
+            vector<int> theCluster = textClusters[i];
+            if (theCluster.size() >= nonTrivialClusterSize) {
+                //word = (TextWord *)textWords->get(theCluster[0]);
+                word = textWords[theCluster[0]];
+                int vpos1 = word->xMin;
+                int vpos2 = word->xMax;
+                //int vpos1 = word.xMin;
+                //int vpos2 = word.xMax;
+                if (vpos1 <= final_vpos && vpos2 >= final_vpos) {
+                    hasLineNumber = false;
+                    break;
+                }
+            }
+        }
+        if (hasLineNumber)
+            break;
+    }
+
+    if (!hasLineNumber) {
+        return false;
+    }
+
+    // neutralize candidate line numbers in the middle of a page with 2 columns 
+    // (these are ref numbers in the biblio or something else, but can't be line numbers)
+    int quarterWidth = (rightMostBoundary - leftMostBoundary) / 4;
+    if (quarterWidth+leftMostBoundary < final_vpos && final_vpos < leftMostBoundary+(quarterWidth*3))
+        hasLineNumber = false;
+    
+    if (!hasLineNumber) {
+        return false;
+    }
+
+    // increment? it's not possible to suppose any particular increments, it could be 1 by 1 or 
+    // 5 by 5 for instance, however number should be growing!
+    // to be done if needed...
+
+    // immediate vertigal gap? 
+
+    // final marking of TextWord corresponding to line numbers
+    for (int i = 0; i < bestCluster.size(); i++) {
+        int index = bestCluster[i];
+        word = lineNumberWords[index];
+        // consider only aligned tokens
+        word->setLineNumber(true);
+    }
+
+    return hasLineNumber;
+}
+
+void TextPage::dump(GBool noLineNumbers, GBool fullFontName, vector<bool> lineNumberStatus) {
+    // Output the page in raw (content stream) order
     blocks = new GList(); //these are blocks in alto schema
 
     UnicodeMap *uMap;
@@ -5028,12 +5377,12 @@ void TextPage::dump(GBool useBlocks, GBool fullFontName) {
     TextParagraph *paragraph = new TextParagraph;
     paragraph->setLines(parLines);
 
-    minBlockX = 999999999;
+    minBlockX = 999999;
     maxBlockLineWidth = 0;
 
     xMin = yMin = xMax = yMax = 0;
-    minLineX = 999999999;
-    minLineY = 999999999;
+    minLineX = 999999;
+    minLineY = 999999;
 
     int wordId = 0;
     for (wordId = 0; wordId < words->getLength(); wordId++) {
@@ -5305,8 +5654,8 @@ void TextPage::dump(GBool useBlocks, GBool fullFontName) {
             firstword = 1;
             xMin = yMin = xMax = yMax = yMinRot = yMaxRot = xMaxRot = xMinRot
                     = 0;
-            minLineY = 99999999;
-            minLineX = 99999999;
+            minLineY = 999999;
+            minLineX = 999999;
         }
 
         // IF it's the end of line or the end of page
@@ -5359,7 +5708,7 @@ void TextPage::dump(GBool useBlocks, GBool fullFontName) {
                         paragraph->setXMax(paragraph->getXMin() + maxBlockLineWidth);
 
                         // adding previous block to the page element
-                        if(readingOrder)
+                        if(readingOrder && num == 1)
                             lastBlockInserted = addBlockInReadingOrder(paragraph, lineFontSize, lastBlockInserted);
                         else
                             blocks->append(paragraph);
@@ -5369,7 +5718,7 @@ void TextPage::dump(GBool useBlocks, GBool fullFontName) {
                     parLines = new GList();
                     paragraph->setLines(parLines);
 
-                    minBlockX = 999999999;
+                    minBlockX = 999999;
                     maxBlockLineWidth = 0;
 
                     if (lineX != 0 && minBlockX > lineX) {
@@ -5429,7 +5778,7 @@ void TextPage::dump(GBool useBlocks, GBool fullFontName) {
                             paragraph->setYMax(paragraph->getYMin() + blockHeight);
 
                             // adding previous block to the page element
-                            if(readingOrder)
+                            if(readingOrder && num == 1)
                                 lastBlockInserted = addBlockInReadingOrder(paragraph, lineFontSize, lastBlockInserted);
                             else
                                 blocks->append(paragraph);
@@ -5439,7 +5788,7 @@ void TextPage::dump(GBool useBlocks, GBool fullFontName) {
                         parLines = new GList();
                         paragraph->setLines(parLines);
 
-                        minBlockX = 999999999;
+                        minBlockX = 999999;
                         maxBlockLineWidth = 0;
 
                         // PL: new block X and Y
@@ -5462,7 +5811,7 @@ void TextPage::dump(GBool useBlocks, GBool fullFontName) {
                 endPage = gFalse;
 
                 if (paragraph != NULL) {
-                    if(readingOrder)
+                    if(readingOrder && num == 1)
                         lastBlockInserted = addBlockInReadingOrder(paragraph, lineFontSize, lastBlockInserted);
                     else
                         blocks->append(paragraph);
@@ -5481,8 +5830,8 @@ void TextPage::dump(GBool useBlocks, GBool fullFontName) {
             linePreviousWidth = lineWidth;
             linePreviousHeight = lineHeight;
             linePreviousFontSize = lineFontSize;
-            minLineY = 99999999;
-            minLineX = 99999999;
+            minLineY = 999999;
+            minLineX = 999999;
             line = new TextLine;
             lineWords = new GList();
             line->setWords(lineWords);
@@ -5491,6 +5840,28 @@ void TextPage::dump(GBool useBlocks, GBool fullFontName) {
         free(tmp);
     } // end FOR
 
+    // if no line number was found in the first half of the document and the number of pages of the document is large enough,
+    // we do don't need to look for line numbers any more
+    int nbTotalPage = myCat->getNumPages();
+    int currentPageNumber = getPageNumber();
+
+    //cout << "nbTotalPage: " << nbTotalPage << endl;
+    //cout << "currentPageNumber: " << currentPageNumber << endl;
+
+    // check if the previous pages have line numbers
+    bool previousLineNumber = true;
+    for(int i=0; i<lineNumberStatus.size(); i++) {
+        previousLineNumber = lineNumberStatus[i];
+        if (previousLineNumber)
+            break;
+    }
+    
+    bool hasLineNumber = false;
+    if ( (currentPageNumber < nbTotalPage/2) || (previousLineNumber && nbTotalPage>4)) {
+        hasLineNumber = markLineNumber();
+        //cout << "result markLineNumber: " << hasLineNumber << endl;
+    }
+    setLineNumber(hasLineNumber);
 
     xmlNodePtr node = NULL;
     xmlNodePtr nodeline = NULL;
@@ -5516,10 +5887,50 @@ void TextPage::dump(GBool useBlocks, GBool fullFontName) {
     double currentLineYmin = 0;
     double currentLineYmax = 0;
 
-    for (parIdx = 0; parIdx < blocks->getLength(); parIdx++) {
-        par = (TextParagraph *) blocks->get(parIdx);
+    if (hasLineNumber && !noLineNumbers) {
+        // we preliminary introduce a block for line numbers, if any and if we have to display them
 
-        if (useBlocks) {
+        // first grab the line numbers
+        GList *lineNumberWords = new GList();
+        for(parIdx = 0; parIdx < blocks->getLength(); parIdx++) {
+            par = (TextParagraph *) blocks->get(parIdx);
+
+            for(lineIdx = 0; lineIdx < par->lines->getLength(); lineIdx++) {
+                line1 = (TextLine *) par->lines->get(lineIdx);
+
+                for(wordI = 0; wordI < line1->words->getLength(); wordI++) {
+                    word = (TextWord *) line1->words->get(wordI);
+
+                    if (word->lineNumber && (is_number(word))) {
+                        lineNumberWords->append(word);
+                    }
+                }
+            }
+        }
+
+        if (lineNumberWords->getLength() > 0) {
+
+            // compute the dim of the block
+            double blockXMin = 999999;
+            double blockXMax = 0;
+            double blockYMin = 999999;
+            double blockYMax = 0;
+
+            for(wordI = 0; wordI < lineNumberWords->getLength(); wordI++) {
+                word = (TextWord *) lineNumberWords->get(wordI);
+
+                if (word->xMin < blockXMin)
+                    blockXMin = word->xMin;
+                if (word->yMin < blockYMin)
+                    blockYMin = word->yMin;
+
+                if (word->xMax > blockXMax)
+                    blockXMax = word->xMax;
+                if (word->yMax > blockYMax)
+                    blockYMax = word->yMax;
+            }
+
+            // create custom block for line numbers
             nodeblocks = xmlNewNode(NULL, (const xmlChar *) TAG_BLOCK);
             nodeblocks->type = XML_ELEMENT_NODE;
 
@@ -5530,22 +5941,93 @@ void TextPage::dump(GBool useBlocks, GBool fullFontName) {
             numBlock = numBlock + 1;
 
             char *tmp;
-
             tmp = (char *) malloc(10 * sizeof(char));
-            snprintf(tmp, sizeof(tmp),ATTR_NUMFORMAT, par->getXMin());
+            snprintf(tmp, sizeof(tmp),ATTR_NUMFORMAT, blockXMin);
             xmlNewProp(nodeblocks, (const xmlChar*)ATTR_X, (const xmlChar*)tmp);
-
-            snprintf(tmp, sizeof(tmp),ATTR_NUMFORMAT, par->getYMin());
+            snprintf(tmp, sizeof(tmp),ATTR_NUMFORMAT, blockYMin);
             xmlNewProp(nodeblocks, (const xmlChar*)ATTR_Y, (const xmlChar*)tmp);
-
-            snprintf(tmp, sizeof(tmp),ATTR_NUMFORMAT, par->getYMax() - par->getYMin());
+            snprintf(tmp, sizeof(tmp),ATTR_NUMFORMAT, blockYMax - blockYMin);
             xmlNewProp(nodeblocks, (const xmlChar*)ATTR_HEIGHT, (const xmlChar*)tmp);
-            snprintf(tmp, sizeof(tmp),ATTR_NUMFORMAT, par->getXMax() - par->getXMin());
+            snprintf(tmp, sizeof(tmp),ATTR_NUMFORMAT, blockXMax - blockXMin);
             xmlNewProp(nodeblocks, (const xmlChar*)ATTR_WIDTH, (const xmlChar*)tmp);
-
             free(tmp);
+
+            for(wordI = 0; wordI < lineNumberWords->getLength(); wordI++) {
+                word = (TextWord *) lineNumberWords->get(wordI);
+                
+                // create lines with one number
+                nodeline = xmlNewNode(NULL, (const xmlChar *) TAG_TEXT);
+                nodeline->type = XML_ELEMENT_NODE;
+
+                id = new GString("p");
+                xmlNewProp(nodeline, (const xmlChar*)ATTR_ID,
+                           (const xmlChar*)buildIdText(num, numText, id)->getCString());
+                delete id;
+                numText = numText + 1;
+
+                char *tmp;
+                tmp = (char *) malloc(10 * sizeof(char));
+                snprintf(tmp, sizeof(tmp),ATTR_NUMFORMAT, word->xMax - word->xMin);
+                xmlNewProp(nodeline, (const xmlChar*)ATTR_WIDTH, (const xmlChar*)tmp);
+                snprintf(tmp, sizeof(tmp),ATTR_NUMFORMAT, word->yMax - word->yMin);
+                xmlNewProp(nodeline, (const xmlChar*)ATTR_HEIGHT, (const xmlChar*)tmp);
+                snprintf(tmp, sizeof(tmp),ATTR_NUMFORMAT, word->xMin);
+                xmlNewProp(nodeline, (const xmlChar*)ATTR_X, (const xmlChar*)tmp);
+                snprintf(tmp, sizeof(tmp),ATTR_NUMFORMAT, word->yMin);
+                xmlNewProp(nodeline, (const xmlChar*)ATTR_Y, (const xmlChar*)tmp);
+                free(tmp);
+
+                // create the number token
+                node = xmlNewNode(NULL, (const xmlChar *) TAG_TOKEN);
+                node->type = XML_ELEMENT_NODE;
+
+                fontStyleInfo = new TextFontStyleInfo;
+
+                tmp = (char *) malloc(10 * sizeof(char));
+
+                // if option verbose is selected
+                if (verbose) {
+                    addAttributsNodeVerbose(node, tmp, word);
+                }
+                addAttributsNode(node, word, fontStyleInfo, uMap, fullFontName);
+                addAttributTypeReadingOrder(node, tmp, word);    
+                free(tmp);
+
+                xmlAddChild(nodeline, node);
+                xmlAddChild(nodeblocks, nodeline);
+            }
+
+            xmlAddChild(printSpace, nodeblocks);
         }
-        for (lineIdx = 0; lineIdx < par->lines->getLength(); ++lineIdx) {
+
+        delete lineNumberWords;
+    }
+
+    for(parIdx = 0; parIdx < blocks->getLength(); parIdx++) {
+        par = (TextParagraph *) blocks->get(parIdx);
+
+        nodeblocks = xmlNewNode(NULL, (const xmlChar *) TAG_BLOCK);
+        nodeblocks->type = XML_ELEMENT_NODE;
+
+        id = new GString("p");
+        xmlNewProp(nodeblocks, (const xmlChar *) ATTR_ID,
+                   (const xmlChar *) buildIdBlock(num, numBlock, id)->getCString());
+        delete id;
+        numBlock = numBlock + 1;
+
+        char *tmp;
+        tmp = (char *) malloc(10 * sizeof(char));
+        snprintf(tmp, sizeof(tmp),ATTR_NUMFORMAT, par->getXMin());
+        xmlNewProp(nodeblocks, (const xmlChar*)ATTR_X, (const xmlChar*)tmp);
+        snprintf(tmp, sizeof(tmp),ATTR_NUMFORMAT, par->getYMin());
+        xmlNewProp(nodeblocks, (const xmlChar*)ATTR_Y, (const xmlChar*)tmp);
+        snprintf(tmp, sizeof(tmp),ATTR_NUMFORMAT, par->getYMax() - par->getYMin());
+        xmlNewProp(nodeblocks, (const xmlChar*)ATTR_HEIGHT, (const xmlChar*)tmp);
+        snprintf(tmp, sizeof(tmp),ATTR_NUMFORMAT, par->getXMax() - par->getXMin());
+        xmlNewProp(nodeblocks, (const xmlChar*)ATTR_WIDTH, (const xmlChar*)tmp);
+        free(tmp);
+
+        for (lineIdx = 0; lineIdx < par->lines->getLength(); lineIdx++) {
             line1 = (TextLine *) par->lines->get(lineIdx);
 
             // this is the max font size for the line
@@ -5584,8 +6066,7 @@ void TextPage::dump(GBool useBlocks, GBool fullFontName) {
                 --n;
             }
 
-            for (wordI = 0; wordI < line1->words->getLength(); ++wordI) {
-
+            for (wordI = 0; wordI < line1->words->getLength(); wordI++) {
                 word = (TextWord *) line1->words->get(wordI);
                 if (wordI < line1->words->getLength() - 1)
                     nextWord = (TextWord *) line1->words->get(wordI + 1);
@@ -5656,14 +6137,12 @@ void TextPage::dump(GBool useBlocks, GBool fullFontName) {
                 // because otherwise the token next to a subscript is always superscript even when normal, in addition for 
                 // several tokens as superscript or subscript, only the first one will be set as superscript or subscript
 
-                // If option verbose is selected
+                // if option verbose is selected
                 if (verbose) {
                     addAttributsNodeVerbose(node, tmp, word);
                 }
-
                 addAttributsNode(node, word, fontStyleInfo, uMap, fullFontName);
                 addAttributTypeReadingOrder(node, tmp, word);
-                // PL: not clear why reading order? we are working with stream order here
 
 //                    encodeFragment(line->text, n, uMap, primaryLR, s);
 //                    if (lineIdx + 1 < par->lines->getLength() && !line->hyphenated) {
@@ -5725,11 +6204,12 @@ void TextPage::dump(GBool useBlocks, GBool fullFontName) {
                 }
 
                 //testLinkedText(nodeline,minLineX,minLineY,minLineX+lineWidth,minLineY+lineHeight);
-//			if (testAnnotatedText(minLineX,minLineY,minLineX+lineWidth,minLineY+lineHeight)){
-//				xmlNewProp(nodeline, (const xmlChar*)ATTR_HIGHLIGHT,(const xmlChar*)"yes");
-//			}
+//			    if (testAnnotatedText(minLineX,minLineY,minLineX+lineWidth,minLineY+lineHeight)){
+//				    xmlNewProp(nodeline, (const xmlChar*)ATTR_HIGHLIGHT,(const xmlChar*)"yes");
+//			    }
 
-                xmlAddChild(nodeline, node);
+                if (word->lineNumber == false || (!is_number(word)))
+                    xmlAddChild(nodeline, node);
 
                 if (wordI < line1->words->getLength() - 1 and (word->spaceAfter == gTrue)) {
                     xmlNodePtr spacingNode = xmlNewNode(NULL, (const xmlChar *) TAG_SPACING);
@@ -5759,14 +6239,10 @@ void TextPage::dump(GBool useBlocks, GBool fullFontName) {
                 free(tmp);
             }
 
-            if (useBlocks)
-                xmlAddChild(nodeblocks, nodeline);
-            else
-                xmlAddChild(printSpace, nodeline);
+            xmlAddChild(nodeblocks, nodeline);
         }
 
-        if (useBlocks)
-            xmlAddChild(printSpace, nodeblocks);
+        xmlAddChild(printSpace, nodeblocks);
     }
 
     int imageCount = listeImages.size();
@@ -5877,7 +6353,8 @@ void TextPage::dump(GBool useBlocks, GBool fullFontName) {
 }
 
 // PL: Insert a block in the page's block list according to the reading order
-GBool TextPage::addBlockInReadingOrder(TextParagraph * block, double fontSize, GBool lastInserted) {
+// lastInserted: true if the previously added block has been inserted and not appended
+GBool TextPage::addBlockInReadingOrder(TextParagraph *block, double fontSize, GBool lastInserted) {
     // if Y_pos of the block to be inserted is less than Y_pos of the existing block
     // (i.e. block is located above)
     // and, in case of vertical overlap,
@@ -5885,94 +6362,122 @@ GBool TextPage::addBlockInReadingOrder(TextParagraph * block, double fontSize, G
     // (i.e. block is on the left and the surfaces of the block are not overlaping -
     // 2 columns case)
     // then the block order is before the existing block
-    GBool notInserted = gTrue;
-    int indexLowerBlock = 0, insertIndex= 0;
+    //GBool insertable = gFalse;
+    int indexLowerBlock = 0, indexUpperBlock = 0;
+    // default insert place is at the end of the block list, so append
+    int insertIndex = blocks->getLength();
     GBool firstLowerBlock = gFalse;
-    GBool noVerticalOverlap = gTrue;
+    GBool firstUpperBlock = gFalse;
+    GBool verticalOverlap = gFalse;
+    double page_middle = pageWidth/2;
     // we get the first child of the current page node
     unsigned long nbChildren = blocks->getLength();
     if (nbChildren > 0) {
+
+        if (block->getXMax() == 0 || block->getYMax() == 0) {
+            double maxLineWidth = 0.0;
+            double maxLineY = 0.0;
+            // fix missing xmax or ymax at block level (usually single line block)
+            for (int lineIdx = 0; lineIdx < block->lines->getLength(); lineIdx++) {
+                TextLine *line = (TextLine *) block->lines->get(lineIdx);
+                if (line->getYMax() > maxLineY)
+                    maxLineY = line->getYMax();
+                if (line->getXMax() - line->getXMin() > maxLineWidth) 
+                    maxLineWidth = line->getXMax() - line->getXMin();
+            }
+            if (block->getXMax() == 0)
+                block->setXMax(block->getXMin() + maxLineWidth);
+            if (block->getYMax() == 0)
+                block->setYMax(maxLineY);
+        }
+
         // coordinates of the block to be inserted
-        double blockX = block->getXMin();
-        double blockY = block->getYMin();
+        double x = block->getXMin();
+        double y = block->getYMin();
+        double w = block->getXMax() - block->getXMin();
+        double h = block->getYMax() - block->getYMin();
 
-        double blockHeight = block->getYMax() - block->getYMin();
-        double blockWidth = block->getXMax() - block->getXMin();
+//cout << "to be inserted: " << " X: " << x << ", Y: " << y << ", H: " << h << ", W: " << w << ", X_max: " << block->getXMax() << ", Y_max: " << block->getYMax() << endl;
 
-//cout << "to be inserted: " << nodeblock->name << ", X: " << blockX << ", Y: " << blockY << ", H: " << blockHeight << ", W: " << blockWidth << endl;
+        // check if the block is centered on the page
+        GBool centered = gFalse;
+        if ( (block->getXMin() < page_middle) && 
+             (block->getXMax() > page_middle) ) {
+            int left_size = page_middle - block->getXMin();
+            int right_size = block->getXMax() - page_middle;
+//cout << "centered: " << std::abs(left_size-right_size) << endl;
+            if (std::abs(left_size-right_size) < 20) {
+                centered = gTrue;
+            } 
+        }
 
-        TextParagraph * par;
-        // we get all the block nodes in the XML tree corresponding to the page
-        for (int i = 0; i <= blocks->getLength()-1 && notInserted; i++) {
-            par = (TextParagraph *) blocks->get(i);
-            double currentY = par->getYMin();
+        TextParagraph * currentBlock;
+        // we get all the block nodes corresponding to the page, starting from the lower/last present block
+        // to prioritize the stream order when it is valid
+        //for (int i = 0; i < blocks->getLength(); i++) {
+        for (int i = blocks->getLength()-1; i >= 0; i--) {
+            currentBlock = (TextParagraph *)blocks->get(i);
+            double c_x = currentBlock->getXMin();
+            double c_y = currentBlock->getYMin();
+            double c_w = currentBlock->getXMax() - currentBlock->getXMin();
+            double c_h = currentBlock->getYMax() - currentBlock->getYMin();
 
-            double currentX = par->getXMin();
+//cout << "current: " << " X: " << c_x << ", Y: " << c_y << ", H: " << c_h << ", W: " << c_w << endl;
 
-            double currentWidth = par->getXMax() - par->getXMin();
-            double currentHeight = par->getYMax() - par->getXMin();
-
-            if((currentY <= blockY && currentY + currentHeight >= blockY) ||
-                    (blockY + blockHeight > currentY && blockY + blockHeight < currentY + currentHeight)){
-                noVerticalOverlap = gFalse;
+            if (y > c_y) {    
+                // if block is centered in the middle of the line, we don't consider column constraints
+                if (centered) { 
+                    break;
+                } else if (x+w < c_x) {
+                    // although lower, block to be added is entirely on the left of current, 
+                    // so before in reading order
+                    insertIndex = i;
+                } else {
+                    break;
+                }
             }
 
-            if (currentY < blockY)
-                continue;
-
-            if (blockY < currentY) {
-                if (blockY + blockHeight < currentY) {
-
-                    if(!notInserted)
-                        continue;
-                    // we keep the first block under it, if no overlap put it above
-                    if(!firstLowerBlock) {
-                        indexLowerBlock = i;
-                        firstLowerBlock = gTrue;
-                    }
-                    // we don't have any vertical overlap
-                    // check the X-pos, the block cannot be on the right of the current block
-                    // check if the
-                    if ((blockX <= currentX + currentWidth && blockX >= currentX) ||
-                        (blockX <= currentX + currentWidth && blockX + blockWidth > currentX)||
-                        blockX < currentX + currentWidth +fontSize * maxColSpacing
-                        ) {
-                        // we can insert the block before the current block
-                        insertIndex = i;
-                        notInserted = false;
-                    }
-                } else
-                    noVerticalOverlap = gFalse;
+            if (
+                ((y <= c_y+c_h) && (y+h > c_y+c_h)) ||
+                ((y <= c_y) && (y+h > c_y))
+                ) {
+                verticalOverlap = gTrue;
             }
-                // we have vertical overlap, check position on X axis
 
-                /*double currentHeight = 0;
-                attrValue = xmlGetProp(cur_node, (const xmlChar*)ATTR_HEIGHT);
-                if (attrValue != NULL) {
-                    currentHeight = atof((const char*)attrValue);
-                    xmlFree(attrValue);
+            if ((y+h < c_y) || verticalOverlap ) {
+                // we are entirely above current block, no vertical overlap
+                // so we might want to insert the block just above it
+                // we need to check the column and general horizontal constraints 
+
+                // if block is centered in the middle of the line, we don't consider column constraints
+                
+                if (centered) { 
+                    insertIndex = i;
+                } else if ((x > c_x + c_w) && (x+w < (pageWidth*1.2)/2) ) {
+                    // the block to be inserted is on the right of the current block
+                    // block is after current, we stop going up
+                    break;
+                } else 
+                    insertIndex = i;
+
+                // we don't have any vertical overlap
+                // check the X-pos, the block cannot be on the right of the current block
+                // check if the
+                /*if ((x <= c_x+c_w && x >= c_x) ||
+                    (x <= c_x+c_w && x+w > c_x) ||
+                    x < c_x+c_w + fontSize * maxColSpacing
+                    ) {
+                    // we can insert the block before the current block
+                    insertIndex = i;
+                    insertable = gTrue;
+                    break;
                 }*/
+            } 
         }
-        if((lastInserted || noVerticalOverlap) && firstLowerBlock){
-            insertIndex = indexLowerBlock;
-            notInserted = false;
-        }
-            /*if (notInserted && (blockX + blockWidth < currentX)) {
-                // does not work for multi column sections one after the other
-                xmlNodePtr result = xmlAddPrevSibling(cur_node, nodeblock);
-                notInserted = false;
-            }*/
     }
 
-    if (notInserted) {
-        blocks->append(block);
-//cout << "append" << endl;
-        return gFalse;
-    } else {
-        blocks->insert(insertIndex, block);// be ware , the order can be the opposite if next block in next column..
-//cout << "prev inserted" << endl;
-        return gTrue;
-    }
+    blocks->insert(insertIndex, block); 
+    return insertIndex;
 }
 
 void TextPage::addImageInlineNode(xmlNodePtr nodeline,
@@ -6284,7 +6789,6 @@ void TextPage::doPathForClip(GfxPath *path, GfxState *state,
 }
 
 void TextPage::doPath(GfxPath *path, GfxState *state, GString *gattributes) {
-
     // Increment the absolute object index
     idx++;
     //printf("path %d\n",idx);
@@ -7042,7 +7546,6 @@ void file_write_data(png_structp png_ptr, png_bytep data, png_size_t length) {
         png_error(png_ptr, "Write Error");
 }
 
-//------------------------------------------------------------
 
 void file_flush_data(png_structp png_ptr) {
     FILE *file = (FILE *) png_ptr->io_ptr;
@@ -7139,11 +7642,9 @@ bool TextPage::save_png(GString *file_name,
 }
 
 
-
 //------------------------------------------------------------------------
 // XmlAltoOutputDev
 //------------------------------------------------------------------------
-
 XmlAltoOutputDev::XmlAltoOutputDev(GString *fileName, GString *fileNamePdf,
                                    Catalog *catalog, GBool physLayoutA, GBool verboseA, GString *nsURIA,
                                    GString *cmdA) {
@@ -7190,7 +7691,9 @@ XmlAltoOutputDev::XmlAltoOutputDev(GString *fileName, GString *fileNamePdf,
     myCatalog = catalog;
     UnicodeMap *uMap;
 
-    useBlocks = parameters->getDisplayBlocks();
+    //useBlocks = parameters->getDisplayBlocks();
+    //useBlocks = gTrue;
+    noLineNumbers = parameters->getNoLineNumbers();
     fullFontName = parameters->getFullFontName();
     noImageInline = parameters->getImageInline();
 
@@ -7254,7 +7757,6 @@ XmlAltoOutputDev::XmlAltoOutputDev(GString *fileName, GString *fileNamePdf,
     }
 
     xmlDocSetRootElement(doc, docroot);
-
 
     // here we add basic structure : see https://www.loc.gov/standards/alto/techcenter/structure.html
     xmlNodePtr nodeDescription = xmlNewNode(NULL, (const xmlChar *) TAG_DESCRIPTION);
@@ -7685,7 +8187,6 @@ GString *XmlAltoOutputDev::getInfoDate(Dict *infoDict, const char *key) {
     return s1;
 }
 
-
 GString *XmlAltoOutputDev::toUnicode(GString *s, UnicodeMap *uMap) {
 
     GString *news;
@@ -7741,12 +8242,21 @@ void XmlAltoOutputDev::endPage() {
     text->configuration();
     if (parameters->getDisplayText()) {
 //        if (readingOrder) {
-//            text->dumpInReadingOrder(useBlocks, fullFontName);
+//            text->dumpInReadingOrder(noLineNumbers, fullFontName);
 //        } else
-        text->dump(useBlocks, fullFontName);
+        text->dump(noLineNumbers, fullFontName, lineNumberStatus);
+        appendLineNumberStatus(text->getLineNumber());
     }
 
     text->endPage(dataDir);
+}
+
+vector<bool> XmlAltoOutputDev::getLineNumberStatus() {
+    return lineNumberStatus;
+}
+    
+void XmlAltoOutputDev::appendLineNumberStatus(bool hasLineNumber) {
+    lineNumberStatus.push_back(hasLineNumber);
 }
 
 void XmlAltoOutputDev::updateFont(GfxState *state) {
@@ -7780,8 +8290,8 @@ void XmlAltoOutputDev::startDoc(XRef *xrefA) {
 }
 
 class SplashOutFontFileID : public SplashFontFileID {
-public:
 
+public:
     SplashOutFontFileID(Ref *rA) {
         r = *rA;
         substIdx = -1;
@@ -7804,7 +8314,6 @@ public:
     int getSubstIdx() { return substIdx; }
 
 private:
-
     Ref r;
     double oblique;
     int substIdx;
@@ -8382,8 +8891,6 @@ void XmlAltoOutputDev::updateCTM(GfxState *state, double m11, double m12,
 //------------------------------------------------------------------------
 // T3FontCache
 //------------------------------------------------------------------------
-
-
 T3FontCache::T3FontCache(Ref *fontIDA, double m11A, double m12A,
                          double m21A, double m22A,
                          int glyphXA, int glyphYA, int glyphWA, int glyphHA,
@@ -8890,8 +9397,7 @@ void XmlAltoOutputDev::initOutline(int nbPage) {
     globalParams->setTextEncoding((char *) ENCODING_UTF8);
     docOutlineRoot = xmlNewNode(NULL, (const xmlChar *) TAG_TOCITEMS);
     sprintf(tmp, "%d", nbPage);
-    xmlNewProp(docOutlineRoot, (const xmlChar *) ATTR_NB_PAGES,
-               (const xmlChar *) tmp);
+    xmlNewProp(docOutlineRoot, (const xmlChar *) ATTR_NB_PAGES, (const xmlChar *) tmp);
     xmlDocSetRootElement(docOutline, docOutlineRoot);
 }
 
@@ -8996,9 +9502,7 @@ int XmlAltoOutputDev::dumpFragment(Unicode *text, int len, UnicodeMap *uMap,
 
 GBool XmlAltoOutputDev::dumpOutline(xmlNodePtr parentNode, GList *itemsA, PDFDoc *docA, UnicodeMap *uMapA,
                                     int levelA, int idItemTocParentA) {
-
     // store them in a list
-
     xmlNodePtr nodeTocItem = NULL;
     xmlNodePtr nodeItem = NULL;
     xmlNodePtr nodeString = NULL;
@@ -9016,7 +9520,7 @@ GBool XmlAltoOutputDev::dumpOutline(xmlNodePtr parentNode, GList *itemsA, PDFDoc
         return 0;
     }
     int i;
-    GString *title;
+    //GString *title;
 
     nodeTocItem = xmlNewNode(NULL, (const xmlChar *) TAG_TOCITEMLIST);
     sprintf(tmp, "%d", levelA);
@@ -9031,12 +9535,12 @@ GBool XmlAltoOutputDev::dumpOutline(xmlNodePtr parentNode, GList *itemsA, PDFDoc
     xmlAddChild(parentNode, nodeTocItem);
 
     for (i = 0; i < itemsA->getLength(); ++i) {
-
-        title = new GString();
+        GString* title = new GString();
 
         ((OutlineItem *) itemsA->get(i))->open(); // open the kids
         dumpFragment(((OutlineItem *) itemsA->get(i))->getTitle(), ((OutlineItem *) itemsA->get(i))->getTitleLength(),
                      uMapA, title);
+
         //printf("%s\n",title->getCString());
         LinkActionKind kind;
 
@@ -9056,7 +9560,6 @@ GBool XmlAltoOutputDev::dumpOutline(xmlNodePtr parentNode, GList *itemsA, PDFDoc
         y2 = 0;
 
         if (((OutlineItem *) itemsA->get(i))->getAction()) {
-
             switch (kind = ((OutlineItem *) itemsA->get(i))->getAction()->getKind()) {
 
                 // GOTO action
@@ -9107,8 +9610,8 @@ GBool XmlAltoOutputDev::dumpOutline(xmlNodePtr parentNode, GList *itemsA, PDFDoc
 
                     // LAUNCH action
                 case actionLaunch:
-                    fileName = ((LinkLaunch *) ((OutlineItem *) itemsA->get(i))->getAction())->getFileName();
-                    delete fileName;
+                    //fileName = ((LinkLaunch *) ((OutlineItem *) itemsA->get(i))->getAction())->getFileName();
+                    //delete fileName;
                     break;
 
                     // URI action
@@ -9185,11 +9688,11 @@ GBool XmlAltoOutputDev::dumpOutline(xmlNodePtr parentNode, GList *itemsA, PDFDoc
         int idItemCurrent = idItemToc;
         idItemToc++;
         if (((OutlineItem *) itemsA->get(i))->hasKids()) {
-            dumpOutline(nodeItem, ((OutlineItem *) itemsA->get(i))->getKids(), docA, uMapA, levelA + 1,
-                        idItemCurrent);
+            dumpOutline(nodeItem, ((OutlineItem *) itemsA->get(i))->getKids(), docA, uMapA, levelA + 1, idItemCurrent);
         }
 
         delete title;
+
         ((OutlineItem *) itemsA->get(i))->close(); // close the kids
 
         atLeastOne = gTrue;
@@ -9217,7 +9720,7 @@ void XmlAltoOutputDev::tilingPatternFill(GfxState *state, Gfx *gfx,
 }
 
 /**
- * Checks if the unicode sequence is utf8 complied
+ * Checks if the unicode sequence is valid utf8 
  * @param u unicode sequence
  * @param uLen
  * @return true it is complied
