@@ -5708,7 +5708,7 @@ void TextPage::dump(GBool noLineNumbers, GBool fullFontName, vector<bool> lineNu
                         paragraph->setXMax(paragraph->getXMin() + maxBlockLineWidth);
 
                         // adding previous block to the page element
-                        if(readingOrder)
+                        if(readingOrder && num == 1)
                             lastBlockInserted = addBlockInReadingOrder(paragraph, lineFontSize, lastBlockInserted);
                         else
                             blocks->append(paragraph);
@@ -5778,7 +5778,7 @@ void TextPage::dump(GBool noLineNumbers, GBool fullFontName, vector<bool> lineNu
                             paragraph->setYMax(paragraph->getYMin() + blockHeight);
 
                             // adding previous block to the page element
-                            if(readingOrder)
+                            if(readingOrder && num == 1)
                                 lastBlockInserted = addBlockInReadingOrder(paragraph, lineFontSize, lastBlockInserted);
                             else
                                 blocks->append(paragraph);
@@ -5811,7 +5811,7 @@ void TextPage::dump(GBool noLineNumbers, GBool fullFontName, vector<bool> lineNu
                 endPage = gFalse;
 
                 if (paragraph != NULL) {
-                    if(readingOrder)
+                    if(readingOrder && num == 1)
                         lastBlockInserted = addBlockInReadingOrder(paragraph, lineFontSize, lastBlockInserted);
                     else
                         blocks->append(paragraph);
@@ -6353,7 +6353,8 @@ void TextPage::dump(GBool noLineNumbers, GBool fullFontName, vector<bool> lineNu
 }
 
 // PL: Insert a block in the page's block list according to the reading order
-GBool TextPage::addBlockInReadingOrder(TextParagraph * block, double fontSize, GBool lastInserted) {
+// lastInserted: true if the previously added block has been inserted and not appended
+GBool TextPage::addBlockInReadingOrder(TextParagraph *block, double fontSize, GBool lastInserted) {
     // if Y_pos of the block to be inserted is less than Y_pos of the existing block
     // (i.e. block is located above)
     // and, in case of vertical overlap,
@@ -6361,92 +6362,122 @@ GBool TextPage::addBlockInReadingOrder(TextParagraph * block, double fontSize, G
     // (i.e. block is on the left and the surfaces of the block are not overlaping -
     // 2 columns case)
     // then the block order is before the existing block
-    GBool notInserted = gTrue;
-    int indexLowerBlock = 0, insertIndex= 0;
+    //GBool insertable = gFalse;
+    int indexLowerBlock = 0, indexUpperBlock = 0;
+    // default insert place is at the end of the block list, so append
+    int insertIndex = blocks->getLength();
     GBool firstLowerBlock = gFalse;
-    GBool noVerticalOverlap = gTrue;
+    GBool firstUpperBlock = gFalse;
+    GBool verticalOverlap = gFalse;
+    double page_middle = pageWidth/2;
     // we get the first child of the current page node
     unsigned long nbChildren = blocks->getLength();
     if (nbChildren > 0) {
+
+        if (block->getXMax() == 0 || block->getYMax() == 0) {
+            double maxLineWidth = 0.0;
+            double maxLineY = 0.0;
+            // fix missing xmax or ymax at block level (usually single line block)
+            for (int lineIdx = 0; lineIdx < block->lines->getLength(); lineIdx++) {
+                TextLine *line = (TextLine *) block->lines->get(lineIdx);
+                if (line->getYMax() > maxLineY)
+                    maxLineY = line->getYMax();
+                if (line->getXMax() - line->getXMin() > maxLineWidth) 
+                    maxLineWidth = line->getXMax() - line->getXMin();
+            }
+            if (block->getXMax() == 0)
+                block->setXMax(block->getXMin() + maxLineWidth);
+            if (block->getYMax() == 0)
+                block->setYMax(maxLineY);
+        }
+
         // coordinates of the block to be inserted
-        double blockX = block->getXMin();
-        double blockY = block->getYMin();
+        double x = block->getXMin();
+        double y = block->getYMin();
+        double w = block->getXMax() - block->getXMin();
+        double h = block->getYMax() - block->getYMin();
 
-        double blockHeight = block->getYMax() - block->getYMin();
-        double blockWidth = block->getXMax() - block->getXMin();
+//cout << "to be inserted: " << " X: " << x << ", Y: " << y << ", H: " << h << ", W: " << w << ", X_max: " << block->getXMax() << ", Y_max: " << block->getYMax() << endl;
 
-//cout << "to be inserted: " << nodeblock->name << ", X: " << blockX << ", Y: " << blockY << ", H: " << blockHeight << ", W: " << blockWidth << endl;
+        // check if the block is centered on the page
+        GBool centered = gFalse;
+        if ( (block->getXMin() < page_middle) && 
+             (block->getXMax() > page_middle) ) {
+            int left_size = page_middle - block->getXMin();
+            int right_size = block->getXMax() - page_middle;
+//cout << "centered: " << std::abs(left_size-right_size) << endl;
+            if (std::abs(left_size-right_size) < 20) {
+                centered = gTrue;
+            } 
+        }
 
-        TextParagraph * par;
-        // we get all the block nodes in the XML tree corresponding to the page
-        for (int i = 0; i <= blocks->getLength()-1 && notInserted; i++) {
-            par = (TextParagraph *) blocks->get(i);
-            double currentY = par->getYMin();
+        TextParagraph * currentBlock;
+        // we get all the block nodes corresponding to the page, starting from the lower/last present block
+        // to prioritize the stream order when it is valid
+        //for (int i = 0; i < blocks->getLength(); i++) {
+        for (int i = blocks->getLength()-1; i >= 0; i--) {
+            currentBlock = (TextParagraph *)blocks->get(i);
+            double c_x = currentBlock->getXMin();
+            double c_y = currentBlock->getYMin();
+            double c_w = currentBlock->getXMax() - currentBlock->getXMin();
+            double c_h = currentBlock->getYMax() - currentBlock->getYMin();
 
-            double currentX = par->getXMin();
+//cout << "current: " << " X: " << c_x << ", Y: " << c_y << ", H: " << c_h << ", W: " << c_w << endl;
 
-            double currentWidth = par->getXMax() - par->getXMin();
-            double currentHeight = par->getYMax() - par->getXMin();
-
-            if((currentY <= blockY && currentY + currentHeight >= blockY) ||
-                    (blockY + blockHeight > currentY && blockY + blockHeight < currentY + currentHeight)){
-                noVerticalOverlap = gFalse;
+            if (y > c_y) {    
+                // if block is centered in the middle of the line, we don't consider column constraints
+                if (centered) { 
+                    break;
+                } else if (x+w < c_x) {
+                    // although lower, block to be added is entirely on the left of current, 
+                    // so before in reading order
+                    insertIndex = i;
+                } else {
+                    break;
+                }
             }
 
-            if (currentY < blockY)
-                continue;
-
-            if (blockY < currentY) {
-                if (blockY + blockHeight < currentY) {
-
-                    if(!notInserted)
-                        continue;
-                    // we keep the first block under it, if no overlap put it above
-                    if(!firstLowerBlock) {
-                        indexLowerBlock = i;
-                        firstLowerBlock = gTrue;
-                    }
-                    // we don't have any vertical overlap
-                    // check the X-pos, the block cannot be on the right of the current block
-                    // check if the
-                    if ((blockX <= currentX + currentWidth && blockX >= currentX) ||
-                        (blockX <= currentX + currentWidth && blockX + blockWidth > currentX)||
-                        blockX < currentX + currentWidth +fontSize * maxColSpacing
-                        ) {
-                        // we can insert the block before the current block
-                        insertIndex = i;
-                        notInserted = false;
-                    }
-                } else
-                    noVerticalOverlap = gFalse;
+            if (
+                ((y <= c_y+c_h) && (y+h > c_y+c_h)) ||
+                ((y <= c_y) && (y+h > c_y))
+                ) {
+                verticalOverlap = gTrue;
             }
-                // we have vertical overlap, check position on X axis
 
-                /*double currentHeight = 0;
-                attrValue = xmlGetProp(cur_node, (const xmlChar*)ATTR_HEIGHT);
-                if (attrValue != NULL) {
-                    currentHeight = atof((const char*)attrValue);
-                    xmlFree(attrValue);
+            if ((y+h < c_y) || verticalOverlap ) {
+                // we are entirely above current block, no vertical overlap
+                // so we might want to insert the block just above it
+                // we need to check the column and general horizontal constraints 
+
+                // if block is centered in the middle of the line, we don't consider column constraints
+                
+                if (centered) { 
+                    insertIndex = i;
+                } else if ((x > c_x + c_w) && (x+w < (pageWidth*1.2)/2) ) {
+                    // the block to be inserted is on the right of the current block
+                    // block is after current, we stop going up
+                    break;
+                } else 
+                    insertIndex = i;
+
+                // we don't have any vertical overlap
+                // check the X-pos, the block cannot be on the right of the current block
+                // check if the
+                /*if ((x <= c_x+c_w && x >= c_x) ||
+                    (x <= c_x+c_w && x+w > c_x) ||
+                    x < c_x+c_w + fontSize * maxColSpacing
+                    ) {
+                    // we can insert the block before the current block
+                    insertIndex = i;
+                    insertable = gTrue;
+                    break;
                 }*/
+            } 
         }
-        if((lastInserted || noVerticalOverlap) && firstLowerBlock){
-            insertIndex = indexLowerBlock;
-            notInserted = false;
-        }
-            /*if (notInserted && (blockX + blockWidth < currentX)) {
-                // does not work for multi column sections one after the other
-                xmlNodePtr result = xmlAddPrevSibling(cur_node, nodeblock);
-                notInserted = false;
-            }*/
     }
 
-    if (notInserted) {
-        blocks->append(block);
-        return gFalse;
-    } else {
-        blocks->insert(insertIndex, block); // beware, the order can be the opposite if next block in next column..
-        return gTrue;
-    }
+    blocks->insert(insertIndex, block); 
+    return insertIndex;
 }
 
 void TextPage::addImageInlineNode(xmlNodePtr nodeline,
