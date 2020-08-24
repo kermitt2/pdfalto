@@ -1074,18 +1074,21 @@ public:
 
     void insertLargeWordInLeaf(TextWord *ch, TextBlock *blk);
 
-    /** PL: insert a block in the page's list of block nodes according to the reading order
+    /** PL: insert a block in the page's list of block nodes according to the top-down position
      * @param nodeblock the block node to be inserted
-     * @param lastInserted boolean indicating if the previously added block node was inserted before
-     * an existing node (value is true) or append top the list (value is false)
-     * @return true the node is the inserted before an existing node, false if it is append to the list
      */
-    GBool addBlockInTopDownOrder(TextParagraph* block, double fontSize, GBool lastInserted);
+    void addBlockInTopDownOrder(TextParagraph* block);
 
     /**
      * PL: Reoder the page's list of block nodes according to the reading order
      */
-    void blocksInReadingOrder();
+    void blocksInReadingOrder(vector<TextParagraph*> originalBlocks);
+    void blocksInReadingOrder2(vector<TextParagraph*> originalBlocks);
+
+    /**
+     * PL: try to detect a major reading order problem in a page
+     */
+    bool detectReadingOrderIssue(vector<TextParagraph*> originalBlocks);
 
     /** Add a specific TOKEN tag in the current line when we meet an image inline.
      * This TOKEN tag is empty and it has five attributes which are : x, y, width,

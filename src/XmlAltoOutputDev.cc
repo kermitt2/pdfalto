@@ -5312,7 +5312,8 @@ bool TextPage::markLineNumber() {
 
 void TextPage::dump(GBool noLineNumbers, GBool fullFontName, vector<bool> lineNumberStatus) {
     // Output the page in raw (content stream) order
-    blocks = new GList(); //these are blocks in alto schema
+    blocks = new GList(); // these are blocks in alto schema
+    vector<TextParagraph*> originalBlocks; // only used when reading order is selected
 
     UnicodeMap *uMap;
 
@@ -5708,9 +5709,10 @@ void TextPage::dump(GBool noLineNumbers, GBool fullFontName, vector<bool> lineNu
                         paragraph->setXMax(paragraph->getXMin() + maxBlockLineWidth);
 
                         // adding previous block to the page element
-                        if(readingOrder && num == 1)
-                            lastBlockInserted = addBlockInTopDownOrder(paragraph, lineFontSize, lastBlockInserted);
-                        else
+                        if(readingOrder && num == 1) {
+                            addBlockInTopDownOrder(paragraph);
+                            originalBlocks.push_back(paragraph);
+                        } else
                             blocks->append(paragraph);
                     }
 
@@ -5778,9 +5780,10 @@ void TextPage::dump(GBool noLineNumbers, GBool fullFontName, vector<bool> lineNu
                             paragraph->setYMax(paragraph->getYMin() + blockHeight);
 
                             // adding previous block to the page element
-                            if(readingOrder && num == 1)
-                                lastBlockInserted = addBlockInTopDownOrder(paragraph, lineFontSize, lastBlockInserted);
-                            else
+                            if(readingOrder && num == 1) {
+                                addBlockInTopDownOrder(paragraph);
+                                originalBlocks.push_back(paragraph);
+                            } else
                                 blocks->append(paragraph);
                         }
 
@@ -5811,9 +5814,10 @@ void TextPage::dump(GBool noLineNumbers, GBool fullFontName, vector<bool> lineNu
                 endPage = gFalse;
 
                 if (paragraph != NULL) {
-                    if(readingOrder && num == 1)
-                        lastBlockInserted = addBlockInTopDownOrder(paragraph, lineFontSize, lastBlockInserted);
-                    else
+                    if(readingOrder && num == 1) {
+                        addBlockInTopDownOrder(paragraph);
+                        originalBlocks.push_back(paragraph);
+                    } else
                         blocks->append(paragraph);
                     lastBlockInserted = gFalse;
                 }
@@ -5861,8 +5865,18 @@ void TextPage::dump(GBool noLineNumbers, GBool fullFontName, vector<bool> lineNu
         }
     }
 
-    if(readingOrder && num == 1)
-        blocksInReadingOrder();
+    if(readingOrder && num == 1) {
+        blocksInReadingOrder(originalBlocks);
+        /*bool readingOrderIssue = detectReadingOrderIssue(originalBlocks);
+        if (readingOrderIssue) {
+            blocksInReadingOrder(originalBlocks);
+        } else {
+            // restore original pdf stream order
+            for(int k=0; k<originalBlocks.size();k++) {
+                blocks->put(k, originalBlocks[k]);
+            }
+        }*/
+    }
 
     // if no line number was found in the first half of the document and the number of pages of the document is large enough,
     // we do don't need to look for line numbers any more
@@ -6377,7 +6391,7 @@ void TextPage::dump(GBool noLineNumbers, GBool fullFontName, vector<bool> lineNu
 }
 
 // PL: sort the blocks on a page according to their vertical position
-GBool TextPage::addBlockInTopDownOrder(TextParagraph *block, double fontSize, GBool lastInserted) {
+void TextPage::addBlockInTopDownOrder(TextParagraph *block) {
     int indexLowerBlock = 0, indexUpperBlock = 0;
     // default insert place is at the end of the block list, so append
     int insertIndex = blocks->getLength();
@@ -6440,11 +6454,10 @@ GBool TextPage::addBlockInTopDownOrder(TextParagraph *block, double fontSize, GB
     }
 
     blocks->insert(insertIndex, block); 
-    return insertIndex;
 }
 
 // PL: sort blocks on a page in reading order
-void TextPage::blocksInReadingOrder() {
+void TextPage::blocksInReadingOrder(vector<TextParagraph*> originalBlocks) {
 //cout << blocks->getLength() << " elements " << endl;
     // blocks are already sorted top down
     vector<int> areaIndex; 
@@ -6607,6 +6620,146 @@ for(int i=0; i<localBlocks.size(); i++) {
         blocks->put(k, newBlocks[k]);
     }
 }
+
+// PL: sort blocks on a page in reading order
+// this version reorder areas, but keep PDF stream order for the blocks located in the areas 
+void TextPage::blocksInReadingOrderVariant(vector<TextParagraph*> originalBlocks) {
+//cout << blocks->getLength() << " elements " << endl;
+    // blocks are already sorted top down
+    vector<int> areaIndex; 
+    vector<bool> areaSimple; 
+    int currentAreaIndex = 0;
+    bool previousOverlap = false;
+    // identify horizontal areas: true for blocks without overlap, false otherwise
+    for (int j = 0; j < blocks->getLength(); j++) {
+        TextParagraph *block = (TextParagraph *)blocks->get(j);
+        double x = block->getXMin();
+        double y = block->getYMin();
+        double w = block->getXMax() - block->getXMin();
+        double h = block->getYMax() - block->getYMin();
+
+        bool verticalOverlap = false;
+        // vertically overlaping blocks with this block ?
+        for (int i = 0; i<blocks->getLength(); i++) {
+            if (i == j) 
+                continue;
+            TextParagraph *currentBlock = (TextParagraph *)blocks->get(i);
+            double c_x = currentBlock->getXMin();
+            double c_y = currentBlock->getYMin();
+            double c_w = currentBlock->getXMax() - currentBlock->getXMin();
+            double c_h = currentBlock->getYMax() - currentBlock->getYMin();
+
+            // we introduce a margin error to avoid too much fragmentation due to paragraph/section header 
+            // separation in columns, we consider +- the height of a line
+            double lineHeight = 0.0;
+            if (block->lines->getLength() > 0) {
+                TextLine *line = (TextLine *) block->lines->get(0);
+                lineHeight = line->getYMax() - line->getYMin();
+            }
+
+            if ( (y >= c_y-lineHeight) && ( c_y+c_h >= y-lineHeight) ||
+                 (c_y >= y-lineHeight) && (y+h >= c_y-lineHeight) ) {
+                verticalOverlap = true;
+                break;
+            }
+        }
+
+        if (verticalOverlap) 
+            areaSimple.push_back(false);
+        else 
+            areaSimple.push_back(true);
+
+        if (previousOverlap == verticalOverlap) {
+            areaIndex.push_back(currentAreaIndex);
+        } else {
+            currentAreaIndex++;
+            areaIndex.push_back(currentAreaIndex);
+        }
+
+        previousOverlap = verticalOverlap;
+        continue;
+    }
+
+/*for(int i=0; i<areaIndex.size(); i++) {
+    cout << areaIndex.at(i) << " " << areaSimple.at(i) << endl;
+}*/
+
+    // reading order in each horizontal areas
+    std::vector<TextParagraph*> newBlocks;
+    int insertIndex = 0;
+
+//cout << currentAreaIndex << " areas" << endl;
+
+    for (int a = 0; a <= currentAreaIndex; a++) {
+        // get the number of blocks in this area
+        int nbAreaBlocks = 0;
+        for(int i=0; i<areaIndex.size(); i++) {
+            if (areaIndex[i] == a) 
+                nbAreaBlocks++;
+        }
+
+//cout << "area " << a << " size: " << nbAreaBlocks << endl;
+        
+        // prepare localBlocks to store them reordered
+        vector<TextParagraph*> localBlocks; 
+        //localBlocks.reserve(nbAreaBlocks);
+
+        for(int i=0; i < originalBlocks.size(); i++) {
+
+            // given an area, we reproduce the stream order
+            for(int j = 0; j < blocks->getLength(); j++) {
+                if (areaIndex.at(j) != a)
+                    continue;
+
+                TextParagraph *block = (TextParagraph *)blocks->get(j);
+
+                if (originalBlocks.at(i) == block) {
+                    // not sure that pointer/reference comparison for instance identification is safe, but it should
+                    localBlocks.push_back(block);
+                    break;
+                }
+            }
+        }
+
+        for(int k = 0; k<localBlocks.size(); k++) {
+            newBlocks.push_back(localBlocks[k]);
+        }
+    }
+
+//cout << "final size newBlocks: " << newBlocks.size() << endl;
+
+    for(int k = 0; k<newBlocks.size(); k++) {
+        blocks->put(k, newBlocks[k]);
+    }
+}
+
+/**
+ * Use to detect majors issues in reading order for the blocks in the current page.
+ */
+bool TextPage::detectReadingOrderIssue(vector<TextParagraph*> originalBlocks) {
+    bool issueSpotted = false;
+    int nbIssues = 0;
+
+    // look at the original block order and position
+    for(int i=0; i < originalBlocks.size(); i++) {
+        // check new order of the same block
+        for(int j = 0; j < blocks->getLength(); j++) {
+            TextParagraph *block = (TextParagraph *)blocks->get(j);
+            if (originalBlocks.at(i) == block) {
+                // not sure that pointer/reference comparison for instance identification is safe, but it should
+                if (std::abs(i-j)>originalBlocks.size()/1.5) {
+                    nbIssues++;
+                }
+                break;
+            }
+        }
+    }
+    if (nbIssues > 3)
+        return true;
+    else
+        return false;
+}
+
 
 void TextPage::addImageInlineNode(xmlNodePtr nodeline,
                                   xmlNodePtr nodeImageInline, char *tmp, IWord *word) {
