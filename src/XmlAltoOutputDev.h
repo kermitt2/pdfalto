@@ -1083,7 +1083,7 @@ public:
      * PL: Reoder the page's list of block nodes according to the reading order
      */
     void blocksInReadingOrder(vector<TextParagraph*> originalBlocks);
-    void blocksInReadingOrder2(vector<TextParagraph*> originalBlocks);
+    void blocksInReadingOrderVariant(vector<TextParagraph*> originalBlocks);
 
     /**
      * PL: try to detect a major reading order problem in a page
