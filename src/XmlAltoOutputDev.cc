@@ -5709,7 +5709,7 @@ void TextPage::dump(GBool noLineNumbers, GBool fullFontName, vector<bool> lineNu
 
                         // adding previous block to the page element
                         if(readingOrder && num == 1)
-                            lastBlockInserted = addBlockInReadingOrder(paragraph, lineFontSize, lastBlockInserted);
+                            lastBlockInserted = addBlockInTopDownOrder(paragraph, lineFontSize, lastBlockInserted);
                         else
                             blocks->append(paragraph);
                     }
@@ -5779,7 +5779,7 @@ void TextPage::dump(GBool noLineNumbers, GBool fullFontName, vector<bool> lineNu
 
                             // adding previous block to the page element
                             if(readingOrder && num == 1)
-                                lastBlockInserted = addBlockInReadingOrder(paragraph, lineFontSize, lastBlockInserted);
+                                lastBlockInserted = addBlockInTopDownOrder(paragraph, lineFontSize, lastBlockInserted);
                             else
                                 blocks->append(paragraph);
                         }
@@ -5812,7 +5812,7 @@ void TextPage::dump(GBool noLineNumbers, GBool fullFontName, vector<bool> lineNu
 
                 if (paragraph != NULL) {
                     if(readingOrder && num == 1)
-                        lastBlockInserted = addBlockInReadingOrder(paragraph, lineFontSize, lastBlockInserted);
+                        lastBlockInserted = addBlockInTopDownOrder(paragraph, lineFontSize, lastBlockInserted);
                     else
                         blocks->append(paragraph);
                     lastBlockInserted = gFalse;
@@ -5839,6 +5839,30 @@ void TextPage::dump(GBool noLineNumbers, GBool fullFontName, vector<bool> lineNu
 
         free(tmp);
     } // end FOR
+
+    // fix possible incorrect XMax and YMax values at 0 on block coordinates having only one line 
+    for(int parIdx = 0; parIdx < blocks->getLength(); parIdx++) {
+        TextParagraph *block = (TextParagraph *) blocks->get(parIdx);
+        if (block->getXMax() == 0 || block->getYMax() == 0) {
+            double maxLineWidth = 0.0;
+            double maxLineY = 0.0;
+            // fix missing xmax or ymax at block level (usually single line block)
+            for (int lineIdx = 0; lineIdx < block->lines->getLength(); lineIdx++) {
+                TextLine *line = (TextLine *) block->lines->get(lineIdx);
+                if (line->getYMax() > maxLineY)
+                    maxLineY = line->getYMax();
+                if (line->getXMax() - line->getXMin() > maxLineWidth) 
+                    maxLineWidth = line->getXMax() - line->getXMin();
+            }
+            if (block->getXMax() == 0)
+                block->setXMax(block->getXMin() + maxLineWidth);
+            if (block->getYMax() == 0)
+                block->setYMax(maxLineY);
+        }
+    }
+
+    if(readingOrder && num == 1)
+        blocksInReadingOrder();
 
     // if no line number was found in the first half of the document and the number of pages of the document is large enough,
     // we do don't need to look for line numbers any more
@@ -6352,17 +6376,8 @@ void TextPage::dump(GBool noLineNumbers, GBool fullFontName, vector<bool> lineNu
     uMap->decRefCnt();
 }
 
-// PL: Insert a block in the page's block list according to the reading order
-// lastInserted: true if the previously added block has been inserted and not appended
-GBool TextPage::addBlockInReadingOrder(TextParagraph *block, double fontSize, GBool lastInserted) {
-    // if Y_pos of the block to be inserted is less than Y_pos of the existing block
-    // (i.e. block is located above)
-    // and, in case of vertical overlap,
-    //		X_pos + width of the block to be inserted is less than X_pos of this existing block
-    // (i.e. block is on the left and the surfaces of the block are not overlaping -
-    // 2 columns case)
-    // then the block order is before the existing block
-    //GBool insertable = gFalse;
+// PL: sort the blocks on a page according to their vertical position
+GBool TextPage::addBlockInTopDownOrder(TextParagraph *block, double fontSize, GBool lastInserted) {
     int indexLowerBlock = 0, indexUpperBlock = 0;
     // default insert place is at the end of the block list, so append
     int insertIndex = blocks->getLength();
@@ -6397,24 +6412,9 @@ GBool TextPage::addBlockInReadingOrder(TextParagraph *block, double fontSize, GB
         double w = block->getXMax() - block->getXMin();
         double h = block->getYMax() - block->getYMin();
 
-//cout << "to be inserted: " << " X: " << x << ", Y: " << y << ", H: " << h << ", W: " << w << ", X_max: " << block->getXMax() << ", Y_max: " << block->getYMax() << endl;
-
-        // check if the block is centered on the page
-        GBool centered = gFalse;
-        if ( (block->getXMin() < page_middle) && 
-             (block->getXMax() > page_middle) ) {
-            int left_size = page_middle - block->getXMin();
-            int right_size = block->getXMax() - page_middle;
-//cout << "centered: " << std::abs(left_size-right_size) << endl;
-            if (std::abs(left_size-right_size) < 20) {
-                centered = gTrue;
-            } 
-        }
-
         TextParagraph * currentBlock;
         // we get all the block nodes corresponding to the page, starting from the lower/last present block
         // to prioritize the stream order when it is valid
-        //for (int i = 0; i < blocks->getLength(); i++) {
         for (int i = blocks->getLength()-1; i >= 0; i--) {
             currentBlock = (TextParagraph *)blocks->get(i);
             double c_x = currentBlock->getXMin();
@@ -6422,19 +6422,8 @@ GBool TextPage::addBlockInReadingOrder(TextParagraph *block, double fontSize, GB
             double c_w = currentBlock->getXMax() - currentBlock->getXMin();
             double c_h = currentBlock->getYMax() - currentBlock->getYMin();
 
-//cout << "current: " << " X: " << c_x << ", Y: " << c_y << ", H: " << c_h << ", W: " << c_w << endl;
-
             if (y > c_y) {    
-                // if block is centered in the middle of the line, we don't consider column constraints
-                if (centered) { 
-                    break;
-                } else if (x+w < c_x) {
-                    // although lower, block to be added is entirely on the left of current, 
-                    // so before in reading order
-                    insertIndex = i;
-                } else {
-                    break;
-                }
+                break;
             }
 
             if (
@@ -6444,40 +6433,179 @@ GBool TextPage::addBlockInReadingOrder(TextParagraph *block, double fontSize, GB
                 verticalOverlap = gTrue;
             }
 
-            if ((y+h < c_y) || verticalOverlap ) {
-                // we are entirely above current block, no vertical overlap
-                // so we might want to insert the block just above it
-                // we need to check the column and general horizontal constraints 
-
-                // if block is centered in the middle of the line, we don't consider column constraints
-                
-                if (centered) { 
-                    insertIndex = i;
-                } else if ((x > c_x + c_w) && (x+w < (pageWidth*1.2)/2) ) {
-                    // the block to be inserted is on the right of the current block
-                    // block is after current, we stop going up
-                    break;
-                } else 
-                    insertIndex = i;
-
-                // we don't have any vertical overlap
-                // check the X-pos, the block cannot be on the right of the current block
-                // check if the
-                /*if ((x <= c_x+c_w && x >= c_x) ||
-                    (x <= c_x+c_w && x+w > c_x) ||
-                    x < c_x+c_w + fontSize * maxColSpacing
-                    ) {
-                    // we can insert the block before the current block
-                    insertIndex = i;
-                    insertable = gTrue;
-                    break;
-                }*/
+            if (y < c_y) {
+                insertIndex = i;
             } 
         }
     }
 
     blocks->insert(insertIndex, block); 
     return insertIndex;
+}
+
+// PL: sort blocks on a page in reading order
+void TextPage::blocksInReadingOrder() {
+//cout << blocks->getLength() << " elements " << endl;
+    // blocks are already sorted top down
+    vector<int> areaIndex; 
+    vector<bool> areaSimple; 
+    int currentAreaIndex = 0;
+    bool previousOverlap = false;
+    // identify horizontal areas: true for blocks without overlap, false otherwise
+    for (int j = 0; j < blocks->getLength(); j++) {
+        TextParagraph *block = (TextParagraph *)blocks->get(j);
+        double x = block->getXMin();
+        double y = block->getYMin();
+        double w = block->getXMax() - block->getXMin();
+        double h = block->getYMax() - block->getYMin();
+
+        bool verticalOverlap = false;
+        // vertically overlaping blocks with this block ?
+        for (int i = 0; i<blocks->getLength(); i++) {
+            if (i == j) 
+                continue;
+            TextParagraph *currentBlock = (TextParagraph *)blocks->get(i);
+            double c_x = currentBlock->getXMin();
+            double c_y = currentBlock->getYMin();
+            double c_w = currentBlock->getXMax() - currentBlock->getXMin();
+            double c_h = currentBlock->getYMax() - currentBlock->getYMin();
+
+            // we introduce a margin error to avoid too much fragmentation due to paragraph/section header 
+            // separation in columns, we consider +- the height of a line
+            double lineHeight = 0.0;
+            if (block->lines->getLength() > 0) {
+                TextLine *line = (TextLine *) block->lines->get(0);
+                lineHeight = line->getYMax() - line->getYMin();
+            }
+
+            if ( (y >= c_y-lineHeight) && ( c_y+c_h >= y-lineHeight) ||
+                 (c_y >= y-lineHeight) && (y+h >= c_y-lineHeight) ) {
+                verticalOverlap = true;
+                break;
+            }
+        }
+
+        if (verticalOverlap) 
+            areaSimple.push_back(false);
+        else 
+            areaSimple.push_back(true);
+
+        if (previousOverlap == verticalOverlap) {
+            areaIndex.push_back(currentAreaIndex);
+        } else {
+            currentAreaIndex++;
+            areaIndex.push_back(currentAreaIndex);
+        }
+
+        previousOverlap = verticalOverlap;
+        continue;
+    }
+
+/*for(int i=0; i<areaIndex.size(); i++) {
+    cout << areaIndex.at(i) << " " << areaSimple.at(i) << endl;
+}*/
+
+    // reading order in each horizontal areas
+    std::vector<TextParagraph*> newBlocks;
+    int insertIndex = 0;
+
+//cout << currentAreaIndex << " areas" << endl;
+
+    for (int a = 0; a <= currentAreaIndex; a++) {
+        // get the number of blocks in this area
+        int nbAreaBlocks = 0;
+        for(int i=0; i<areaIndex.size(); i++) {
+            if (areaIndex[i] == a) 
+                nbAreaBlocks++;
+        }
+
+//cout << "area " << a << " size: " << nbAreaBlocks << endl;
+        
+        // prepare localBlocks to store them reordered
+        vector<TextParagraph*> localBlocks; 
+        //localBlocks.reserve(nbAreaBlocks);
+
+        //int indexLocalBlock = 0;
+        for (int j = 0; j < blocks->getLength(); j++) {
+            TextParagraph *block = (TextParagraph *)blocks->get(j);
+
+            if (areaIndex.at(j) != a)
+                continue;
+
+            if (areaSimple.at(j) == true) {
+                newBlocks.push_back(block);
+                //localBlocks[indexLocalBlock] = block;
+                //indexLocalBlock++;
+            } else {
+                if (newBlocks.size() == 0) {
+                    newBlocks.push_back(block);
+                } else {
+                    double x = block->getXMin();
+                    double y = block->getYMin();
+                    double w = block->getXMax() - block->getXMin();
+                    double h = block->getYMax() - block->getYMin();
+
+                    int insertIndex = localBlocks.size();
+                    // we need to reorder members of this area
+                    for (int i = localBlocks.size()-1; i>=0; i--) {
+                        TextParagraph *currentBlock = localBlocks.at(i);
+
+                        double c_x = currentBlock->getXMin();
+                        double c_y = currentBlock->getYMin();
+                        double c_w = currentBlock->getXMax() - currentBlock->getXMin();
+                        double c_h = currentBlock->getYMax() - currentBlock->getYMin();
+//cout << "comparing " << block << " with " << currentBlock << endl;
+//cout << "to be inserted: " << block << "(" << block->lines->getLength() << " lines)" << " X: " << x << ", Y: " << y << ", H: " << h << ", W: " << w << ", X_max: " << block->getXMax() << ", Y_max: " << block->getYMax() << endl;
+//cout << "current: " << currentBlock << "(" << currentBlock->lines->getLength() << " lines)" << " X: " << c_x << ", Y: " << c_y << ", H: " << c_h << ", W: " << c_w << endl;
+
+                        if (y == c_y) {
+                            if (x+w < c_x) {
+                                // although same level, block to be added is entirely on the left of current, 
+                                // so before in reading order
+                                insertIndex = i;
+                            } else if ((x > c_x + c_w) ) {
+                                // although same level, the block to be inserted is on the right of the current block
+                                // block is after current, we look at lower block(s)
+                                break;
+                            }
+                        } else if (y > c_y) {    
+                            if (x+w < c_x) {
+                                // although lower, block to be added is entirely on the left of current, 
+                                // so before in reading order
+                                insertIndex = i;
+//cout << "block on the left: " << block << " when compared to " << currentBlock << endl;
+                            } else {
+                                // look at lower block(s)
+                                break;
+                            }
+                        } else if (y < c_y) {
+                            if ((x > c_x + c_w) ) {
+                                // although higher the block to be inserted is on the right of the current block
+                                // block is after current, we look at lower block(s)
+                                break;
+                            } else 
+                                insertIndex = i;
+                        }
+                    }
+                    localBlocks.insert(localBlocks.begin() + insertIndex, block);
+/*cout << endl << "current local blocks:" << endl;;
+for(int i=0; i<localBlocks.size(); i++) {
+    cout << localBlocks.at(i) << "(" << localBlocks.at(i)->lines->getLength() << " lines)" << endl;
+}*/
+                }
+            }
+        }
+
+        for(int k = 0; k<localBlocks.size(); k++) {
+            newBlocks.push_back(localBlocks[k]);
+        }
+    }
+
+//cout << "final size newBlocks: " << newBlocks.size() << endl;
+
+    for(int k = 0; k<newBlocks.size(); k++) {
+        blocks->put(k, newBlocks[k]);
+    }
 }
 
 void TextPage::addImageInlineNode(xmlNodePtr nodeline,

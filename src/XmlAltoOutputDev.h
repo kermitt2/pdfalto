@@ -1080,7 +1080,12 @@ public:
      * an existing node (value is true) or append top the list (value is false)
      * @return true the node is the inserted before an existing node, false if it is append to the list
      */
-    GBool addBlockInReadingOrder(TextParagraph* block, double fontSize, GBool lastInserted);
+    GBool addBlockInTopDownOrder(TextParagraph* block, double fontSize, GBool lastInserted);
+
+    /**
+     * PL: Reoder the page's list of block nodes according to the reading order
+     */
+    void blocksInReadingOrder();
 
     /** Add a specific TOKEN tag in the current line when we meet an image inline.
      * This TOKEN tag is empty and it has five attributes which are : x, y, width,
