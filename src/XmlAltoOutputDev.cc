@@ -853,6 +853,7 @@ TextRawWord::TextRawWord(GfxState *state, double x0, double y0,
     } else {
         rot = (m[2] > 0) ? 3 : 1;
     }
+    rot = 0;
 
     // Get the tangent
     tan = m[2] / m[0];
