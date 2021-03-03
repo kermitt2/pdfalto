@@ -64,6 +64,8 @@ Dependencies can be recompiled by running this [script](https://github.com/kermi
 See [compiling dependencies procedures](Dependencies_INSTALL.md) for further details.
 ##### Known issues ([issue 41](https://github.com/kermitt2/pdfalto/issues/41)) might occur whille building, in this case you'll need to compile the dependencies before building pdflato.
 
+For extra languages support([issue 69](https://github.com/kermitt2/pdfalto/issues/69)), like "chinese", "japanese" etc, running [sudo ./install_xpdf_language_packages.sh](https://github.com/kermitt2/pdfalto/blob/master/install_xpdf_language_packages.sh).
+
 # Build
 
 * NOTE for windows : it's recommended to use Cygwin and install standard libraries (either for cland or gcc)
