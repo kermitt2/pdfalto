@@ -849,13 +849,9 @@ TextRawWord::TextRawWord(GfxState *state, double x0, double y0,
     }
 
     if (fabs(m[0] * m[3]) > fabs(m[1] * m[2])) {
-        rot = (m[3] < 0) ? 0 : 2;
+        rot = (m[0] > 0 || m[3] < 0) ? 0 : 2;
     } else {
         rot = (m[2] > 0) ? 3 : 1;
-    }
-    if (state->getFont()->getType() == fontType3) {
-        // temporarily reset rotation as it was calculated incorrectly for a sample document
-        rot = 0;
     }
 
     // Get the tangent
