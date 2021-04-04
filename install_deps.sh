@@ -3,6 +3,7 @@
 : ${CFLAGS="-fPIC"}
 : ${CXX_FLAGS=${CFLAGS}}
 
+set -e
 
 if ! [ -x "$(command -v wget)" ]; then
   echo 'Error: wget is not installed.' >&2
@@ -19,8 +20,11 @@ DEP_INSTALL_DIR=install
 LIBXML_URI=http://xmlsoft.org/sources/libxml2-2.9.8.tar.gz
 FREETYPE_URI=https://download.savannah.gnu.org/releases/freetype/freetype-2.9.tar.gz
 #ICU_URI=http://download.icu-project.org/files/icu4c/62.1/icu4c-62_1-src.tgz
-ICU_URI=https://github.com/unicode-org/icu/releases/download/release-62-2/icu4c-62_2-src.tgz
+ICU_URI="https://github.com/unicode-org/icu/releases/download/release-62-2/icu4c-62_2-src.tgz"
 #ICU_URI=https://github.com/unicode-org/icu/releases/download/release-66-1/icu4c-66_1-src.tgz
+
+ICU_FILENAME=$(basename "${ICU_URI}")
+ICU_DIR_NAME=icu
 
 mkdir -p $DEP_INSTALL_DIR
 
@@ -100,13 +104,13 @@ echo 'Freetype installation is finished.'
 
 echo 'Installing ICU.'
 
-rm -rf icu4c-62_1-src
+rm -rf "${ICU_DIR_NAME}"
 
 wget $ICU_URI
 
-tar xvf icu4c-62_1-src.tgz
+tar xvf "${ICU_FILENAME}"
 
-cd icu/source && mkdir lib && mkdir bin
+cd "${ICU_DIR_NAME}/source" && mkdir lib && mkdir bin
 
 chmod +x runConfigureICU configure install-sh
 
