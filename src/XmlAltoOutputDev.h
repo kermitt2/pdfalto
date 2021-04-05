@@ -680,6 +680,7 @@ public:
     GString *getLinkURI();
 
     void setLineNumber(bool theBool);
+    bool getLineNumber() { return lineNumber; }
 
 private:
     TextWord(TextWord *word);
@@ -759,6 +760,7 @@ public:
     Unicode getChar(int idx);
 
     void setLineNumber(bool theBool);
+    bool getLineNumber() { return lineNumber; }
 
 //private:
     /** Rank in the original flow */

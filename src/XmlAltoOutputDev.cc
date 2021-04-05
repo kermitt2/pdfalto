@@ -4752,6 +4752,8 @@ void TextPage::dumpInReadingOrder(GBool noLineNumbers, GBool fullFontName) {
                     word = (TextWord *) line->words->get(wordI);
                     if (wordI < line->words->getLength() - 1)
                         nextWord = (TextWord *) line->words->get(wordI + 1);
+                    else
+                        nextWord == NULL;
 
                     char *tmp;
 
@@ -5066,6 +5068,7 @@ bool TextPage::markLineNumber() {
 
             for (wordI = 0; wordI < line1->words->getLength(); wordI++) {
                 word = (TextWord *) line1->words->get(wordI);
+                word->setLineNumber(false);
                 if (wordI < line1->words->getLength() - 1)
                     nextWord = (TextWord *) line1->words->get(wordI + 1);
                 else 
@@ -5859,7 +5862,6 @@ void TextPage::dump(GBool noLineNumbers, GBool fullFontName, vector<bool> lineNu
     bool hasLineNumber = false;
     if ( (currentPageNumber < nbTotalPage/2) || (previousLineNumber && nbTotalPage>4)) {
         hasLineNumber = markLineNumber();
-        //cout << "result markLineNumber: " << hasLineNumber << endl;
     }
     setLineNumber(hasLineNumber);
 
@@ -5901,7 +5903,7 @@ void TextPage::dump(GBool noLineNumbers, GBool fullFontName, vector<bool> lineNu
                 for(wordI = 0; wordI < line1->words->getLength(); wordI++) {
                     word = (TextWord *) line1->words->get(wordI);
 
-                    if (word->lineNumber && (is_number(word))) {
+                    if (word->getLineNumber()) {
                         lineNumberWords->append(word);
                     }
                 }
@@ -6045,7 +6047,6 @@ void TextPage::dump(GBool noLineNumbers, GBool fullFontName, vector<bool> lineNu
             snprintf(tmp, sizeof(tmp),ATTR_NUMFORMAT, line1->getYMax() - line1->getYMin());
             xmlNewProp(nodeline, (const xmlChar*)ATTR_HEIGHT, (const xmlChar*)tmp);
 
-
             // Add the ID attribute for the TEXT tag
             id = new GString("p");
             xmlNewProp(nodeline, (const xmlChar*)ATTR_ID,
@@ -6061,15 +6062,17 @@ void TextPage::dump(GBool noLineNumbers, GBool fullFontName, vector<bool> lineNu
 
             free(tmp);
 
-            n = line1->len;
+            /*n = line1->len;
             if (line1->hyphenated && lineIdx + 1 < par->lines->getLength()) {
                 --n;
-            }
+            }*/
 
             for (wordI = 0; wordI < line1->words->getLength(); wordI++) {
                 word = (TextWord *) line1->words->get(wordI);
                 if (wordI < line1->words->getLength() - 1)
                     nextWord = (TextWord *) line1->words->get(wordI + 1);
+                else
+                    nextWord = NULL;
 
                 char *tmp;
 
@@ -6208,7 +6211,7 @@ void TextPage::dump(GBool noLineNumbers, GBool fullFontName, vector<bool> lineNu
 //				    xmlNewProp(nodeline, (const xmlChar*)ATTR_HIGHLIGHT,(const xmlChar*)"yes");
 //			    }
 
-                if (word->lineNumber == false || (!is_number(word)))
+                if (!word->getLineNumber())
                     xmlAddChild(nodeline, node);
 
                 if (wordI < line1->words->getLength() - 1 and (word->spaceAfter == gTrue)) {
