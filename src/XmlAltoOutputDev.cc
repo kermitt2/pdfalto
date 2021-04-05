@@ -5003,7 +5003,7 @@ bool is_number(TextWord *word) {
     return true;
 }
 
-int find_index(vector<double> positions, double val) {
+/*int find_index(vector<double> positions, double val) {
     // simple double look-up, return index of val or -1
     int index = -1;
     for (int i = 0; i < positions.size(); i++) {
@@ -5013,13 +5013,13 @@ int find_index(vector<double> positions, double val) {
         }
     }
     return index;
-}
+}*/
 
-int find_index(vector<int> positions, int val) {
-    // simple int look-up, return index of val or -1
+int find_index_relaxed(vector<double> positions, double val, double margin) {
+    // simple double look-up, return index of val or -1
     int index = -1;
     for (int i = 0; i < positions.size(); i++) {
-        if (positions[i] == val) {
+        if (positions[i] >= val-margin && positions[i] <= val+margin) {
             index = i;
             break;
         }
@@ -5058,6 +5058,9 @@ bool TextPage::markLineNumber() {
     int rightMostBoundary = 0;
     int leftMostBoundary = 999990;
 
+    // the total number of lines on the page
+    int totalNumberOfLines = 0;
+
     // first pass is for number detection, it should stop very early in case of no line number
     // we also keep track of the left and right text boundaries for the page
     for (parIdx = 0; parIdx < blocks->getLength(); parIdx++) {
@@ -5065,6 +5068,7 @@ bool TextPage::markLineNumber() {
 
         for (lineIdx = 0; lineIdx < par->lines->getLength(); lineIdx++) {
             line1 = (TextLine *) par->lines->get(lineIdx);
+            totalNumberOfLines++;
 
             for (wordI = 0; wordI < line1->words->getLength(); wordI++) {
                 word = (TextWord *) line1->words->get(wordI);
@@ -5110,15 +5114,18 @@ bool TextPage::markLineNumber() {
 
     // define the x alignment by clustering identified number tokens by x position
     vector<vector<int>> clusters;
-    vector<int> positions;
+    vector<double> positions;
     for (wordI = 0; wordI < lineNumberWords.size(); wordI++) {
         word = lineNumberWords[wordI];
-        int vpos1 = word->xMin;
-        int vpos2 = word->xMax;
+        //int vpos1 = word->xMin;
+        //int vpos2 = word->xMax;
+
+        double vpos1 = word->xMin;
+        double vpos2 = word->xMax;
 
         // we cluster by xMin and xMax positions
-        int index1 = find_index(positions, vpos1);;
-        int index2 = find_index(positions, vpos2);
+        int index1 = find_index_relaxed(positions, vpos1, 1.0);
+        int index2 = find_index_relaxed(positions, vpos2, 1.0);
 
         if (index1 != -1) {
             vector<int> the_cluster = clusters[index1];
@@ -5147,15 +5154,18 @@ bool TextPage::markLineNumber() {
 
     // apply a similar clustering for selected non-numerical tokens 
     vector<vector<int>> textClusters;
-    vector<int> textPositions;
+    vector<double> textPositions;
     for (wordI = 0; wordI < textWords.size(); wordI++) {
         word = textWords[wordI];
-        int vpos1 = word->xMin;
-        int vpos2 = word->xMax;
+        //int vpos1 = word->xMin;
+        //int vpos2 = word->xMax;
+
+        double vpos1 = word->xMin;
+        double vpos2 = word->xMax;
 
         // we cluster by xMin and xMax positions
-        int index1 = find_index(textPositions, vpos1);;
-        int index2 = find_index(textPositions, vpos2);
+        int index1 = find_index_relaxed(textPositions, vpos1, 1.0);
+        int index2 = find_index_relaxed(textPositions, vpos2, 1.0);
 
         if (index1 != -1) {
             vector<int> the_cluster = textClusters[index1];
@@ -5227,8 +5237,8 @@ bool TextPage::markLineNumber() {
     vector<int> bestCluster = clusters[bestClusterIndex[0]];
     double final_vpos = positions[bestClusterIndex[0]];
 
-    //cout << "best alignment vpos: " << final_vpos << endl;
-    //cout << "nb numbers best cluster: " << bestCluster.size() << endl;
+    /*cout << "\nbest alignment vpos: " << final_vpos << endl;
+    cout << "nb numbers best cluster: " << bestCluster.size() << endl;*/
 
     // check the remaining constraints: 
 
@@ -5250,7 +5260,15 @@ bool TextPage::markLineNumber() {
 
     // Do we have text areas at same alignment or positioned more on the side than the number cluster?
     // -> see the left-most and right-most non trivial text block with the text token clusters
-    nonTrivialClusterSize = largestClusterSize[0] / 4;
+
+    // first the text area must be large enough, this depends on the overall number of lines in the page
+    if (totalNumberOfLines <= 10)
+        nonTrivialClusterSize = largestClusterSize[0];
+    else if (totalNumberOfLines <= 20)
+        nonTrivialClusterSize = largestClusterSize[0] / 2;
+    else
+        nonTrivialClusterSize = largestClusterSize[0] / 4;
+
     if (nonTrivialClusterSize == 0)
         nonTrivialClusterSize = 1;
 
@@ -5259,21 +5277,36 @@ bool TextPage::markLineNumber() {
         final_vpos = positions[bestClusterIndex[j]];
         hasLineNumber = true;
 
-        //cout << "move to next best" << endl;
-        //cout << "     final alignment vpos: " << final_vpos << endl;
-        //cout << "     nb numbers best cluster: " << bestCluster.size() << endl;
+        /*cout << "move to next best" << endl;
+        cout << "     final alignment vpos: " << final_vpos << endl;
+        cout << "     size of next best is: " << bestCluster.size() << endl;
+        cout << "     nb numbers best cluster: " << bestCluster.size() << endl;*/
 
         for (int i = 0; i < textClusters.size(); i++) {
             vector<int> theCluster = textClusters[i];
             if (theCluster.size() >= nonTrivialClusterSize) {
                 //word = (TextWord *)textWords->get(theCluster[0]);
                 word = textWords[theCluster[0]];
+
+                // check top and lowest position of the text cluster, if too high or too low, 
+                // it means it's head note or foot note and should not be considered
+                int ypos1 = word->yMin;
+                //cout << "ypos1: " << ypos1 << endl;
+                if (ypos1 < 30)
+                    continue;
+
+                /*if (theCluster.size() >0) {
+                    lastWord = textWords[theCluster[theCluster.size()-1]];
+                    int ypos2 = word->yMax;
+                    if (pageHeight - ypos2 < 50)
+                        continue;
+                }*/
+
                 int vpos1 = word->xMin;
                 int vpos2 = word->xMax;
-                //int vpos1 = word.xMin;
-                //int vpos2 = word.xMax;
                 if (vpos1 <= final_vpos && vpos2 >= final_vpos) {
                     hasLineNumber = false;
+                    //cout << "           breaking text cluster has a size of: " << theCluster.size() << endl;
                     break;
                 }
             }
