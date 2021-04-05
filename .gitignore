@@ -24,3 +24,5 @@ Makefile
 libs
 traingenerator
 jeu/*
+build/
+install/

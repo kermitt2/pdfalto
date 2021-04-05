@@ -1,10 +1,10 @@
-cmake_minimum_required(VERSION 3.5+)
+cmake_minimum_required(VERSION 3.12)
 project(pdfalto)
 
 set(CMAKE_CXX_STANDARD 11)
 
 #build xpdf
-set ( XPDF_SUBDIR ${CMAKE_CURRENT_SOURCE_DIR}/xpdf-4.00)
+set ( XPDF_SUBDIR ${CMAKE_CURRENT_SOURCE_DIR}/xpdf)
 
 set ( IMAGE_SUBDIR ${CMAKE_CURRENT_SOURCE_DIR}/libs/image)
 
@@ -57,7 +57,7 @@ set ( ICUDATA_LIB ${CMAKE_CURRENT_SOURCE_DIR}/libs/icu/${OSSUFFIX}/${ARCHSUFFIX}
 
 set(XPDF_BUILD_DIR ${XPDF_SUBDIR}/build)
 
-add_subdirectory(${XPDF_SUBDIR})
+add_subdirectory(${XPDF_SUBDIR} EXCLUDE_FROM_ALL)
 
 set(SOURCE_FILES
         src/AnnotsXrce.cc
@@ -78,9 +78,9 @@ set(SOURCE_FILES
 add_executable(pdfalto ${SOURCE_FILES})
 
 if(HAVE_PAPER_H)
-    target_link_libraries(pdfalto ${PNG_LIBRARIES} ${ZLIB_LIBRARY} ${XML_LIBRARY} splash xpdf goo fofi ${ICUUC_LIB} ${ICUDATA_LIB} ${FREETYPE_LIBRARY} dl ${HAVE_PAPER_H})
+    target_link_libraries(pdfalto ${PNG_LIBRARIES} ${ZLIB_LIBRARY} ${XML_LIBRARY} splash xpdf_objs goo fofi ${ICUUC_LIB} ${ICUDATA_LIB} ${FREETYPE_LIBRARY} dl ${HAVE_PAPER_H})
 else()
-    target_link_libraries(pdfalto ${PNG_LIBRARIES} ${ZLIB_LIBRARY} ${XML_LIBRARY} splash xpdf goo fofi ${ICUUC_LIB} ${ICUDATA_LIB} ${FREETYPE_LIBRARY} dl)
+    target_link_libraries(pdfalto ${PNG_LIBRARIES} ${ZLIB_LIBRARY} ${XML_LIBRARY} splash xpdf_objs goo fofi ${ICUUC_LIB} ${ICUDATA_LIB} ${FREETYPE_LIBRARY} dl)
 endif()
 
 target_include_directories(pdfalto

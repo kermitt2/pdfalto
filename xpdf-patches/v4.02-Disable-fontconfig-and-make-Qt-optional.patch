@@ -1,0 +1,35 @@
+From 0542efaa4b72c1a69bcd377d94fe08a7dac98379 Mon Sep 17 00:00:00 2001
+From: Matteo Bertini <matteo@naufraghi.net>
+Date: Fri, 24 Jul 2020 09:34:15 +0200
+Subject: [PATCH] Disable fontconfig and make Qt optional
+
+Patch to allow a simpler build in pdfalto
+---
+ cmake-config.txt | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/cmake-config.txt b/cmake-config.txt
+index 3fe2faf..0872c24 100644
+--- a/cmake-config.txt
++++ b/cmake-config.txt
+@@ -81,7 +81,7 @@ option(MULTITHREADED "include support for multithreading" ON)
+ option(USE_EXCEPTIONS "use C++ exceptions" ON)
+ option(USE_FIXEDPOINT "use fixed point (instead of floating point) arithmetic" OFF)
+ option(SPLASH_CMYK "include support for CMYK rasterization" OFF)
+-option(NO_FONTCONFIG "disable support for libfontconfig" OFF)
++option(NO_FONTCONFIG "disable support for libfontconfig" ON)
+ option(SYSTEM_XPDFRC "full path for system-wide xpdfrc file" "")
+ if (SYSTEM_XPDFRC)
+   set(SYSTEM_XPDFRC_DEFINE "#define SYSTEM_XPDFRC \"${SYSTEM_XPDFRC}\"")
+@@ -194,7 +194,7 @@ if (Qt5Widgets_FOUND)
+   find_package(Qt5Network)
+   find_package(Qt5PrintSupport)
+ else ()
+-  find_package(Qt4 COMPONENTS QtCore QtGui QtNetwork REQUIRED)
++  find_package(Qt4 COMPONENTS QtCore QtGui QtNetwork QUIET)
+ endif ()
+ if(Qt5Widgets_FOUND)
+   message(STATUS "Qt5 found")
+-- 
+2.20.1
+
