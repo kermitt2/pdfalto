@@ -5261,6 +5261,8 @@ bool TextPage::markLineNumber() {
     // Do we have text areas at same alignment or positioned more on the side than the number cluster?
     // -> see the left-most and right-most non trivial text block with the text token clusters
 
+    //cout << "totalNumberOfLines: " << totalNumberOfLines << endl;
+
     // first the text area must be large enough, this depends on the overall number of lines in the page
     if (totalNumberOfLines <= 10)
         nonTrivialClusterSize = largestClusterSize[0];
@@ -5271,6 +5273,8 @@ bool TextPage::markLineNumber() {
 
     if (nonTrivialClusterSize == 0)
         nonTrivialClusterSize = 1;
+
+    //cout << "nonTrivialClusterSize: " << nonTrivialClusterSize << endl;
 
     for(int j=0; j<bestClusterIndex.size(); j++) {
         bestCluster = clusters[bestClusterIndex[j]];
@@ -5284,6 +5288,7 @@ bool TextPage::markLineNumber() {
 
         for (int i = 0; i < textClusters.size(); i++) {
             vector<int> theCluster = textClusters[i];
+            //cout << "cluster size: " << theCluster.size() << endl;
             if (theCluster.size() >= nonTrivialClusterSize) {
                 //word = (TextWord *)textWords->get(theCluster[0]);
                 word = textWords[theCluster[0]];
@@ -5302,9 +5307,11 @@ bool TextPage::markLineNumber() {
                         continue;
                 }*/
 
-                int vpos1 = word->xMin;
-                int vpos2 = word->xMax;
-                if (vpos1 <= final_vpos && vpos2 >= final_vpos) {
+                int vpos1 = word->xMin-1;
+                int vpos2 = word->xMax+1;
+
+                //cout << "vpos1: " << vpos1 << ", vpos2: " << vpos2 << endl;
+                if ( (vpos1 <= final_vpos) && (vpos2 >= final_vpos)) {
                     hasLineNumber = false;
                     //cout << "           breaking text cluster has a size of: " << theCluster.size() << endl;
                     break;
