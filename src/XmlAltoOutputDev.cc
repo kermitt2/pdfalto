@@ -6244,23 +6244,24 @@ void TextPage::dump(GBool noLineNumbers, GBool fullFontName, vector<bool> lineNu
 //				    xmlNewProp(nodeline, (const xmlChar*)ATTR_HIGHLIGHT,(const xmlChar*)"yes");
 //			    }
 
-                if (!word->getLineNumber())
+                if (!word->getLineNumber()) {
                     xmlAddChild(nodeline, node);
+                
+                    if (wordI < line1->words->getLength() - 1 and (word->spaceAfter == gTrue)) {
+                        xmlNodePtr spacingNode = xmlNewNode(NULL, (const xmlChar *) TAG_SPACING);
+                        spacingNode->type = XML_ELEMENT_NODE;
+                        snprintf(tmp, sizeof(tmp), ATTR_NUMFORMAT, (nextWord->xMin - word->xMax));
+                        xmlNewProp(spacingNode, (const xmlChar *) ATTR_WIDTH,
+                                   (const xmlChar *) tmp);
+                        snprintf(tmp, sizeof(tmp), ATTR_NUMFORMAT, (word->yMin));
+                        xmlNewProp(spacingNode, (const xmlChar *) ATTR_Y,
+                                   (const xmlChar *) tmp);
+                        snprintf(tmp, sizeof(tmp), ATTR_NUMFORMAT, (word->xMax));
+                        xmlNewProp(spacingNode, (const xmlChar *) ATTR_X,
+                                   (const xmlChar *) tmp);
 
-                if (wordI < line1->words->getLength() - 1 and (word->spaceAfter == gTrue)) {
-                    xmlNodePtr spacingNode = xmlNewNode(NULL, (const xmlChar *) TAG_SPACING);
-                    spacingNode->type = XML_ELEMENT_NODE;
-                    snprintf(tmp, sizeof(tmp), ATTR_NUMFORMAT, (nextWord->xMin - word->xMax));
-                    xmlNewProp(spacingNode, (const xmlChar *) ATTR_WIDTH,
-                               (const xmlChar *) tmp);
-                    snprintf(tmp, sizeof(tmp), ATTR_NUMFORMAT, (word->yMin));
-                    xmlNewProp(spacingNode, (const xmlChar *) ATTR_Y,
-                               (const xmlChar *) tmp);
-                    snprintf(tmp, sizeof(tmp), ATTR_NUMFORMAT, (word->xMax));
-                    xmlNewProp(spacingNode, (const xmlChar *) ATTR_X,
-                               (const xmlChar *) tmp);
-
-                    xmlAddChild(nodeline, spacingNode);
+                        xmlAddChild(nodeline, spacingNode);
+                    }
                 }
 
                 if (!fontStyleInfo->isSuperscript() && !fontStyleInfo->isSubscript()) {
