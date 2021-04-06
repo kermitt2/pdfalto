@@ -27,3 +27,4 @@ traingenerator
 jeu/*
 languages/xpdf-*
 xpdfrc
+!languages/xpdfrc
