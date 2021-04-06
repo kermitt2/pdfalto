@@ -21,8 +21,9 @@ Makefile
 *.cbp
 .DS_Store
 ./*.xml_data/
-libs
-!libs/image/png/src
-!libs/image/zlib/src
+libs/image/png/src/libpng.a
+libs/image/zlib/src/libzlib.a
 traingenerator
 jeu/*
+languages/xpdf-*
+xpdfrc
