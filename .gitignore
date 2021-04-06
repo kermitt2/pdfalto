@@ -22,8 +22,7 @@ Makefile
 .DS_Store
 ./*.xml_data/
 libs
+!libs/image/png/src
+!libs/image/zlib/src
 traingenerator
 jeu/*
-xpdfrc
-languages/xpdf-*
-!languages/xpdfrc
