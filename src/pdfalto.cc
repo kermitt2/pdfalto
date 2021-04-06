@@ -22,6 +22,7 @@
 #include "config.h"
 #include "Parameters.h"
 #include "Outline.h"
+#include "whereami.h"
 
 #include "PDFDocXrce.h"
 
@@ -41,6 +42,8 @@ using namespace ConstantsUtils;
 using namespace ConstantsXML;
 
 #include "TextString.h"
+
+
 
 void removeAlreadyExistingData(GString *dir);
 
@@ -174,7 +177,30 @@ int main(int argc, char *argv[]) {
     }
     //fileName = new GString(argv[1]);
     cmd = new GString();
-    globalParams = new GlobalParams(cfgFileName);
+    //globalParams = new GlobalParams(cfgFileName);
+
+    // get the full path of the enclosing executable
+    int theLength;
+    theLength = wai_getExecutablePath(NULL, 0, NULL);
+    
+    char* thePath;
+    thePath = (char*)malloc(theLength + 1);
+    int dirname_length;
+    wai_getExecutablePath(thePath, theLength, &dirname_length);
+    thePath[theLength] = '\0';
+
+    char *dirname;
+    dirname = (char*)malloc(dirname_length + 1);
+    strncat(dirname, thePath, dirname_length); 
+    dirname[dirname_length] = '\0';
+
+    // set the config file path as alongside the executable
+    char *xpdfrc_path;
+    xpdfrc_path = (char*)malloc(dirname_length + 8); 
+    strcpy(xpdfrc_path, dirname);
+    strcat(xpdfrc_path, "/xpdfrc");
+
+    globalParams = new GlobalParams(xpdfrc_path, dirname);
 
     // Parameters specifics to pdfalto
     parameters = new Parameters();

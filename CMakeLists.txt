@@ -70,6 +70,8 @@ set(SOURCE_FILES
         src/Parameters.h
         src/PDFDocXrce.cc
         src/PDFDocXrce.h
+        src/whereami.c
+        src/whereami.h
         src/pdfalto.cc
         src/XmlAltoOutputDev.cc
         src/XmlAltoOutputDev.h

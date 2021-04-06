@@ -24,3 +24,6 @@ Makefile
 libs
 traingenerator
 jeu/*
+xpdfrc
+languages/xpdf-*
+!languages/xpdfrc
