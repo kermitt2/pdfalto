@@ -124,6 +124,8 @@ New in version 0.3 (apart various bug fixes):
 
 - bug fixing on reading order
 
+- fix possible incorrect XMax and YMax values at 0 on block coordinates having only one line
+
 New in version 0.2 (apart various bug fixes):
 
 - support Unicode composition of characters
