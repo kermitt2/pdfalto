@@ -7030,7 +7030,8 @@ void TextPage::createPath(GfxPath *path, GfxState *state, xmlNodePtr groupNode) 
         xmlNewProp(pathnode, (const xmlChar *) ATTR_D, (const xmlChar *) d->getCString());
         xmlAddChild(groupNode, pathnode);
     }
-    delete d;
+    // https://github.com/kermitt2/pdfalto/issues/63
+    //delete d;
     free(tmp);
 }
 
