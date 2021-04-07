@@ -66,20 +66,20 @@ The script will download and build the dependencies unders `libs/` and the addit
 
 If necessary, see [compiling dependencies procedures](Dependencies_INSTALL.md) for further details.
 
-##### Known issues ([issue 41](https://github.com/kermitt2/pdfalto/issues/41)) might occur whille building, in this case you'll need to compile the dependencies before building pdflato.
+##### Known issues ([issue 41](https://github.com/kermitt2/pdfalto/issues/41)) might occur while building, in this case you'll need to compile the dependencies before building pdflato.
 
 # Build
 
 * NOTE for windows : it's recommended to use Cygwin and install standard libraries (either for cland or gcc)
 > git clone https://github.com/kermitt2/pdfalto.git && cd pdfalto
 
-* Xpdf 4.00 is shipped as git submodule, to download it: 
+* Xpdf-4.03 is shipped as git submodule, to download it: 
 
 > git submodule update --init --recursive
 
 * Build pdfalto:
 
-> cmake ./
+> cmake .
 
 > make
 
@@ -103,6 +103,18 @@ languages  pdfalto  xpdfrc
 - see the issue tracker for further tasks
 
 # Changes
+
+New in version 0.4 (apart various bug fixes):
+
+- support for xpdf language support package for language-specific fonts like Arabic, Chinese-simplified, Japanese, etc. they are pre-installed locally and portable 
+
+- refined line number detection and fixing a bug which could result in random missing numbers in the ALTO output
+
+- update to xpdf-4.03
+
+- fix issue with character spacing due to invalid rotation condition
+
+- update dependencies and dependency install script
 
 New in version 0.3 (apart various bug fixes):
 

@@ -2,7 +2,7 @@ matrix:
   include:    
     - os: linux
     - os: osx
-      osx_image: xcode8.3
+      osx_image: xcode9.4
 
 dist: trusty
 sudo: true
@@ -31,3 +31,7 @@ script:
 
 notifications:
   email: true
+
+git:
+  submodules: true
+  
