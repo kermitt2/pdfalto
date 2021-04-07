@@ -9,6 +9,7 @@ namespace ConstantsXML {
 	// All tags ALTO XML dialect
 	extern const char *TAG_ALTO;
 	extern const char *ALTO_URI;
+	extern const char *ALTO_LOCATION;
 	extern const char *TAG_DESCRIPTION;
 	extern const char *TAG_MEASUREMENTUNIT;
 	extern const char *TAG_SOURCE_IMAGE_INFO;
@@ -73,6 +74,7 @@ namespace ConstantsXML {
 	extern const char *ATTR_IDCLIPZONE;
 	extern const char *ATTR_ID_ITEM_PARENT;
 	extern const char *ATTR_NB_PAGES;
+	extern const char *ATTR_LOCATION;
 
 	// SVG XML TAGS
 	extern const char *ATTR_NUMFORMAT;

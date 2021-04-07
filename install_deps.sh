@@ -151,4 +151,27 @@ cp $DEP_INSTALL_DIR/icu/source/lib/libicudata.a libs/icu/$LIB_INSTALL/$ARCH/
 
 rm -rf $DEP_INSTALL_DIR
 
+echo 'installing additional language support packages.'
+# see http://www.xpdfreader.com/download.html
+mkdir -p languages && cd languages
+languages=(
+  "arabic"
+  "chinese-simplified"
+  "chinese-traditional"
+  "cyrillic"
+  "greek"
+  "hebrew"
+  "japanese"
+  "korean"
+  "latin2"
+  "thai"
+  "turkish"
+)
+for language in "${languages[@]}" ; do
+  #language_dir="${language}"
+  language_url="https://dl.xpdfreader.com/xpdf-${language}.tar.gz"
+  wget -qO- "${language_url}"  | tar xvfz -  
+done
+cp xpdfrc ..
+
 echo 'done.'

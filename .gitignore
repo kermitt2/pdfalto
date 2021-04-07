@@ -25,3 +25,6 @@ libs/image/png/src/libpng.a
 libs/image/zlib/src/libzlib.a
 traingenerator
 jeu/*
+languages/xpdf-*
+xpdfrc
+!languages/xpdfrc
