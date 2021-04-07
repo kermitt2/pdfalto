@@ -3,8 +3,26 @@ project(pdfalto)
 
 set(CMAKE_CXX_STANDARD 11)
 
+#--- look for fontconfig
+if (NOT NO_FONTCONFIG)
+  find_library(FONTCONFIG_LIBRARY
+               NAMES fontconfig libfontconfig
+               PATH_SUFFIXES lib64 lib
+  )
+  if (FONTCONFIG_LIBRARY)
+    set(HAVE_FONTCONFIG TRUE)
+    message(STATUS "Found fontconfig")
+  else ()
+    set(HAVE_FONTCONFIG FALSE)
+    set(FONTCONFIG_LIBRARY "")
+  endif ()
+else ()
+  set(HAVE_FONTCONFIG FALSE)
+  set(FONTCONFIG_LIBRARY "")
+endif ()
+
 #build xpdf
-set ( XPDF_SUBDIR ${CMAKE_CURRENT_SOURCE_DIR}/xpdf-4.00)
+set ( XPDF_SUBDIR ${CMAKE_CURRENT_SOURCE_DIR}/xpdf-4.03)
 
 set ( IMAGE_SUBDIR ${CMAKE_CURRENT_SOURCE_DIR}/libs/image)
 
@@ -80,9 +98,17 @@ set(SOURCE_FILES
 add_executable(pdfalto ${SOURCE_FILES})
 
 if(HAVE_PAPER_H)
-    target_link_libraries(pdfalto ${PNG_LIBRARIES} ${ZLIB_LIBRARY} ${XML_LIBRARY} splash xpdf goo fofi ${ICUUC_LIB} ${ICUDATA_LIB} ${FREETYPE_LIBRARY} dl ${HAVE_PAPER_H})
+    if(HAVE_FONTCONFIG)
+        target_link_libraries(pdfalto ${PNG_LIBRARIES} ${ZLIB_LIBRARY} ${XML_LIBRARY} splash xpdf goo fofi ${ICUUC_LIB} ${ICUDATA_LIB} ${FREETYPE_LIBRARY} dl ${PAPER_LIBRARY} ${FONTCONFIG_LIBRARY})
+    else()
+        target_link_libraries(pdfalto ${PNG_LIBRARIES} ${ZLIB_LIBRARY} ${XML_LIBRARY} splash xpdf goo fofi ${ICUUC_LIB} ${ICUDATA_LIB} ${FREETYPE_LIBRARY} dl ${PAPER_LIBRARY})
+    endif()
 else()
-    target_link_libraries(pdfalto ${PNG_LIBRARIES} ${ZLIB_LIBRARY} ${XML_LIBRARY} splash xpdf goo fofi ${ICUUC_LIB} ${ICUDATA_LIB} ${FREETYPE_LIBRARY} dl)
+    if(HAVE_FONTCONFIG)
+        target_link_libraries(pdfalto ${PNG_LIBRARIES} ${ZLIB_LIBRARY} ${XML_LIBRARY} splash xpdf goo fofi ${ICUUC_LIB} ${ICUDATA_LIB} ${FREETYPE_LIBRARY} dl ${FONTCONFIG_LIBRARY})
+    else()
+        target_link_libraries(pdfalto ${PNG_LIBRARIES} ${ZLIB_LIBRARY} ${XML_LIBRARY} splash xpdf goo fofi ${ICUUC_LIB} ${ICUDATA_LIB} ${FREETYPE_LIBRARY} dl)
+    endif()
 endif()
 
 target_include_directories(pdfalto

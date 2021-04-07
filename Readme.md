@@ -83,12 +83,14 @@ If necessary, see [compiling dependencies procedures](Dependencies_INSTALL.md) f
 
 > make
 
-The executable `pdfalto` is generated in the root directory. Additionally, this will create a static library for xpdf-4.00 at the following path `xpdf-4.00/build/xpdf/lib/libxpdf.a` and all the libraries and their respective subdirectory. 
+The executable `pdfalto` is generated in the root directory. Additionally, this will create a static library for xpdf-4.03 at the following path `xpdf-4.03/build/xpdf/lib/libxpdf.a` and all the libraries and their respective subdirectory. 
 
 To use the additional xpdf language support packages, the executable `pdfalto` comes with a config file `xpdfrc` and language resources installed under `languages/`. Both `xpdfrc` and `languages/` must be alongside the executable `pdfalto` to be used. To add `pdfalto` with these additional resources to a third party application (e.g. GROBID), move the executation together with these files: 
 
-
-
+```
+lopez@work:~$ ls my_pdfalto/
+languages  pdfalto  xpdfrc
+```
 
 # Future work
 

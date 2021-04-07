@@ -84,6 +84,7 @@ using namespace icu;
 #include <splash/Splash.h>
 #include <splash/SplashFontEngine.h>
 #include "FoFiTrueType.h"
+#include "FoFiType1C.h"
 #include <splash/SplashFontFile.h>
 #include <splash/SplashFontFileID.h>
 #include <splash/SplashGlyphBitmap.h>
@@ -8379,6 +8380,7 @@ SplashFont *XmlAltoOutputDev::getSplashFont(GfxState *state, SplashCoord *matrix
     SplashOutFontFileID *id;
     SplashFontFile *fontFile;
     int fontNum;
+    FoFiType1C *ffT1C;
     FoFiTrueType *ff;
     Ref embRef;
     Object refObj, strObj;
@@ -8397,9 +8399,9 @@ SplashFont *XmlAltoOutputDev::getSplashFont(GfxState *state, SplashCoord *matrix
     double fsx, fsy, w, fontScaleMin, fontScaleAvg, fontScale;
     Gushort ww;
     SplashCoord mat[4];
-    char *name;
+    char *name, *start;
     Unicode uBuf[8];
-    int substIdx, n, code, cmap, cmapPlatform, cmapEncoding, i;
+    int substIdx, n, code, cmap, cmapPlatform, cmapEncoding, length, i;
 
     //needFontUpdate = gFalse;
     font = NULL;
@@ -8537,6 +8539,16 @@ SplashFont *XmlAltoOutputDev::getSplashFont(GfxState *state, SplashCoord *matrix
                 }
                 break;
             case fontType1C:
+                codeToGID = NULL;
+#if LOAD_FONTS_FROM_MEM
+                if ((ffT1C = FoFiType1C::make(fontBuf->getCString(), fontBuf->getLength()))) {
+#else
+                if ((ffT1C = FoFiType1C::load(fileName->getCString()))) {
+#endif
+                    codeToGID = ((Gfx8BitFont *)gfxFont)->getCodeToGIDMap(ffT1C);
+                    delete ffT1C;
+                } 
+
                 if (!(fontFile = fontEngine->loadType1CFont(
                         id,
 #if LOAD_FONTS_FROM_MEM
@@ -8545,6 +8557,7 @@ SplashFont *XmlAltoOutputDev::getSplashFont(GfxState *state, SplashCoord *matrix
                         fileName->getCString(),
                         fileName == tmpFileName,
 #endif
+                        codeToGID,
                         (const char **) ((Gfx8BitFont *) gfxFont)->getEncoding()))) {
                     error(errSyntaxError, -1, "Couldn't create a font for '{0:s}'",
                           gfxFont->getName() ? gfxFont->getName()->getCString()
@@ -8554,6 +8567,20 @@ SplashFont *XmlAltoOutputDev::getSplashFont(GfxState *state, SplashCoord *matrix
                 }
                 break;
             case fontType1COT:
+                codeToGID = NULL;
+#if LOAD_FONTS_FROM_MEM
+                if ((ff = FoFiTrueType::make(fontBuf->getCString(), fontBuf->getLength(), fontNum, gTrue))) {
+#else
+                if ((ff = FoFiTrueType::load(fileName->getCString(), fontNum, gTrue))) {
+#endif
+                    if (ff->getCFFBlock(&start, &length) &&
+                        (ffT1C = FoFiType1C::make(start, length))) {
+                        codeToGID = ((Gfx8BitFont *)gfxFont)->getCodeToGIDMap(ffT1C);
+                        delete ffT1C;
+                    }
+                    delete ff;
+                }
+
                 if (!(fontFile = fontEngine->loadOpenTypeT1CFont(
                         id,
 #if LOAD_FONTS_FROM_MEM
@@ -8562,6 +8589,7 @@ SplashFont *XmlAltoOutputDev::getSplashFont(GfxState *state, SplashCoord *matrix
                         fileName->getCString(),
                         fileName == tmpFileName,
 #endif
+                        codeToGID,
                         (const char **) ((Gfx8BitFont *) gfxFont)->getEncoding()))) {
                     error(errSyntaxError, -1, "Couldn't create a font for '{0:s}'",
                           gfxFont->getName() ? gfxFont->getName()->getCString()
