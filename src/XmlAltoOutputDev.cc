@@ -8052,7 +8052,7 @@ void XmlAltoOutputDev::addStyles() {
         xmlNodePtr textStyleNode = xmlNewNode(NULL, (const xmlChar *) TAG_TEXTSTYLE);
 
         char *tmp;
-        tmp = (char *) malloc(50 * sizeof(char));
+        tmp = (char *) malloc(100 * sizeof(char));
 
         TextFontStyleInfo *fontStyleInfo = getText()->fontStyles[j];
         textStyleNode->type = XML_ELEMENT_NODE;
@@ -8062,14 +8062,18 @@ void XmlAltoOutputDev::addStyles() {
         sprintf(tmp, "font%d", fontStyleInfo->getId());
         xmlNewProp(textStyleNode, (const xmlChar *) ATTR_ID, (const xmlChar *) tmp);
 
-        sprintf(tmp, "%s", fontStyleInfo->getFontNameCS()->getCString());
+        // https://github.com/kermitt2/pdfalto/issues/66
+        // warning if the font name is very long, this can lead to buffer overflow, so we
+        // truncate by default everything over 100 char
+        GString *truncatedFontNameCS = new GString(fontStyleInfo->getFontNameCS()->getCString(), 99);
+        sprintf(tmp, "%s", truncatedFontNameCS->getCString());
         xmlNewProp(textStyleNode, (const xmlChar *) ATTR_FONTFAMILY, (const xmlChar *) tmp);
+        delete truncatedFontNameCS;
         delete fontStyleInfo->getFontNameCS();
 
         snprintf(tmp, sizeof(tmp), "%.3f", fontStyleInfo->getFontSize());
         xmlNewProp(textStyleNode, (const xmlChar *) ATTR_FONTSIZE, (const xmlChar *) tmp);
 
-        //
         sprintf(tmp, "%s", fontStyleInfo->getFontType() ? "serif" : "sans-serif");
         xmlNewProp(textStyleNode, (const xmlChar *) ATTR_FONTTYPE, (const xmlChar *) tmp);
 
