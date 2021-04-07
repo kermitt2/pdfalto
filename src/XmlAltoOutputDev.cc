@@ -6938,7 +6938,7 @@ void TextPage::createPath(GfxPath *path, GfxState *state, xmlNodePtr groupNode) 
                     ymax = *std::max_element(list_double, list_double +4);
                 }
                 else {
-                    double list_double[] = { y0, y1, y2, y3};
+                    double list_double[] = { y0, y1, y2, y3, ymax};
                     ymax = *std::max_element(list_double, list_double+5);
                 }
 
