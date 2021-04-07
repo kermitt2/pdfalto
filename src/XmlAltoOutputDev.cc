@@ -7801,6 +7801,9 @@ XmlAltoOutputDev::XmlAltoOutputDev(GString *fileName, GString *fileNamePdf,
         xmlNewNs(docroot, (const xmlChar *) nsURI->getCString(), NULL);
     }
 
+    xmlNewProp(docroot, (const xmlChar *) ATTR_LOCATION,
+               (const xmlChar *) ALTO_LOCATION);
+
     xmlDocSetRootElement(doc, docroot);
 
     // here we add basic structure : see https://www.loc.gov/standards/alto/techcenter/structure.html
