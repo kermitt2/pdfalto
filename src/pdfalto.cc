@@ -23,12 +23,9 @@
 #include "Parameters.h"
 #include "Outline.h"
 #include "whereami.h"
-
 #include "PDFDocXrce.h"
-
 #include <sys/types.h>
 #include <dirent.h>
-
 #include <iostream>
 
 using namespace std;
@@ -43,11 +40,7 @@ using namespace ConstantsXML;
 
 #include "TextString.h"
 
-
-
 void removeAlreadyExistingData(GString *dir);
-
-static const char cvsid[] = "$Revision: 1.4 $";
 
 static int firstPage = 1;
 static int lastPage = 0;
@@ -133,8 +126,8 @@ static ArgDesc argDesc[] = {
                 "print usage information"},
 //        {"--saveconf",     argString, XMLcfgFileName,   sizeof(XMLcfgFileName),
 //                "save all command line parameters in the specified XML <file>"},
-//        {"-conf",          argString, cfgFileName,      sizeof(cfgFileName),
-//                "configuration file to use in place of xpdfrc"},
+//        {"-xpdfrc",          argString, cfgFileName,      sizeof(cfgFileName),
+//                "specific xpdf configuration file to use (xpdfrc)"},
         {NULL}
 };
 
@@ -178,6 +171,9 @@ int main(int argc, char *argv[]) {
     //fileName = new GString(argv[1]);
     cmd = new GString();
     //globalParams = new GlobalParams(cfgFileName);
+
+    //if (cfgFileName)
+
 
     // get the full path of the enclosing executable
     int theLength;
@@ -306,7 +302,10 @@ int main(int argc, char *argv[]) {
         nsURI = NULL;
     }
 
-    if (argc < 2) { goto err0; }
+    if (argc < 2) { 
+        goto err0; 
+    }
+
     fileName = new GString(argv[1]);
     // Create the object PDF doc
     doc = new PDFDocXrce(fileName, ownerPW, userPW);
@@ -334,9 +333,8 @@ int main(int argc, char *argv[]) {
         } else {
             shortFileName = new GString(textFileName);
         }
-    }
-    // ELSE we build the output XML file name with the PDF file name
-    else {
+    } else {
+        // ELSE we build the output XML file name with the PDF file name
         p = fileName->getCString() + fileName->getLength() - 4;
         if (!strcmp(p, EXTENSION_PDF) || !strcmp(p, EXTENSION_PDF_MAJ)) {
             textFileName = new GString(fileName->getCString(), fileName->getLength() - 4);
@@ -384,8 +382,6 @@ int main(int argc, char *argv[]) {
     }
 
     // Write xml file
-//  xmlOut = new XmlOutputDev(textFileName, fileName, physLayout, verbose, nsURI, cmd);
-
 //    printf("crop width: %g\n",doc->getPageCropWidth(1));
     xmlAltoOut = new XmlAltoOutputDev(textFileName, fileName, doc->getCatalog(), physLayout, verbose, nsURI, cmd);
 
@@ -437,6 +433,11 @@ int main(int argc, char *argv[]) {
     if (nsURI) {
         delete nsURI;
     }
+
+    // free the C malloc stuff 
+    free(thePath);
+    free(dirname);
+    free(xpdfrc_path);
 
     err3:
     delete textFileName;
