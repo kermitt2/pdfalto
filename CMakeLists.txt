@@ -45,6 +45,7 @@ set ( ICU_PATH ${CMAKE_CURRENT_SOURCE_DIR}/libs/icu)
 
 if (APPLE)
     message("Using macos settings.")
+    add_compile_options(-I/usr/local/include)
     #set(CMAKE_CXX_STANDARD_LIBRARIES "-static-compiler-rt -static-libc++")
     set(OSSUFFIX "mac")
 elseif (CYGWIN OR MSVC OR WIN32 OR MINGW)
