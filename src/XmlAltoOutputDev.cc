@@ -733,10 +733,10 @@ TextWord::TextWord(GList *charsA, int start, int lenA,
             }
         }
 
-        if (!isUpdateAccentedChar)
+        if (!isUpdateAccentedChar) {
             //text[i] = ch->c;
             chars->append(ch);
-
+        }
 
         charPos[i] = ch->charPos;
         if (i == len - 1) {
@@ -1074,7 +1074,6 @@ void TextRawWord::addChar(GfxState *state, double x, double y, double dx,
 
     if (overlap && len > 0) {
         ModifierClass leftClass = NOT_A_MODIFIER, rightClass = NOT_A_MODIFIER;
-        //Unicode prvChar = text[len - 1];
         Unicode prvChar = ((TextChar *) chars->get(len - 1))->c;
         leftClass = classifyChar(prvChar);
         rightClass = classifyChar(u);
@@ -1090,6 +1089,10 @@ void TextRawWord::addChar(GfxState *state, double x, double y, double dx,
                     diactritic = getCombiningDiacritic(leftClass);
                     baseChar = new UnicodeString(wchar_t(getStandardBaseChar(u)));
                 }
+                // note that in this case we have to be careful with the word coordinates, as the first
+                // character of the word might be a modifier, we should use the base char instead
+                // otherwise we could introduce spurious word break after the combined character due
+                // to shift from the base line
             } else if (rightClass != NOT_A_MODIFIER) {
                 diactritic = getCombiningDiacritic(rightClass);
                 baseChar = new UnicodeString(wchar_t(getStandardBaseChar(prvChar)));
@@ -1104,9 +1107,8 @@ void TextRawWord::addChar(GfxState *state, double x, double y, double dx,
                     resultChar = nfkc->normalizeSecondAndAppend(resultChar, *diacriticChar, errorCode);
                 } else
                     resultChar = nfkc->normalizeSecondAndAppend(*baseChar, *diacriticChar, errorCode);
-                //text[len - 1] = resultChar.charAt(0);
                 ((TextChar *) chars->get(len - 1))->c = resultChar.charAt(0);
-                //here we should compare both coords and keep surrounding ones
+
                 switch (rot) {
                     case 0:
                         if (len == 0) {
@@ -2714,8 +2716,8 @@ void TextPage::addCharToRawWord(GfxState *state, double x, double y, double dx,
     // (2) this character overlaps the previous one (duplicated text), or
     // (3) the previous character was an overlap (we want each duplicated
     //     character to be in a word by itself at this stage)
-    //     characters to be in a word by itself) // HD deleted
     if (curWord && curWord->len > 0) {
+
         base = sp = delta = 0; // make gcc happy
         switch (curWord->rot) {
             case 0:
@@ -2739,6 +2741,14 @@ void TextPage::addCharToRawWord(GfxState *state, double x, double y, double dx,
                 delta = curWord->edge[curWord->len - 1] - y1;
                 break;
         }
+
+        if (lastCharOverlap) {
+            // the previous overlap (always from a character composition here) 
+            // made the base not reliable, so we align to the current one
+            curWord->base = base;
+            lastCharOverlap = gFalse;
+        }
+
         sp -= curWord->charSpace;
         curWord->charSpace = state->getCharSpace();
         overlap = fabs(delta) < dupMaxPriDelta * curWord->fontSize && fabs(base
@@ -2747,11 +2757,27 @@ void TextPage::addCharToRawWord(GfxState *state, double x, double y, double dx,
 
         // avoid splitting token when overlaping is surrounded by diacritic
         ModifierClass modifierClass = NOT_A_MODIFIER;
+        ModifierClass rightClass = NOT_A_MODIFIER;
+        ModifierClass leftClass = NOT_A_MODIFIER;
         if (curWord->len > 0)
-            modifierClass = classifyChar(((TextChar *) curWord->chars->get(curWord->getLength() - 1))->c);
-        if (modifierClass == NOT_A_MODIFIER)
-            modifierClass = classifyChar(u[0]);
+            leftClass = classifyChar(((TextChar *) curWord->chars->get(curWord->getLength() - 1))->c);
+        //if (modifierClass == NOT_A_MODIFIER)
+            rightClass = classifyChar(u[0]);
         GBool space = sp > minWordBreakSpace * curWord->fontSize;
+
+        if ((rightClass != NOT_A_MODIFIER || leftClass != NOT_A_MODIFIER) ) {
+            // break of the word happens at the modifier char, but depending on the
+            // left or right combination, it will consume the left or the right character
+            // and possible break word will occur then after or before the modifier respectively
+            if (leftClass != NOT_A_MODIFIER) {
+                // no break before this char
+                modifierClass = leftClass;
+            }
+            else if (rightClass != NOT_A_MODIFIER) {
+                // break is allowed before this char
+                modifierClass = NOT_A_MODIFIER;
+            }
+        }
 
         if(space){
             curWord->setSpaceAfter(gTrue);
@@ -2760,13 +2786,21 @@ void TextPage::addCharToRawWord(GfxState *state, double x, double y, double dx,
                         (char) gTrue;
         }
         // take into account rotation angle ??
-        if (((overlap || fabs(base - curWord->base) > 1 ||
-                space ||
-              (sp < -minDupBreakOverlap * curWord->fontSize)) && modifierClass == NOT_A_MODIFIER)) {
+        if ( (overlap || 
+              fabs(base - curWord->base) > 1 ||
+              space ||
+              (sp < -minDupBreakOverlap * curWord->fontSize)) 
+              && modifierClass == NOT_A_MODIFIER) {
             endWord();
             beginWord(state, x, y);
         }
-        lastCharOverlap = overlap;
+        if (leftClass != NOT_A_MODIFIER && curWord && curWord->getLength() == 1) {
+            // we keep track of the event composition for the next character, as the base won't be reliable
+            // in the case the word starts with a composed character
+            lastCharOverlap = gTrue;
+        } else {
+            lastCharOverlap = gFalse;
+        }
     } else {
         lastCharOverlap = gFalse;
     }
