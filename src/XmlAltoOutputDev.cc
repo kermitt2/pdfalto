@@ -2746,6 +2746,7 @@ void TextPage::addCharToRawWord(GfxState *state, double x, double y, double dx,
             // the previous overlap (always from a character composition here) 
             // made the base not reliable, so we align to the current one
             curWord->base = base;
+            lastCharOverlap = gFalse;
         }
 
         sp -= curWord->charSpace;
@@ -2793,10 +2794,12 @@ void TextPage::addCharToRawWord(GfxState *state, double x, double y, double dx,
             endWord();
             beginWord(state, x, y);
         }
-        lastCharOverlap = overlap;
-        if (leftClass != NOT_A_MODIFIER) {
+        if (leftClass != NOT_A_MODIFIER && curWord && curWord->getLength() == 1) {
             // we keep track of the event composition for the next character, as the base won't be reliable
+            // in the case the word starts with a composed character
             lastCharOverlap = gTrue;
+        } else {
+            lastCharOverlap = gFalse;
         }
     } else {
         lastCharOverlap = gFalse;
