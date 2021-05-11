@@ -8117,8 +8117,12 @@ XmlAltoOutputDev::XmlAltoOutputDev(GString *fileName, GString *fileNamePdf,
         xmlNewNs(docroot, (const xmlChar *) nsURI->getCString(), NULL);
     }
 
+    // xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
     xmlNewProp(docroot, (const xmlChar *) ATTR_LOCATION,
                (const xmlChar *) ALTO_LOCATION);
+
+    xmlNewProp(docroot, (const xmlChar *) ATTR_XSI,
+               (const xmlChar *) ALTO_XMLSCHEMA_INSTANCE);
 
     xmlDocSetRootElement(doc, docroot);
 

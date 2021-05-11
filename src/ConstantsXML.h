@@ -75,6 +75,8 @@ namespace ConstantsXML {
 	extern const char *ATTR_ID_ITEM_PARENT;
 	extern const char *ATTR_NB_PAGES;
 	extern const char *ATTR_LOCATION;
+	extern const char *ATTR_XSI;
+	extern const char *ALTO_XMLSCHEMA_INSTANCE;
 
 	// SVG XML TAGS
 	extern const char *ATTR_NUMFORMAT;

@@ -91,6 +91,9 @@ namespace ConstantsXML {
 	const char *ATTR_NB_PAGES = "nbPages";
 	const char *ATTR_LOCATION = "xsi:schemaLocation";
 
+	const char *ATTR_XSI = "xmlns:xsi";
+	const char *ALTO_XMLSCHEMA_INSTANCE = "http://www.w3.org/2001/XMLSchema-instance";
+
 	// SVG XML TAGS
 	//const char *ATTR_NUMFORMAT = "%g";
 	const char *ATTR_NUMFORMAT = "%1.4f";
