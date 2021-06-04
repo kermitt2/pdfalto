@@ -59,7 +59,10 @@ static GBool cutPages = gFalse;
 //static GBool blocks = gFalse;
 static GBool noLineNumbers = gFalse;
 static GBool fullFontName = gFalse;
+
+// deprecated
 static GBool noImageInline = gFalse;
+
 static GBool annots = gFalse;
 static GBool readingOrder = gFalse;
 static GBool charReadingOrderAttr = gFalse;
@@ -82,7 +85,7 @@ static ArgDesc argDesc[] = {
         {"-noImage",       argFlag,   &noImage,         0,
                 "do not extract Images (Bitmap and Vectorial)"},
         {"-noImageInline", argFlag,   &noImageInline,   0,
-                "do not include images inline in the stream"},
+                "deprecated"},
         {"-outline",       argFlag,   &outline,         0,
                 "create an outline file xml"},
         {"-annotation",    argFlag,   &annots,          0,
@@ -172,9 +175,6 @@ int main(int argc, char *argv[]) {
     cmd = new GString();
     //globalParams = new GlobalParams(cfgFileName);
 
-    //if (cfgFileName)
-
-
     // get the full path of the enclosing executable
     int theLength;
     theLength = wai_getExecutablePath(NULL, 0, NULL);
@@ -261,12 +261,12 @@ int main(int argc, char *argv[]) {
         parameters->setFullFontName(gFalse);
     }
 
-    if (noImageInline) {
+    /*if (noImageInline) {
         parameters->setImageInline(gTrue);
         cmd->append("-noImageInline ");
     } else {
         parameters->setImageInline(gFalse);
-    }
+    }*/
 
     if (quiet) {
         globalParams->setErrQuiet(quiet);

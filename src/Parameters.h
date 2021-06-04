@@ -66,7 +66,7 @@ public:
 	/** Return a boolean which inform if the images inline are included in the stream or not
 	 * @return <code>true</code> if the noImageInline option is selected, <code>false</code> otherwise
 	 */
-	GBool getImageInline() {return imageInline;}
+	//GBool getImageInline() {return imageInline;}
 	
 	/** PL: Return a boolean which inform if the blocks should follow the reading order rather than the 
 	 *  PDF content stream one
@@ -130,7 +130,7 @@ public:
 	/** Modifiy the boolean which inform if the images inline are included in the stream or not
 	 * @param imageInline <code>true</code> if the noImageInline option is selected, <code>false</code> otherwise
 	 */	
-	void setImageInline(GBool imageInline);
+	//void setImageInline(GBool imageInline);
 
 	/** PL: Modifiy the boolean which inform if the blocks should follow the reading order
 	 * @param readingOrder <code>true</code> if the readingOrder option is selected, <code>false</code> otherwise
@@ -172,7 +172,7 @@ private:
 	/** The value of the fullFontName option */
 	GBool fullFontName;
 	/** The value of the noImageInline option */
-	GBool imageInline;
+	//GBool imageInline;
 	/** PL: The value of the readingOrder option */
 	GBool readingOrder;
 	/** PL: The value of the charReadingOrderAttr option */

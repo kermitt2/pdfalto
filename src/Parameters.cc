@@ -21,7 +21,6 @@ void Parameters::setFilesCountLimit(int count) {
 	unlockGlobalParams;
 }
 
-
 void Parameters::setDisplayImage(GBool image) {
   lockGlobalParams;
   displayImage = image;
@@ -58,11 +57,11 @@ void Parameters::setFullFontName(GBool fullFontsNames) {
   unlockGlobalParams;
 }
 
-void Parameters::setImageInline(GBool imagesInline) {
+/*void Parameters::setImageInline(GBool imagesInline) {
   lockGlobalParams;
   imageInline = imagesInline;
   unlockGlobalParams;
-}
+}*/
 
 // PL
 void Parameters::setReadingOrder(GBool readingOrders) {

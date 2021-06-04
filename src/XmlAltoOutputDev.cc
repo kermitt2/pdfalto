@@ -355,7 +355,7 @@ TextFontStyleInfo::~TextFontStyleInfo() {
 // ImageInline
 //------------------------------------------------------------------------
 
-ImageInline::ImageInline(double xPosition, double yPosition, double width,
+/*ImageInline::ImageInline(double xPosition, double yPosition, double width,
                          double height, int idWord, int idImage, GString *href, int index) {
     xPositionImage = xPosition;
     yPositionImage = yPosition;
@@ -370,6 +370,7 @@ ImageInline::ImageInline(double xPosition, double yPosition, double width,
 ImageInline::~ImageInline() {
 
 }
+*/
 
 //------------------------------------------------------------------------
 // Image
@@ -1806,7 +1807,8 @@ TextPage::TextPage(GBool verboseA, Catalog *catalog, xmlNodePtr node,
     lastFindXMin = lastFindYMin = 0;
     haveLastFind = gFalse;
 
-    if (parameters->getDisplayImage()) {
+    //if (parameters->getDisplayImage()) 
+    {
         GString *cp;
         cp = dir->copy();
         for (int i = 0; i < cp->getLength(); i++) {
@@ -2016,14 +2018,14 @@ void TextPage::clear() {
     fonts = new GList();
 
     // Clear the vector which contain images inline objects
-    int nb = listeImageInline.size();
+    /*int nb = listeImageInline.size();
     for (int i = 0; i < nb; i++) {
         delete listeImageInline[i];
     }
-    listeImageInline.clear();
+    listeImageInline.clear();*/
 
     // Clear the vector which contain images objects
-    nb = listeImages.size();
+    int nb = listeImages.size();
     for (int i = 0; i < nb; i++) {
         delete listeImages[i];
     }
@@ -4735,7 +4737,7 @@ void TextPage::dumpInReadingOrder(GBool noLineNumbers, GBool fullFontName) {
     xmlNodePtr node = NULL;
     xmlNodePtr nodeline = NULL;
     xmlNodePtr nodeblocks = NULL;
-    xmlNodePtr nodeImageInline = NULL;
+    //xmlNodePtr nodeImageInline = NULL;
 
     GString *id;
 
@@ -4870,7 +4872,7 @@ void TextPage::dumpInReadingOrder(GBool noLineNumbers, GBool fullFontName) {
 //                    }
 
                     // Add next images inline whithin the current line if the noImageInline option is not selected
-                    if (parameters->getImageInline()) {
+                    /*if (parameters->getImageInline()) {
                         if (indiceImage != -1) {
                             int nb = listeImageInline.size();
                             for (; indiceImage < nb; indiceImage++) {
@@ -4916,7 +4918,7 @@ void TextPage::dumpInReadingOrder(GBool noLineNumbers, GBool fullFontName) {
                                 }
                             }
                         }
-                    }
+                    }*/
 
                     xmlAddChild(nodeline, node);
 
@@ -5981,7 +5983,7 @@ void TextPage::dump(GBool noLineNumbers, GBool fullFontName, vector<bool> lineNu
     xmlNodePtr node = NULL;
     xmlNodePtr nodeline = NULL;
     xmlNodePtr nodeblocks = NULL;
-    xmlNodePtr nodeImageInline = NULL;
+    //xmlNodePtr nodeImageInline = NULL;
 
     TextParagraph *par;
     TextLine *line1;
@@ -6266,12 +6268,11 @@ void TextPage::dump(GBool noLineNumbers, GBool fullFontName, vector<bool> lineNu
 //                    }
 
                 // Add next images inline whithin the current line if the noImageInline option is not selected
-                if (parameters->getImageInline()) {
+                /*if (parameters->getImageInline()) {
                     if (indiceImage != -1) {
                         int nb = listeImageInline.size();
                         for (; indiceImage < nb; indiceImage++) {
-                            if (idWORDBefore
-                                == listeImageInline[indiceImage]->idWordBefore) {
+                            if (idWORDBefore == listeImageInline[indiceImage]->idWordBefore) {
                                 nodeImageInline = xmlNewNode(NULL,
                                                              (const xmlChar *) TAG_TOKEN);
                                 nodeImageInline->type = XML_ELEMENT_NODE;
@@ -6317,7 +6318,7 @@ void TextPage::dump(GBool noLineNumbers, GBool fullFontName, vector<bool> lineNu
                 // Include a TOKEN tag for the image inline if it exists
                 if (!parameters->getImageInline()) {
                     addImageInlineNode(nodeline, nodeImageInline, tmp, word);
-                }
+                }*/
 
                 //testLinkedText(nodeline,minLineX,minLineY,minLineX+lineWidth,minLineY+lineHeight);
 //			    if (testAnnotatedText(minLineX,minLineY,minLineX+lineWidth,minLineY+lineHeight)){
@@ -6364,17 +6365,13 @@ void TextPage::dump(GBool noLineNumbers, GBool fullFontName, vector<bool> lineNu
 
     int imageCount = listeImages.size();
     for (int i = 0; i < imageCount; ++i) {
-
         char *tmp;
-
         tmp = (char *) malloc(10 * sizeof(char));
 
         node = xmlNewNode(NULL, (const xmlChar *) TAG_IMAGE);
         xmlNewProp(node, (const xmlChar *) ATTR_ID, (const xmlChar *) listeImages[i]->getImageId()->getCString());
 
-
         //xmlNewProp(node, (const xmlChar *) ATTR_SID,(const xmlChar*)listeImages[i]->getImageSid()->getCString());
-
 
         snprintf(tmp, sizeof(tmp), ATTR_NUMFORMAT, listeImages[i]->getXPositionImage());
         xmlNewProp(node, (const xmlChar *) ATTR_X, (const xmlChar *) tmp);
@@ -6397,29 +6394,29 @@ void TextPage::dump(GBool noLineNumbers, GBool fullFontName, vector<bool> lineNu
 //        if (listeImages[i]->isImageInline()) {
 //            xmlNewProp(node, (const xmlChar *) ATTR_INLINE, (const xmlChar *) sTRUE);
 //        }
-        xmlNewProp(node, (const xmlChar *) ATTR_HREF,
+
+        if (parameters->getDisplayImage()) {
+            xmlNewProp(node, (const xmlChar *) ATTR_HREF,
                    (const xmlChar *) listeImages[i]->getHrefImage()->getCString());
+        }
 
         xmlNewProp(node, (const xmlChar *) ATTR_TYPE,
                    (const xmlChar *) listeImages[i]->getType()->getCString());
-        if (verbose) {
+        /*if (verbose) {
             xmlNewProp(node, (const xmlChar *) ATTR_CLIPZONE,
                        (const xmlChar *) listeImages[i]->getClipZone()->getCString());
-        }
+        }*/
         xmlAddChild(printSpace, node);
         free(tmp);
     }
 
 
-    if (parameters->getDisplayImage()) {
+    //if (parameters->getDisplayImage()) 
+    {
         GString *sid = new GString("p");
-        GBool isInline = false;
+        //GBool isInline = false;
         sid = buildSID(getPageNumber(), getIdx(), sid);
 
-        GString *relname = new GString(dataDirectory);
-        relname->append("-");
-        relname->append(GString::fromInt(num));
-        relname->append(EXTENSION_SVG);
         char *tmp;
 
         tmp = (char *) malloc(10 * sizeof(char));
@@ -6451,18 +6448,25 @@ void TextPage::dump(GBool noLineNumbers, GBool fullFontName, vector<bool> lineNu
 //        if (listeImages[i]->isImageInline()) {
 //            xmlNewProp(node, (const xmlChar *) ATTR_INLINE, (const xmlChar *) sTRUE);
 //        }
-        xmlNewProp(node, (const xmlChar *) ATTR_HREF,
-                   (const xmlChar *) relname->getCString());
 
-        xmlNewProp(node, (const xmlChar *) ATTR_TYPE,
-                   (const xmlChar *) "svg");
+        if (parameters->getDisplayImage()) {
+            GString *relname = new GString(dataDirectory);
+            relname->append("-");
+            relname->append(GString::fromInt(num));
+            relname->append(EXTENSION_SVG);
+
+            xmlNewProp(node, (const xmlChar *) ATTR_HREF, (const xmlChar *) relname->getCString());
+
+            // Save the file for example with relname 'p_06.xml_data/image-27.vec'
+            if (!xmlSaveFile(relname->getCString(), vecdoc)) {
+                //error(errIO,-1, "Couldn't open file '%s'", relname->getCString());
+            }
+        }
+        
+        xmlNewProp(node, (const xmlChar *) ATTR_TYPE, (const xmlChar *) "svg");
         xmlAddChild(printSpace, node);
         free(tmp);
 
-        // Save the file for example with relname 'p_06.xml_data/image-27.vec'
-        if (!xmlSaveFile(relname->getCString(), vecdoc)) {
-            //error(errIO,-1, "Couldn't open file '%s'", relname->getCString());
-        }
         xmlFreeDoc(vecdoc);
     }
 
@@ -6840,7 +6844,7 @@ bool TextPage::detectReadingOrderIssue(vector<TextParagraph*> originalBlocks) {
 }
 
 
-void TextPage::addImageInlineNode(xmlNodePtr nodeline,
+/*void TextPage::addImageInlineNode(xmlNodePtr nodeline,
                                   xmlNodePtr nodeImageInline, char *tmp, IWord *word) {
     indiceImage = -1;
     idWORDBefore = -1;
@@ -6945,7 +6949,7 @@ void TextPage::addImageInlineNode(xmlNodePtr nodeline,
             break;
         }
     }
-}
+}*/
 
 GString *TextPage::buildIdImage(int pageNum, int imageNum, GString *id) {
     char *tmp = (char *) malloc(10 * sizeof(char));
@@ -7156,14 +7160,14 @@ void TextPage::doPath(GfxPath *path, GfxState *state, GString *gattributes) {
 
     xmlNodePtr groupNode = NULL;
 
-    if (parameters->getDisplayImage()) {
+    //if (parameters->getDisplayImage()) 
+    {
         // GROUP tag
         groupNode = xmlNewNode(NULL, (const xmlChar *) TAG_GROUP);
         xmlAddChild(vecroot, groupNode);
 
         xmlNewProp(groupNode, (const xmlChar *) ATTR_STYLE,
                    (const xmlChar *) gattributes->getCString());
-
 
         GString *id = new GString("p"), *sid = new GString("p");//, *clipZone = new GString("p");
         GBool isInline = false;
@@ -7364,8 +7368,8 @@ void TextPage::clip(GfxState *state) {
 //	if (idx>10000){
 //		return;
 //	}
-    if (parameters->getDisplayImage()) {
-
+    //if (parameters->getDisplayImage()) 
+    {
         // CLIP tag
         gnode = xmlNewNode(NULL, (const xmlChar *) TAG_CLIPPATH);
         xmlAddChild(vecroot, gnode);
@@ -7393,7 +7397,8 @@ void TextPage::eoClip(GfxState *state) {
 
     // Increment the absolute object index
     idx++;
-    if (parameters->getDisplayImage()) {
+    //if (parameters->getDisplayImage()) 
+    {
         // CLIP tag
         gnode = xmlNewNode(NULL, (const xmlChar *) TAG_CLIPPATH);
         xmlAddChild(vecroot, gnode);
@@ -7423,7 +7428,8 @@ void TextPage::clipToStrokePath(GfxState *state) {
     // Increment the absolute object index
     idx++;
 
-    if (parameters->getDisplayImage()) {
+    //if (parameters->getDisplayImage()) 
+    {
         // CLIP tag
         gnode = xmlNewNode(NULL, (const xmlChar *) TAG_CLIPPATH);
         xmlAddChild(vecroot, gnode);
@@ -7596,7 +7602,7 @@ void TextPage::clipToStrokePath(GfxState *state) {
 const char *TextPage::drawImageOrMask(GfxState *state, Object *ref, Stream *str,
                                       int width, int height,
                                       GfxImageColorMap *colorMap,
-                                      int * /* maskColors */, GBool inlineImg, GBool mask, int imageIndex) {
+                                      int * /* maskColors */, GBool extractImg, GBool mask, int imageIndex) {
     GString pic_file;
 
     double x0, y0; // top left corner of image
@@ -7659,24 +7665,25 @@ const char *TextPage::drawImageOrMask(GfxState *state, Object *ref, Stream *str,
         y1 = y2;
         y2 = temp;
     }
-    GString *relname = new GString(dataDirectory);
-    relname->append("-");
-    relname->append(GString::fromInt(imageIndex));
 
     GString *refname = new GString(dataDirectory);
     refname->append("-");
     refname->append(GString::fromInt(imageIndex));
+    refname->append(EXTENSION_PNG);
 
-//	if (pic_file.getLength() == 0)
-    if (1) {
-        extension = EXTENSION_PNG;
+    extension = EXTENSION_PNG;
+
+    if (extractImg) {
+        GString *relname = new GString(dataDirectory);
+        relname->append("-");
+        relname->append(GString::fromInt(imageIndex));    
         relname->append(EXTENSION_PNG);
-        refname->append(EXTENSION_PNG);
+        
         // ------------------------------------------------------------
         // dump JPEG file
         // ------------------------------------------------------------
 
-        if (str->getKind() == strDCT && (mask || colorMap->getNumPixelComps() == 3) && !inlineImg) {
+        if (str->getKind() == strDCT && (mask || colorMap->getNumPixelComps() == 3)) {
             // TODO, do we need to flip Jpegs too?
 
             // open image file
@@ -7871,7 +7878,8 @@ const char *TextPage::drawImageOrMask(GfxState *state, Object *ref, Stream *str,
         }
 
     }
-    if (!inlineImg) {
+    //if (!inlineImg) 
+    {
         GString *id = new GString("p"), *sid = new GString("p"), *clipZone = new GString("p");
         GBool isInline = false;
         id = buildIdImage(getPageNumber(), numImage, id);
@@ -7880,9 +7888,9 @@ const char *TextPage::drawImageOrMask(GfxState *state, Object *ref, Stream *str,
 
         numImage = numImage + 1;
 
-        if (inlineImg) {
+        /*if (inlineImg) {
             isInline = true;
-        }
+        }*/
 
         listeImages.push_back(new Image(x0, y0, w0, h0, id, sid, refname, clipZone, isInline, 0 , new GString("image")));
 //        delete sid;
@@ -7890,9 +7898,9 @@ const char *TextPage::drawImageOrMask(GfxState *state, Object *ref, Stream *str,
 //        delete clipZone;
     }
 
-    if (inlineImg && parameters->getImageInline()) {
+    /*if (inlineImg && parameters->getImageInline()) {
         listeImageInline.push_back(new ImageInline(x0, y0, w0, h0, getIdWORD(), imageIndex, refname, getIdx()));
-    }
+    }*/
 
 
     return extension;
@@ -8056,7 +8064,7 @@ XmlAltoOutputDev::XmlAltoOutputDev(GString *fileName, GString *fileNamePdf,
     //useBlocks = gTrue;
     noLineNumbers = parameters->getNoLineNumbers();
     fullFontName = parameters->getFullFontName();
-    noImageInline = parameters->getImageInline();
+    //noImageInline = parameters->getImageInline();
 
     fileNamePDF = new GString(fileNamePdf);
 
@@ -8072,6 +8080,7 @@ XmlAltoOutputDev::XmlAltoOutputDev(GString *fileName, GString *fileNamePdf,
     dataDir->append(NAME_DATA_DIR);
 
     imgDirName = new GString(dataDir);
+    imageIndex = 0;
 
     // Display images
     if (parameters->getDisplayImage() || !parameters->getCutAllPages()) {
@@ -8083,8 +8092,7 @@ XmlAltoOutputDev::XmlAltoOutputDev(GString *fileName, GString *fileNamePdf,
 #endif
 
         imgDirName->append("/image");
-        imageIndex = 0;
-
+        
 #ifndef WIN32
         char *aux = strdup(fileName->getCString());
         baseFileName = new GString(basename(aux));
@@ -8097,7 +8105,7 @@ XmlAltoOutputDev::XmlAltoOutputDev(GString *fileName, GString *fileNamePdf,
         baseFileName->append("_data/image");
 #endif
 
-    }// end IF
+    } // end IF
 
 
     lPictureReferences = new GList();
@@ -8277,9 +8285,10 @@ void XmlAltoOutputDev::initMetadataInfoDoc() {
 }
 
 GBool XmlAltoOutputDev::needNonText() {
-    if (parameters->getDisplayImage())
+    //if (parameters->getDisplayImage())
         return gTrue;
-    else return gFalse;
+    //else 
+    //    return gFalse;
 }
 
 void XmlAltoOutputDev::addMetadataInfo(PDFDocXrce *pdfdocxrce) {
@@ -9542,7 +9551,8 @@ void XmlAltoOutputDev::eoFill(GfxState *state) {
 }
 
 void XmlAltoOutputDev::clip(GfxState *state) {
-    if (parameters->getDisplayImage()) {
+    //if (parameters->getDisplayImage()) 
+    {
         text->clip(state);
     }
 }
@@ -9556,7 +9566,8 @@ void XmlAltoOutputDev::clipToStrokePath(GfxState *state) {
 }
 
 void XmlAltoOutputDev::doPath(GfxPath *path, GfxState *state, GString *gattributes) {
-    if (parameters->getDisplayImage()) {
+    //if (parameters->getDisplayImage()) 
+    {
         text->doPath(path, state, gattributes);
     }
 }
@@ -9631,7 +9642,8 @@ void XmlAltoOutputDev::drawImage(GfxState *state, Object *ref, Stream *str,
     const char *ext;
 
     int index = -1;
-    if (parameters->getDisplayImage()) {
+    //if (parameters->getDisplayImage()) 
+    {
         // test if already processed
 
         // register the block in the block structure of the page
@@ -9681,20 +9693,19 @@ void XmlAltoOutputDev::drawImage(GfxState *state, Object *ref, Stream *str,
             }
         }
         //new image
-        if (index == -1) {
+        //if (index == -1) 
+        {
             //HD : in order to avoid millions of small (pixel) images
             if (height > 8 && width > 8 && imageIndex < parameters->getFilesCountLimit()) {
                 imageIndex += 1;
                 // Save this in the references
                 //			text->drawImage(state, ref, str, width, height, colorMap, maskColors,inlineImg, dumpJPEG, imageIndex);
-                ext = text->drawImageOrMask(state, ref, str, width, height, colorMap, maskColors, inlineImg, false,
+                ext = text->drawImageOrMask(state, ref, str, width, height, colorMap, maskColors, parameters->getDisplayImage(), false,
                                             imageIndex); // not a mask
                 lPictureReferences->append(new PictureReference(reference, flip, imageIndex, ext));
-
-
             }
 
-        } else {
+        } /*else {
             //HD : in order to avoid millions of small (pixel) images
             if (height > 8 && width > 8 && imageIndex < parameters->getFilesCountLimit()) {
                 imageIndex += 1;
@@ -9702,9 +9713,8 @@ void XmlAltoOutputDev::drawImage(GfxState *state, Object *ref, Stream *str,
                 ext = text->drawImageOrMask(state, ref, str, width, height, colorMap, maskColors, inlineImg, false,
                                             imageIndex); // not a mask
                 lPictureReferences->append(new PictureReference(reference, flip, imageIndex, ext));
-
             }
-        }
+        }*/
     }
 }
 
@@ -9760,13 +9770,15 @@ void XmlAltoOutputDev::drawImageMask(GfxState *state, Object *ref, Stream *str,
         }
     }
     //new image
-    if (index == -1) {
-        if (parameters->getDisplayImage()) {
+    //if (index == -1) 
+    {
+        //if (parameters->getDisplayImage()) 
+        {
             //HD : in order to avoid millions of small (pixel) images
             if (height > 8 && width > 8 && imageIndex < parameters->getFilesCountLimit()) {
                 imageIndex += 1;
                 // Save this in the references
-                ext = text->drawImageOrMask(state, ref, str, width, height, NULL, NULL, inlineImg, true,
+                ext = text->drawImageOrMask(state, ref, str, width, height, NULL, NULL, parameters->getDisplayImage(), true,
                                             imageIndex); // mask
 //                ext= text->drawImageMask(state, ref, str, width, height, invert, inlineImg,
 //                                         dumpJPEG, imageIndex);
@@ -9774,8 +9786,9 @@ void XmlAltoOutputDev::drawImageMask(GfxState *state, Object *ref, Stream *str,
 
             }
         }
-    } else {
-        if (parameters->getDisplayImage()) {
+    } /*else {
+        //if (parameters->getDisplayImage()) 
+        {
             //HD : in order to avoid millions of small (pixel) images
             if (height > 8 && width > 8 && imageIndex < parameters->getFilesCountLimit()) {
                 imageIndex += 1;
@@ -9787,7 +9800,7 @@ void XmlAltoOutputDev::drawImageMask(GfxState *state, Object *ref, Stream *str,
                 lPictureReferences->append(new PictureReference(reference, flip, imageIndex, ext));
             }
         }
-    }
+    }*/
 }
 
 void XmlAltoOutputDev::initOutline(int nbPage) {
