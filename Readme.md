@@ -65,7 +65,8 @@ The script will download and build the dependencies unders `libs/` and the addit
 
 If necessary, see [compiling dependencies procedures](Dependencies_INSTALL.md) for further details.
 
-##### Known issues ([issue 41](https://github.com/kermitt2/pdfalto/issues/41)) might occur while building, in this case you'll need to compile the dependencies before building pdflato.
+##### Known issues 
+([issue 41](https://github.com/kermitt2/pdfalto/issues/41)) might occur while building, in this case you'll need to compile the dependencies before building pdflato.
 
 # Build
 
@@ -90,6 +91,9 @@ To use the additional xpdf language support packages, the executable `pdfalto` c
 lopez@work:~$ ls my_pdfalto/
 languages  pdfalto  xpdfrc
 ```
+
+##### Known issues 
+([issue #135](https://github.com/kermitt2/pdfalto/issues/135)) on macOS "fontconfig.h file not found" might occur while building, see described workaround.
 
 # Future work
 
