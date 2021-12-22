@@ -6182,6 +6182,8 @@ void TextPage::dump(GBool noLineNumbers, GBool fullFontName, vector<bool> lineNu
                 --n;
             }*/
 
+
+            bool nonEmptyLine = false;
             for (wordI = 0; wordI < line1->words->getLength(); wordI++) {
                 word = (TextWord *) line1->words->get(wordI);
                 if (wordI < line1->words->getLength() - 1)
@@ -6327,6 +6329,7 @@ void TextPage::dump(GBool noLineNumbers, GBool fullFontName, vector<bool> lineNu
 
                 if (!word->getLineNumber()) {
                     xmlAddChild(nodeline, node);
+                    nonEmptyLine = true;
                 
                     if (wordI < line1->words->getLength() - 1 and (word->spaceAfter == gTrue)) {
                         xmlNodePtr spacingNode = xmlNewNode(NULL, (const xmlChar *) TAG_SPACING);
@@ -6357,7 +6360,9 @@ void TextPage::dump(GBool noLineNumbers, GBool fullFontName, vector<bool> lineNu
                 free(tmp);
             }
 
-            xmlAddChild(nodeblocks, nodeline);
+            if (nonEmptyLine)
+                xmlAddChild(nodeblocks, nodeline);
+            
         }
 
         xmlAddChild(printSpace, nodeblocks);
