@@ -6,9 +6,11 @@
 
 **pdfalto** is a command line executable for parsing PDF files and producing structured XML representations of the PDF content in [ALTO](https://github.com/kermitt2/pdfalto/blob/master/schema/alto.xsd) format. 
 
-**pdfalto** is initially a fork of [pdf2xml](http://sourceforge.net/projects/pdf2xml), developed at XRCE, with modifications for robustness, addition of features and output enhanced format in [ALTO](https://github.com/altoxml/documentation/wiki) (including in particular space information, useful for instance for further machine learning processing). It is based on the [Xpdf](http://www.xpdfreader.com/) library.  
+**pdfalto** is initially a fork of [pdf2xml](http://sourceforge.net/projects/pdf2xml), developed at XRCE, with modifications for robustness, addition of features, improved layout element detections, and output enhanced format in [ALTO](https://github.com/altoxml/documentation/wiki) (including in particular space information, useful for instance for further machine learning processing). It is based on the [Xpdf](http://www.xpdfreader.com/) library.  
 
 The latest stable version is *0.4*. Working version (master) is *0.5*.
+
+An Archlinux package for pdfalto is available [here](https://aur.archlinux.org/packages/pdfalto/), thanks to @andreasbaumann. The build process described [below](https://github.com/kermitt2/pdfalto#build) will create a portable standalone pdfalto executable that can be packaged with other tools without further installation requirements for the end-user. 
 
 # Requirements
 
