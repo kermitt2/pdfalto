@@ -62,7 +62,7 @@ echo "$LIB_INSTALL"
 echo 'Installing libxml2.'
 #
 rm -rf libxml2-2.9.8
-wget $LIBXML_URI
+wget -nc $LIBXML_URI
 
 tar xvf libxml2-2.9.8.tar.gz
 
@@ -85,7 +85,7 @@ echo 'Installing freetype.'
 
 rm -rf freetype-2.9
 
-wget $FREETYPE_URI
+wget -nc $FREETYPE_URI
 
 tar xvf freetype-2.9.tar.gz
 
@@ -106,7 +106,7 @@ echo 'Installing ICU.'
 
 rm -rf "${ICU_DIR_NAME}"
 
-wget $ICU_URI
+wget -nc $ICU_URI
 
 tar xvf "${ICU_FILENAME}"
 
@@ -135,6 +135,8 @@ echo 'Copying libraries into their corresponding location.'
 MACHINE_TYPE=`uname -m`
 if [ ${MACHINE_TYPE} == 'x86_64' ]; then
   ARCH="64"
+elif [ ${MACHINE_TYPE} == 'arm64' ]; then
+  ARCH="arm64"
 else
   ARCH="32"
 fi
