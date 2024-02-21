@@ -3,6 +3,7 @@ project(pdfalto)
 
 set(CMAKE_CXX_STANDARD 11)
 set(CMAKE_EXE_LINKER_FLAGS "-no-pie")
+set(CMAKE_BUILD_TYPE "Release")
 
 #--- look for fontconfig
 if (NOT NO_FONTCONFIG)
