@@ -187,7 +187,7 @@ int main(int argc, char *argv[]) {
 
     char *dirname;
     dirname = (char*)malloc(dirname_length + 1);
-    strncat(dirname, thePath, dirname_length); 
+    strncpy(dirname, thePath, dirname_length); 
     dirname[dirname_length] = '\0';
 
     // set the config file path as alongside the executable
