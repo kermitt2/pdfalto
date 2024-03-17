@@ -1382,9 +1382,9 @@ GString *IWord::convtoX(double xcol) const {
 
 GString *IWord::colortoString() const {
     GString *tmp = new GString("#");
-    GString *tmpr = convtoX(static_cast<int>(255 * colorR));
-    GString *tmpg = convtoX(static_cast<int>(255 * colorG));
-    GString *tmpb = convtoX(static_cast<int>(255 * colorB));
+    GString *tmpr = convtoX(static_cast<int>(round(255 * colorR)));
+    GString *tmpg = convtoX(static_cast<int>(round(255 * colorG)));
+    GString *tmpb = convtoX(static_cast<int>(round(255 * colorB)));
     tmp->append(tmpr);
     tmp->append(tmpg);
     tmp->append(tmpb);
