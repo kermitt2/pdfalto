@@ -1,0 +1,50 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  build:
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+        with:
+          submodules: true
+
+      - name: Set up CMake
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -qq cmake build-essential
+
+      - name: Set up Homebrew
+        if: runner.os == 'macOS'
+        run: |
+          brew update
+          brew upgrade cmake
+
+      - name: Set up compiler
+        run: |
+          sudo apt-get install -qq clang
+
+      - name: Display versions
+        run: |
+          gcc -v
+          g++ -v
+          cmake --version
+
+      - name: Build
+        run: |
+          cmake ./
+          make
