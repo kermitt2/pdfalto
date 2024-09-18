@@ -1,12 +1,7 @@
 name: CI
 
 on:
-  push:
-    branches:
-      - master
-  pull_request:
-    branches:
-      - master
+  push
 
 jobs:
   build:
@@ -14,29 +9,28 @@ jobs:
       matrix:
         os: [ubuntu-latest, macos-latest]
 
+      fail-fast: false
+
     runs-on: ${{ matrix.os }}
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
         with:
           submodules: true
 
-      - name: Set up CMake
+      - name: Set up dependencies for Linux
         if: runner.os == 'Linux'
         run: |
           sudo apt-get update -qq
-          sudo apt-get install -qq cmake build-essential
+          sudo apt-get install -qq cmake build-essential clang
 
-      - name: Set up Homebrew
+      - name: Set up dependencies for macOS
         if: runner.os == 'macOS'
         run: |
           brew update
-          brew upgrade cmake
-
-      - name: Set up compiler
-        run: |
-          sudo apt-get install -qq clang
+          brew upgrade cmake 
+          brew install automake autoconf fontconfig
 
       - name: Display versions
         run: |
@@ -44,7 +38,22 @@ jobs:
           g++ -v
           cmake --version
 
+      - name: set env variables
+        if: runner.os == 'macOS'
+        run: |
+          echo "" >> $GITHUB_ENV
+          echo "" >> $GITHUB_ENV
       - name: Build
+        if: runner.os == 'macOS'
+        env:
+          C_INCLUDE_PATH: '/opt/homebrew/include'
+          CPLUS_INCLUDE_PATH: '/opt/homebrew/include'
+        run: |
+          cmake ./
+          make
+
+      - name: Build
+        if: runner.os == 'Linux'
         run: |
           cmake ./
           make
