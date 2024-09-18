@@ -38,9 +38,12 @@ jobs:
       - name: set env variables
         if: runner.os == 'macOS'
         run: |
-          echo "C_INCLUDE_PATH=/usr/local/include" >> $GITHUB_ENV
-          echo "CPLUS_INCLUDE_PATH=/usr/local/include" >> $GITHUB_ENV
+          echo "" >> $GITHUB_ENV
+          echo "" >> $GITHUB_ENV
       - name: Build
+        env:
+          C_INCLUDE_PATH: '/usr/local/include'
+          CPLUS_INCLUDE_PATH: '/usr/local/include'
         run: |
           cmake ./
           make
