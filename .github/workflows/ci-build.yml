@@ -1,12 +1,7 @@
 name: CI
 
 on:
-  push:
-    branches:
-      - master
-  pull_request:
-    branches:
-      - master
+  push
 
 jobs:
   build:
@@ -22,21 +17,17 @@ jobs:
         with:
           submodules: true
 
-      - name: Set up CMake
+      - name: Set up dependencies for Linux
         if: runner.os == 'Linux'
         run: |
           sudo apt-get update -qq
-          sudo apt-get install -qq cmake build-essential
+          sudo apt-get install -qq cmake build-essential clang
 
-      - name: Set up Homebrew
+      - name: Set up dependencies for macOS
         if: runner.os == 'macOS'
         run: |
           brew update
           brew upgrade cmake
-
-      - name: Set up compiler
-        run: |
-          sudo apt-get install -qq clang
 
       - name: Display versions
         run: |
