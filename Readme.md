@@ -1,6 +1,6 @@
 # pdfalto
 
-[![Build Status](https://travis-ci.org/kermitt2/pdfalto.svg?branch=master)](https://travis-ci.org/kermitt2/pdfalto)
+[![CI](https://github.com/kermitt2/pdfalto/actions/workflows/ci-build.yml/badge.svg)](https://github.com/kermitt2/pdfalto/actions/workflows/ci-build.yml)
 [![SWH](https://archive.softwareheritage.org/badge/origin/https://github.com/kermitt2/pdfalto/)](https://archive.softwareheritage.org/browse/origin/https://github.com/kermitt2/pdfalto/)
 [![License: GPL v2](https://img.shields.io/badge/License-GPL%20v2-blue.svg)](https://www.gnu.org/licenses/old-licenses/gpl-2.0.en.html)
 
