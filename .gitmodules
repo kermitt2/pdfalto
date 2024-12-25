@@ -1,3 +1,3 @@
-[submodule "xpdf-4.03"]
-	path = xpdf-4.03
-	url = git@github.com:kermitt2/xpdf-4.03.git
+[submodule "xpdf-4.05"]
+	path = xpdf-4.05
+	url = https://github.com/lfoppiano/xpdf-4.05.git
