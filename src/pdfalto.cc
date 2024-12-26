@@ -251,8 +251,9 @@ int main(int argc, char *argv[]) {
         cmd->append("-ocr ");
         //we avoid using heuristic mapping (not reliable)
         globalParams->setMapNumericCharNames(gFalse);
-    } else
+    } else {
         globalParams->setMapNumericCharNames(gTrue);
+    }
 
     if (fullFontName) {
         parameters->setFullFontName(gTrue);
@@ -396,7 +397,7 @@ int main(int argc, char *argv[]) {
         dataDirName->append(NAME_DATA_DIR);
         removeAlreadyExistingData(dataDirName);
 
-        // Xml file to store annotations informations
+        // Xml file to store annotations information
         if (annots) {
             xmlDocPtr docAnnotXml;
             xmlNodePtr docroot;

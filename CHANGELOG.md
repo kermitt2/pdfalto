@@ -5,11 +5,9 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [0.5] -TBD 
-
+- update to xpdf-4.05
 
 ## [0.4]
-
-New in version 0.4 (apart various bug fixes):
 
 - support for xpdf language support package for language-specific fonts like Arabic, Chinese-simplified, Japanese, etc. they are pre-installed locally and portable
 
