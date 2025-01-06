@@ -9242,7 +9242,8 @@ SplashFont *XmlAltoOutputDev::getSplashFont(GfxState *state, SplashCoord *matrix
 
 void XmlAltoOutputDev::drawChar(GfxState *state, double x, double y, double dx,
                                 double dy, double originX, double originY, CharCode c, int nBytes,
-                                Unicode *u, int uLen) {
+                                Unicode *u, int uLen,
+                                GBool fill, GBool stroke, GBool makePath) {
 
     GBool isNonUnicodeGlyph = gFalse;
 
