@@ -1569,7 +1569,8 @@ public:
     virtual void drawChar(GfxState *state, double x, double y,
                           double dx, double dy,
                           double originX, double originY,
-                          CharCode c, int nBytes, Unicode *u, int uLen);
+                          CharCode c, int nBytes, Unicode *u, int uLen,
+                          GBool fill, GBool stroke, GBool makePath);
 
     /** Save graphics state
      * @param state The state description */
