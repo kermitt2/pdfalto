@@ -11,7 +11,7 @@ jobs:
 
       fail-fast: false
 
-    runs-on: ${{ matrix.os }}
+    runs-on: ubuntu-24.04-arm
 
     steps:
       - name: Checkout
