@@ -37,6 +37,7 @@ jobs:
           gcc -v
           g++ -v
           cmake --version
+          uconv -V
 
       - name: set env variables
         if: runner.os == 'macOS'
