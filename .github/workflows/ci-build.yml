@@ -11,7 +11,7 @@ jobs:
 
       fail-fast: false
 
-    runs-on: ubuntu-24.04-arm
+    runs-on: [ubuntu-24.04, ubuntu-24.04-arm]
 
     steps:
       - name: Checkout
