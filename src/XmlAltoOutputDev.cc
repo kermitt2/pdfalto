@@ -73,6 +73,7 @@ using namespace icu;
 #include "Link.h"
 #include "Catalog.h"
 #include "Parameters.h"
+#include "UnicodeRemapping.h"
 //#include "Page.h"
 
 // PNG lib
@@ -1759,6 +1760,9 @@ TextPage::TextPage(GBool verboseA, Catalog *catalog, xmlNodePtr node,
     root = node;
     verbose = verboseA;
     //rawOrder = 1;
+    remapping = globalParams->getUnicodeRemapping();
+    uBufSize = 16;
+    uBuf = (Unicode *)gmallocn(uBufSize, sizeof(Unicode));
 
     // PL: to modify block order according to reading order
     if (parameters->getReadingOrder() == gTrue) {
@@ -2649,7 +2653,7 @@ void TextPage::addCharToRawWord(GfxState *state, double x, double y, double dx,
     //cout << "addCharToRawWord" << endl;
     double x1, y1, w1, h1, dx2, dy2, base, sp, delta;
     GBool overlap;
-    int i;
+    int uBufLen, i;
 
     if (uLen == 0) {
         endWord();
@@ -2705,6 +2709,17 @@ void TextPage::addCharToRawWord(GfxState *state, double x, double y, double dx,
         return;
     }
 
+    // remap Unicode
+    uBufLen = 0;
+    for (i = 0; i < uLen; ++i) {
+      if (uBufSize - uBufLen < 8 && uBufSize < 20000) {
+        uBufSize *= 2;
+        uBuf = (Unicode *)greallocn(uBuf, uBufSize, sizeof(Unicode));
+      }
+      uBufLen += remapping->map(u[i], uBuf + uBufLen, uBufSize - uBufLen);
+    }
+    u = uBuf;
+    uLen = uBufLen;
 
     if (!curWord) {
         beginWord(state, x, y);

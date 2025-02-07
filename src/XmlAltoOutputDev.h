@@ -67,6 +67,7 @@ class T3FontCache;
 struct T3FontCacheTag;
 
 class XmlAltoOutputDev;
+class UnicodeRemapping;
 
 enum ModifierClass {
     NOT_A_MODIFIER, DIAERESIS, ACUTE_ACCENT, DOUBLE_ACUTE_ACCENT, GRAVE_ACCENT, DOUBLE_GRAVE_ACCENT, BREVE_ACCENT, INVERTED_BREVE_ACCENT, CIRCUMFLEX, TILDE, NORDIC_RING, CZECH_CARON, CEDILLA, DOT_ABOVE, HOOK, HORN, MACRON, OGONEK,
@@ -1463,6 +1464,9 @@ private:
 
     /** if the page contains a column of line numbers */
     bool lineNumber = false;
+    UnicodeRemapping *remapping;
+    Unicode *uBuf;
+    int uBufSize;
 
 //    friend class TextBlock;
 //    friend class TextColumn;
