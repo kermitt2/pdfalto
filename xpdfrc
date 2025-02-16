@@ -60,10 +60,9 @@ unicodeMap	TIS-620		languages/xpdf-thai/TIS-620.unicodeMap
 unicodeMap	ISO-8859-9	languages/xpdf-turkish/ISO-8859-9.unicodeMap
 #----- end Turkish support package
 #----- begin oldstyle support package (2024-dec-31)
-nameToUnicode      languages/xpdf-others/oldstyle.nameToUnicode
-nameToUnicode      languages/xpdf-others/taboldstyle.nameToUnicode
-nameToUnicode      languages/xpdf-others/ligatures.nameToUnicode
-nameToUnicode      languages/xpdf-others/fitted.nameToUnicode
-unicodeRemapping      languages/xpdf-others/symbols.unicodeRemapping"
+nameToUnicode	languages/xpdf-others/oldstyle.nameToUnicode
+nameToUnicode	languages/xpdf-others/taboldstyle.nameToUnicode
+nameToUnicode	languages/xpdf-others/ligatures.nameToUnicode
+nameToUnicode	languages/xpdf-others/fitted.nameToUnicode
+unicodeRemapping	languages/xpdf-others/symbols.unicodeRemapping
 #----- end oldstyle support package
-
