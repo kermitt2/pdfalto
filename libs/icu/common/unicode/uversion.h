@@ -62,26 +62,22 @@ typedef uint8_t UVersionInfo[U_MAX_VERSION_LENGTH];
 /* C++ namespace if supported. Versioned unless versioning is disabled.      */
 /*===========================================================================*/
 
+/* Define C++ namespace symbols. */
+#ifdef __cplusplus
+
 /**
  * \def U_NAMESPACE_BEGIN
- * This is used to begin a declaration of a public ICU C++ API.
- * When not compiling for C++, it does nothing.
- * When compiling for C++, it begins an extern "C++" linkage block (to protect
- * against cases in which an external client includes ICU header files inside
- * an extern "C" linkage block).
+ * This is used to begin a declaration of a public ICU C++ API within
+ * versioned-ICU-namespace block.
  *
- * It also begins a versioned-ICU-namespace block.
  * @stable ICU 2.4
  */
 
 /**
  * \def U_NAMESPACE_END
  * This is used to end a declaration of a public ICU C++ API.
- * When not compiling for C++, it does nothing.
- * When compiling for C++, it ends the extern "C++" block begun by
- * U_NAMESPACE_BEGIN.
+ * It ends the versioned-ICU-namespace block begun by U_NAMESPACE_BEGIN.
  *
- * It also ends the versioned-ICU-namespace block begun by U_NAMESPACE_BEGIN.
  * @stable ICU 2.4
  */
 
@@ -89,9 +85,6 @@ typedef uint8_t UVersionInfo[U_MAX_VERSION_LENGTH];
  * \def U_NAMESPACE_USE
  * This is used to specify that the rest of the code uses the
  * public ICU C++ API namespace.
- * This is invoked by default; we recommend that you turn it off:
- * See the "Recommended Build Options" section of the ICU4C readme
- * (http://source.icu-project.org/repos/icu/icu/trunk/readme.html#RecBuild)
  * @stable ICU 2.4
  */
 
@@ -105,8 +98,6 @@ typedef uint8_t UVersionInfo[U_MAX_VERSION_LENGTH];
  * @stable ICU 2.4
  */
 
-/* Define C++ namespace symbols. */
-#ifdef __cplusplus
 #   if U_DISABLE_RENAMING
 #       define U_ICU_NAMESPACE icu
         namespace U_ICU_NAMESPACE { }
@@ -116,8 +107,8 @@ typedef uint8_t UVersionInfo[U_MAX_VERSION_LENGTH];
         namespace icu = U_ICU_NAMESPACE;
 #   endif
 
-#   define U_NAMESPACE_BEGIN extern "C++" { namespace U_ICU_NAMESPACE {
-#   define U_NAMESPACE_END } }
+#   define U_NAMESPACE_BEGIN namespace U_ICU_NAMESPACE {
+#   define U_NAMESPACE_END }
 #   define U_NAMESPACE_USE using namespace U_ICU_NAMESPACE;
 #   define U_NAMESPACE_QUALIFIER U_ICU_NAMESPACE::
 
@@ -133,12 +124,65 @@ typedef uint8_t UVersionInfo[U_MAX_VERSION_LENGTH];
 #   if U_USING_ICU_NAMESPACE
         U_NAMESPACE_USE
 #   endif
+
+#ifndef U_FORCE_HIDE_DRAFT_API
+/**
+ * \def U_HEADER_NESTED_NAMESPACE
+ * Nested namespace used inside U_ICU_NAMESPACE for header-only APIs.
+ * Different when used inside ICU to prevent public use of internal instantiations:
+ * "header" when compiling calling code; "internal" when compiling ICU library code.
+ *
+ * When compiling for Windows, where DLL exports of APIs are explicit,
+ * this is always "header". Header-only types are not marked for export,
+ * which on Windows already avoids callers linking with library instantiations.
+ *
+ * @draft ICU 76
+ * @see U_HEADER_ONLY_NAMESPACE
+ */
+
+/**
+ * \def U_HEADER_ONLY_NAMESPACE
+ * Namespace used for header-only APIs.
+ * Different when used inside ICU to prevent public use of internal instantiations.
+ * "U_ICU_NAMESPACE::header" or "U_ICU_NAMESPACE::internal",
+ * see U_HEADER_NESTED_NAMESPACE for details.
+ *
+ * @draft ICU 76
+ */
+
+/**
+ * \def U_ICU_NAMESPACE_OR_INTERNAL
+ * Namespace used for header-only APIs that used to be regular C++ APIs.
+ * Different when used inside ICU to prevent public use of internal instantiations.
+ * Similar to U_HEADER_ONLY_NAMESPACE, but the public definition is the same as U_ICU_NAMESPACE.
+ * "U_ICU_NAMESPACE" or "U_ICU_NAMESPACE::internal".
+ *
+ * @draft ICU 77
+ */
+
+// The first test is the same as for defining U_EXPORT for Windows.
+#if defined(_MSC_VER) || (UPRV_HAS_DECLSPEC_ATTRIBUTE(__dllexport__) && \
+                          UPRV_HAS_DECLSPEC_ATTRIBUTE(__dllimport__))
+#   define U_HEADER_NESTED_NAMESPACE header
+#   define U_ICU_NAMESPACE_OR_INTERNAL U_ICU_NAMESPACE
+#elif defined(U_COMBINED_IMPLEMENTATION) || defined(U_COMMON_IMPLEMENTATION) || \
+        defined(U_I18N_IMPLEMENTATION) || defined(U_IO_IMPLEMENTATION) || \
+        defined(U_LAYOUTEX_IMPLEMENTATION) || defined(U_TOOLUTIL_IMPLEMENTATION)
+#   define U_HEADER_NESTED_NAMESPACE internal
+#   define U_ICU_NAMESPACE_OR_INTERNAL U_ICU_NAMESPACE::internal
+    namespace U_ICU_NAMESPACE_OR_INTERNAL {}
+    using namespace U_ICU_NAMESPACE_OR_INTERNAL;
 #else
-#   define U_NAMESPACE_BEGIN
-#   define U_NAMESPACE_END
-#   define U_NAMESPACE_USE
-#   define U_NAMESPACE_QUALIFIER
+#   define U_HEADER_NESTED_NAMESPACE header
+#   define U_ICU_NAMESPACE_OR_INTERNAL U_ICU_NAMESPACE
 #endif
+
+#define U_HEADER_ONLY_NAMESPACE U_ICU_NAMESPACE::U_HEADER_NESTED_NAMESPACE
+
+namespace U_HEADER_ONLY_NAMESPACE {}
+#endif  // U_FORCE_HIDE_DRAFT_API
+
+#endif /* __cplusplus */
 
 /*===========================================================================*/
 /* General version helper functions. Definitions in putil.c                  */
@@ -155,7 +199,7 @@ typedef uint8_t UVersionInfo[U_MAX_VERSION_LENGTH];
  *                      values of up to 255 each.
  * @stable ICU 2.4
  */
-U_STABLE void U_EXPORT2
+U_CAPI void U_EXPORT2
 u_versionFromString(UVersionInfo versionArray, const char *versionString);
 
 /**
@@ -169,7 +213,7 @@ u_versionFromString(UVersionInfo versionArray, const char *versionString);
  *                      fields with values of up to 255 each.
  * @stable ICU 4.2
  */
-U_STABLE void U_EXPORT2
+U_CAPI void U_EXPORT2
 u_versionFromUString(UVersionInfo versionArray, const UChar *versionString);
 
 
@@ -185,7 +229,7 @@ u_versionFromUString(UVersionInfo versionArray, const UChar *versionString);
  *                      The buffer size must be at least U_MAX_VERSION_STRING_LENGTH.
  * @stable ICU 2.4
  */
-U_STABLE void U_EXPORT2
+U_CAPI void U_EXPORT2
 u_versionToString(const UVersionInfo versionArray, char *versionString);
 
 /**
@@ -196,6 +240,6 @@ u_versionToString(const UVersionInfo versionArray, char *versionString);
  * @param versionArray the version # information, the result will be filled in
  * @stable ICU 2.0
  */
-U_STABLE void U_EXPORT2
+U_CAPI void U_EXPORT2
 u_getVersion(UVersionInfo versionArray);
 #endif

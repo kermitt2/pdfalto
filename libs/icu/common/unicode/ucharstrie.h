@@ -24,6 +24,9 @@
  */
 
 #include "unicode/utypes.h"
+
+#if U_SHOW_CPLUSPLUS_API
+
 #include "unicode/unistr.h"
 #include "unicode/uobject.h"
 #include "unicode/ustringtrie.h"
@@ -64,7 +67,7 @@ public:
      * @stable ICU 4.8
      */
     UCharsTrie(ConstChar16Ptr trieUChars)
-            : ownedArray_(NULL), uchars_(trieUChars),
+            : ownedArray_(nullptr), uchars_(trieUChars),
               pos_(uchars_), remainingMatchLength_(-1) {}
 
     /**
@@ -80,7 +83,7 @@ public:
      * @stable ICU 4.8
      */
     UCharsTrie(const UCharsTrie &other)
-            : ownedArray_(NULL), uchars_(other.uchars_),
+            : ownedArray_(nullptr), uchars_(other.uchars_),
               pos_(other.pos_), remainingMatchLength_(other.remainingMatchLength_) {}
 
     /**
@@ -95,6 +98,39 @@ public:
     }
 
     /**
+     * Returns the state of this trie as a 64-bit integer.
+     * The state value is never 0.
+     *
+     * @return opaque state value
+     * @see resetToState64
+     * @stable ICU 65
+     */
+    uint64_t getState64() const {
+        return (static_cast<uint64_t>(remainingMatchLength_ + 2) << kState64RemainingShift) |
+            static_cast<uint64_t>(pos_ - uchars_);
+    }
+
+    /**
+     * Resets this trie to the saved state.
+     * Unlike resetToState(State), the 64-bit state value
+     * must be from getState64() from the same trie object or
+     * from one initialized the exact same way.
+     * Because of no validation, this method is faster.
+     *
+     * @param state The opaque trie state value from getState64().
+     * @return *this
+     * @see getState64
+     * @see resetToState
+     * @see reset
+     * @stable ICU 65
+     */
+    UCharsTrie &resetToState64(uint64_t state) {
+        remainingMatchLength_ = static_cast<int32_t>(state >> kState64RemainingShift) - 2;
+        pos_ = uchars_ + (state & kState64PosMask);
+        return *this;
+    }
+
+    /**
      * UCharsTrie state object, for saving a trie's current state
      * and resetting the trie back to this state later.
      * @stable ICU 4.8
@@ -105,7 +141,7 @@ public:
          * Constructs an empty State.
          * @stable ICU 4.8
          */
-        State() { uchars=NULL; }
+        State() { uchars=nullptr; }
     private:
         friend class UCharsTrie;
 
@@ -139,7 +175,7 @@ public:
      * @stable ICU 4.8
      */
     UCharsTrie &resetToState(const State &state) {
-        if(uchars_==state.uchars && uchars_!=NULL) {
+        if(uchars_==state.uchars && uchars_!=nullptr) {
             pos_=state.pos;
             remainingMatchLength_=state.remainingMatchLength;
         }
@@ -203,7 +239,7 @@ public:
      *   result=next(c);
      * return result;
      * \endcode
-     * @param s A string. Can be NULL if length is 0.
+     * @param s A string. Can be nullptr if length is 0.
      * @param length The length of the string. Can be -1 if NUL-terminated.
      * @return The match/value Result.
      * @stable ICU 4.8
@@ -230,16 +266,16 @@ public:
     /**
      * Determines whether all strings reachable from the current state
      * map to the same value.
-     * @param uniqueValue Receives the unique value, if this function returns TRUE.
+     * @param uniqueValue Receives the unique value, if this function returns true.
      *                    (output-only)
-     * @return TRUE if all strings reachable from the current state
+     * @return true if all strings reachable from the current state
      *         map to the same value.
      * @stable ICU 4.8
      */
     inline UBool hasUniqueValue(int32_t &uniqueValue) const {
         const char16_t *pos=pos_;
         // Skip the rest of a pending linear-match node.
-        return pos!=NULL && findUniqueValue(pos+remainingMatchLength_+1, FALSE, uniqueValue);
+        return pos!=nullptr && findUniqueValue(pos+remainingMatchLength_+1, false, uniqueValue);
     }
 
     /**
@@ -297,7 +333,7 @@ public:
         Iterator &reset();
 
         /**
-         * @return TRUE if there are more elements.
+         * @return true if there are more elements.
          * @stable ICU 4.8
          */
         UBool hasNext() const;
@@ -313,7 +349,7 @@ public:
          *                  pass the U_SUCCESS() test, or else the function returns
          *                  immediately. Check for U_FAILURE() on output or use with
          *                  function chaining. (See User Guide for details.)
-         * @return TRUE if there is another element.
+         * @return true if there is another element.
          * @stable ICU 4.8
          */
         UBool next(UErrorCode &errorCode);
@@ -331,9 +367,9 @@ public:
 
     private:
         UBool truncateAndStop() {
-            pos_=NULL;
+            pos_=nullptr;
             value_=-1;  // no real value for str
-            return TRUE;
+            return true;
         }
 
         const char16_t *branchNext(const char16_t *pos, int32_t length, UErrorCode &errorCode);
@@ -373,10 +409,10 @@ private:
               pos_(uchars_), remainingMatchLength_(-1) {}
 
     // No assignment operator.
-    UCharsTrie &operator=(const UCharsTrie &other);
+    UCharsTrie &operator=(const UCharsTrie &other) = delete;
 
     inline void stop() {
-        pos_=NULL;
+        pos_=nullptr;
     }
 
     // Reads a compact 32-bit integer.
@@ -457,7 +493,7 @@ private:
     }
 
     static inline UStringTrieResult valueResult(int32_t node) {
-        return (UStringTrieResult)(USTRINGTRIE_INTERMEDIATE_VALUE-(node>>15));
+        return static_cast<UStringTrieResult>(USTRINGTRIE_INTERMEDIATE_VALUE - (node >> 15));
     }
 
     // Handles a branch node for both next(uchar) and next(string).
@@ -560,6 +596,13 @@ private:
 
     static const int32_t kMaxTwoUnitDelta=((kThreeUnitDeltaLead-kMinTwoUnitDeltaLead)<<16)-1;  // 0x03feffff
 
+    // For getState64():
+    // The remainingMatchLength_ is -1..14=(kMaxLinearMatchLength=0x10)-2
+    // so we need at least 5 bits for that.
+    // We add 2 to store it as a positive value 1..16=kMaxLinearMatchLength.
+    static constexpr int32_t kState64RemainingShift = 59;
+    static constexpr uint64_t kState64PosMask = (UINT64_C(1) << kState64RemainingShift) - 1;
+
     char16_t *ownedArray_;
 
     // Fixed value referencing the UCharsTrie words.
@@ -567,12 +610,14 @@ private:
 
     // Iterator variables.
 
-    // Pointer to next trie unit to read. NULL if no more matches.
+    // Pointer to next trie unit to read. nullptr if no more matches.
     const char16_t *pos_;
     // Remaining length of a linear-match node, minus 1. Negative if not in such a node.
     int32_t remainingMatchLength_;
 };
 
 U_NAMESPACE_END
+
+#endif /* U_SHOW_CPLUSPLUS_API */
 
 #endif  // __UCHARSTRIE_H__

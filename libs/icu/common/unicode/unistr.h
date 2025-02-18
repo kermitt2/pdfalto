@@ -28,8 +28,12 @@
  * \brief C++ API: Unicode String
  */
 
-#include <cstddef>
 #include "unicode/utypes.h"
+
+#if U_SHOW_CPLUSPLUS_API
+
+#include <cstddef>
+#include <string_view>
 #include "unicode/char16ptr.h"
 #include "unicode/rep.h"
 #include "unicode/std_string.h"
@@ -41,9 +45,10 @@ struct UConverter;          // unicode/ucnv.h
 #ifndef USTRING_H
 /**
  * \ingroup ustring_ustrlen
+ * @param s Pointer to sequence of UChars.
+ * @return Length of sequence.
  */
-U_STABLE int32_t U_EXPORT2
-u_strlen(const UChar *s);
+U_CAPI int32_t U_EXPORT2 u_strlen(const UChar *s);
 #endif
 
 U_NAMESPACE_BEGIN
@@ -93,40 +98,39 @@ class UnicodeStringAppendable;  // unicode/appendable.h
 #define US_INV icu::UnicodeString::kInvariant
 
 /**
- * Unicode String literals in C++.
+ * \def UNICODE_STRING
+ * Obsolete macro approximating UnicodeString literals.
  *
- * Note: these macros are not recommended for new code.
- * Prior to the availability of C++11 and u"unicode string literals",
- * these macros were provided for portability and efficiency when
+ * Prior to the availability of C++11 and u"UTF-16 string literals",
+ * this macro was provided for portability and efficiency when
  * initializing UnicodeStrings from literals.
  *
- * They work only for strings that contain "invariant characters", i.e.,
- * only latin letters, digits, and some punctuation.
- * See utypes.h for details.
+ * Since C++17 and ICU 76, you can use UTF-16 string literals with compile-time
+ * length determination:
+ * \code
+ * UnicodeString str(u"literal");
+ * if (str == u"other literal") { ... }
+ * \endcode
  *
  * The string parameter must be a C string literal.
  * The length of the string, not including the terminating
- * <code>NUL</code>, must be specified as a constant.
+ * `NUL`, must be specified as a constant.
  * @stable ICU 2.0
  */
 #if !U_CHAR16_IS_TYPEDEF
-# define UNICODE_STRING(cs, _length) icu::UnicodeString(TRUE, u ## cs, _length)
+# define UNICODE_STRING(cs, _length) icu::UnicodeString(true, u ## cs, _length)
 #else
-# define UNICODE_STRING(cs, _length) icu::UnicodeString(TRUE, (const char16_t*)u ## cs, _length)
+# define UNICODE_STRING(cs, _length) icu::UnicodeString(true, (const char16_t*)u ## cs, _length)
 #endif
 
 /**
  * Unicode String literals in C++.
- * Dependent on the platform properties, different UnicodeString
- * constructors should be used to create a UnicodeString object from
- * a string literal.
- * The macros are defined for improved performance.
- * They work only for strings that contain "invariant characters", i.e.,
- * only latin letters, digits, and some punctuation.
- * See utypes.h for details.
+ * Obsolete macro approximating UnicodeString literals.
+ * See UNICODE_STRING.
  *
  * The string parameter must be a C string literal.
  * @stable ICU 2.0
+ * @see UNICODE_STRING
  */
 #define UNICODE_STRING_SIMPLE(cs) UNICODE_STRING(cs, -1)
 
@@ -209,7 +213,9 @@ class UnicodeStringAppendable;  // unicode/appendable.h
  * similar functionality as the Java String and StringBuffer/StringBuilder classes.
  * It is a concrete implementation of the abstract class Replaceable (for transliteration).
  *
- * A UnicodeString may also "alias" an external array of characters
+ * The UnicodeString equivalent of std::string’s clear() is remove().
+ *
+ * A UnicodeString may "alias" an external array of characters
  * (that is, point to it, rather than own the array)
  * whose lifetime must then at least match the lifetime of the aliasing object.
  * This aliasing may be preserved when returning a UnicodeString by value,
@@ -221,32 +227,35 @@ class UnicodeStringAppendable;  // unicode/appendable.h
  *
  * The UnicodeString class is not suitable for subclassing.
  *
- * <p>For an overview of Unicode strings in C and C++ see the
- * <a href="http://userguide.icu-project.org/strings#TOC-Strings-in-C-C-">User Guide Strings chapter</a>.</p>
+ * For an overview of Unicode strings in C and C++ see the
+ * [User Guide Strings chapter](https://unicode-org.github.io/icu/userguide/strings#strings-in-cc).
  *
- * <p>In ICU, a Unicode string consists of 16-bit Unicode <em>code units</em>.
+ * In ICU, a Unicode string consists of 16-bit Unicode *code units*.
  * A Unicode character may be stored with either one code unit
  * (the most common case) or with a matched pair of special code units
  * ("surrogates"). The data type for code units is char16_t.
- * For single-character handling, a Unicode character code <em>point</em> is a value
- * in the range 0..0x10ffff. ICU uses the UChar32 type for code points.</p>
+ * For single-character handling, a Unicode character code *point* is a value
+ * in the range 0..0x10ffff. ICU uses the UChar32 type for code points.
  *
- * <p>Indexes and offsets into and lengths of strings always count code units, not code points.
+ * Indexes and offsets into and lengths of strings always count code units, not code points.
  * This is the same as with multi-byte char* strings in traditional string handling.
  * Operations on partial strings typically do not test for code point boundaries.
  * If necessary, the user needs to take care of such boundaries by testing for the code unit
  * values or by using functions like
  * UnicodeString::getChar32Start() and UnicodeString::getChar32Limit()
- * (or, in C, the equivalent macros U16_SET_CP_START() and U16_SET_CP_LIMIT(), see utf.h).</p>
+ * (or, in C, the equivalent macros U16_SET_CP_START() and U16_SET_CP_LIMIT(), see utf.h).
  *
  * UnicodeString methods are more lenient with regard to input parameter values
  * than other ICU APIs. In particular:
  * - If indexes are out of bounds for a UnicodeString object
- *   (<0 or >length()) then they are "pinned" to the nearest boundary.
+ *   (< 0 or > length()) then they are "pinned" to the nearest boundary.
+ * - If the buffer passed to an insert/append/replace operation is owned by the
+ *   target object, e.g., calling str.append(str), an extra copy may take place
+ *   to ensure safety.
  * - If primitive string pointer values (e.g., const char16_t * or char *)
- *   for input strings are NULL, then those input string parameters are treated
+ *   for input strings are nullptr, then those input string parameters are treated
  *   as if they pointed to an empty string.
- *   However, this is <em>not</em> the case for char * parameters for charset names
+ *   However, this is *not* the case for char * parameters for charset names
  *   or other IDs.
  * - Most UnicodeString methods do not take a UErrorCode parameter because
  *   there are usually very few opportunities for failure other than a shortage
@@ -270,14 +279,14 @@ class UnicodeStringAppendable;  // unicode/appendable.h
  * This includes the const UnicodeString & parameters for
  * copy construction, assignment, and cloning.
  *
- * <p>UnicodeString uses several storage methods.
+ * UnicodeString uses several storage methods.
  * String contents can be stored inside the UnicodeString object itself,
  * in an allocated and shared buffer, or in an outside buffer that is "aliased".
  * Most of this is done transparently, but careful aliasing in particular provides
  * significant performance improvements.
  * Also, the internal buffer is accessible via special functions.
  * For details see the
- * <a href="http://userguide.icu-project.org/strings#TOC-Maximizing-Performance-with-the-UnicodeString-Storage-Model">User Guide Strings chapter</a>.</p>
+ * [User Guide Strings chapter](https://unicode-org.github.io/icu/userguide/strings#maximizing-performance-with-the-unicodestring-storage-model).
  *
  * @see utf.h
  * @see CharacterIterator
@@ -312,26 +321,74 @@ public:
   /**
    * Equality operator. Performs only bitwise comparison.
    * @param text The UnicodeString to compare to this one.
-   * @return TRUE if <TT>text</TT> contains the same characters as this one,
-   * FALSE otherwise.
+   * @return true if `text` contains the same characters as this one,
+   * false otherwise.
    * @stable ICU 2.0
    */
-  inline UBool operator== (const UnicodeString& text) const;
+  inline bool operator== (const UnicodeString& text) const;
+
+#ifndef U_HIDE_DRAFT_API
+  /**
+   * Equality operator. Performs only bitwise comparison with `text`
+   * which is, or which is implicitly convertible to,
+   * a std::u16string_view or (if U_SIZEOF_WCHAR_T==2) std::wstring_view.
+   *
+   * For performance, you can use UTF-16 string literals with compile-time
+   * length determination:
+   * \code
+   * UnicodeString str = ...;
+   * if (str == u"literal") { ... }
+   * \endcode
+   * @param text The string view to compare to this string.
+   * @return true if `text` contains the same characters as this one, false otherwise.
+   * @draft ICU 76
+   */
+  template<typename S, typename = std::enable_if_t<ConvertibleToU16StringView<S>>>
+  inline bool operator==(const S &text) const {
+    std::u16string_view sv(internal::toU16StringView(text));
+    uint32_t len;  // unsigned to avoid a compiler warning
+    return !isBogus() && (len = length()) == sv.length() && doEquals(sv.data(), len);
+  }
+#endif  // U_HIDE_DRAFT_API
 
   /**
    * Inequality operator. Performs only bitwise comparison.
    * @param text The UnicodeString to compare to this one.
-   * @return FALSE if <TT>text</TT> contains the same characters as this one,
-   * TRUE otherwise.
+   * @return false if `text` contains the same characters as this one,
+   * true otherwise.
    * @stable ICU 2.0
    */
-  inline UBool operator!= (const UnicodeString& text) const;
+  inline bool operator!= (const UnicodeString& text) const;
+
+#ifndef U_HIDE_DRAFT_API
+  /**
+   * Inequality operator. Performs only bitwise comparison with `text`
+   * which is, or which is implicitly convertible to,
+   * a std::u16string_view or (if U_SIZEOF_WCHAR_T==2) std::wstring_view.
+   *
+   * For performance, you can use std::u16string_view literals with compile-time
+   * length determination:
+   * \code
+   * #include &lt;string_view&gt;
+   * using namespace std::string_view_literals;
+   * UnicodeString str = ...;
+   * if (str != u"literal"sv) { ... }
+   * \endcode
+   * @param text The string view to compare to this string.
+   * @return false if `text` contains the same characters as this one, true otherwise.
+   * @draft ICU 76
+   */
+  template<typename S, typename = std::enable_if_t<ConvertibleToU16StringView<S>>>
+  inline bool operator!=(const S &text) const {
+    return !operator==(text);
+  }
+#endif  // U_HIDE_DRAFT_API
 
   /**
    * Greater than operator. Performs only bitwise comparison.
    * @param text The UnicodeString to compare to this one.
-   * @return TRUE if the characters in this are bitwise
-   * greater than the characters in <code>text</code>, FALSE otherwise
+   * @return true if the characters in this are bitwise
+   * greater than the characters in `text`, false otherwise
    * @stable ICU 2.0
    */
   inline UBool operator> (const UnicodeString& text) const;
@@ -339,8 +396,8 @@ public:
   /**
    * Less than operator. Performs only bitwise comparison.
    * @param text The UnicodeString to compare to this one.
-   * @return TRUE if the characters in this are bitwise
-   * less than the characters in <code>text</code>, FALSE otherwise
+   * @return true if the characters in this are bitwise
+   * less than the characters in `text`, false otherwise
    * @stable ICU 2.0
    */
   inline UBool operator< (const UnicodeString& text) const;
@@ -348,8 +405,8 @@ public:
   /**
    * Greater than or equal operator. Performs only bitwise comparison.
    * @param text The UnicodeString to compare to this one.
-   * @return TRUE if the characters in this are bitwise
-   * greater than or equal to the characters in <code>text</code>, FALSE otherwise
+   * @return true if the characters in this are bitwise
+   * greater than or equal to the characters in `text`, false otherwise
    * @stable ICU 2.0
    */
   inline UBool operator>= (const UnicodeString& text) const;
@@ -357,38 +414,38 @@ public:
   /**
    * Less than or equal operator. Performs only bitwise comparison.
    * @param text The UnicodeString to compare to this one.
-   * @return TRUE if the characters in this are bitwise
-   * less than or equal to the characters in <code>text</code>, FALSE otherwise
+   * @return true if the characters in this are bitwise
+   * less than or equal to the characters in `text`, false otherwise
    * @stable ICU 2.0
    */
   inline UBool operator<= (const UnicodeString& text) const;
 
   /**
    * Compare the characters bitwise in this UnicodeString to
-   * the characters in <code>text</code>.
+   * the characters in `text`.
    * @param text The UnicodeString to compare to this one.
    * @return The result of bitwise character comparison: 0 if this
-   * contains the same characters as <code>text</code>, -1 if the characters in
-   * this are bitwise less than the characters in <code>text</code>, +1 if the
+   * contains the same characters as `text`, -1 if the characters in
+   * this are bitwise less than the characters in `text`, +1 if the
    * characters in this are bitwise greater than the characters
-   * in <code>text</code>.
+   * in `text`.
    * @stable ICU 2.0
    */
   inline int8_t compare(const UnicodeString& text) const;
 
   /**
    * Compare the characters bitwise in the range
-   * [<TT>start</TT>, <TT>start + length</TT>) with the characters
-   * in the <b>entire string</b> <TT>text</TT>.
+   * [`start`, `start + length`) with the characters
+   * in the **entire string** `text`.
    * (The parameters "start" and "length" are not applied to the other text "text".)
    * @param start the offset at which the compare operation begins
    * @param length the number of characters of text to compare.
    * @param text the other text to be compared against this string.
    * @return The result of bitwise character comparison: 0 if this
-   * contains the same characters as <code>text</code>, -1 if the characters in
-   * this are bitwise less than the characters in <code>text</code>, +1 if the
+   * contains the same characters as `text`, -1 if the characters in
+   * this are bitwise less than the characters in `text`, +1 if the
    * characters in this are bitwise greater than the characters
-   * in <code>text</code>.
+   * in `text`.
    * @stable ICU 2.0
    */
   inline int8_t compare(int32_t start,
@@ -397,19 +454,19 @@ public:
 
   /**
    * Compare the characters bitwise in the range
-   * [<TT>start</TT>, <TT>start + length</TT>) with the characters
-   * in <TT>srcText</TT> in the range
-   * [<TT>srcStart</TT>, <TT>srcStart + srcLength</TT>).
+   * [`start`, `start + length`) with the characters
+   * in `srcText` in the range
+   * [`srcStart`, `srcStart + srcLength`).
    * @param start the offset at which the compare operation begins
    * @param length the number of characters in this to compare.
    * @param srcText the text to be compared
-   * @param srcStart the offset into <TT>srcText</TT> to start comparison
-   * @param srcLength the number of characters in <TT>src</TT> to compare
+   * @param srcStart the offset into `srcText` to start comparison
+   * @param srcLength the number of characters in `src` to compare
    * @return The result of bitwise character comparison: 0 if this
-   * contains the same characters as <code>srcText</code>, -1 if the characters in
-   * this are bitwise less than the characters in <code>srcText</code>, +1 if the
+   * contains the same characters as `srcText`, -1 if the characters in
+   * this are bitwise less than the characters in `srcText`, +1 if the
    * characters in this are bitwise greater than the characters
-   * in <code>srcText</code>.
+   * in `srcText`.
    * @stable ICU 2.0
    */
    inline int8_t compare(int32_t start,
@@ -420,14 +477,14 @@ public:
 
   /**
    * Compare the characters bitwise in this UnicodeString with the first
-   * <TT>srcLength</TT> characters in <TT>srcChars</TT>.
+   * `srcLength` characters in `srcChars`.
    * @param srcChars The characters to compare to this UnicodeString.
-   * @param srcLength the number of characters in <TT>srcChars</TT> to compare
+   * @param srcLength the number of characters in `srcChars` to compare
    * @return The result of bitwise character comparison: 0 if this
-   * contains the same characters as <code>srcChars</code>, -1 if the characters in
-   * this are bitwise less than the characters in <code>srcChars</code>, +1 if the
+   * contains the same characters as `srcChars`, -1 if the characters in
+   * this are bitwise less than the characters in `srcChars`, +1 if the
    * characters in this are bitwise greater than the characters
-   * in <code>srcChars</code>.
+   * in `srcChars`.
    * @stable ICU 2.0
    */
   inline int8_t compare(ConstChar16Ptr srcChars,
@@ -435,16 +492,16 @@ public:
 
   /**
    * Compare the characters bitwise in the range
-   * [<TT>start</TT>, <TT>start + length</TT>) with the first
-   * <TT>length</TT> characters in <TT>srcChars</TT>
+   * [`start`, `start + length`) with the first
+   * `length` characters in `srcChars`
    * @param start the offset at which the compare operation begins
    * @param length the number of characters to compare.
    * @param srcChars the characters to be compared
    * @return The result of bitwise character comparison: 0 if this
-   * contains the same characters as <code>srcChars</code>, -1 if the characters in
-   * this are bitwise less than the characters in <code>srcChars</code>, +1 if the
+   * contains the same characters as `srcChars`, -1 if the characters in
+   * this are bitwise less than the characters in `srcChars`, +1 if the
    * characters in this are bitwise greater than the characters
-   * in <code>srcChars</code>.
+   * in `srcChars`.
    * @stable ICU 2.0
    */
   inline int8_t compare(int32_t start,
@@ -453,19 +510,19 @@ public:
 
   /**
    * Compare the characters bitwise in the range
-   * [<TT>start</TT>, <TT>start + length</TT>) with the characters
-   * in <TT>srcChars</TT> in the range
-   * [<TT>srcStart</TT>, <TT>srcStart + srcLength</TT>).
+   * [`start`, `start + length`) with the characters
+   * in `srcChars` in the range
+   * [`srcStart`, `srcStart + srcLength`).
    * @param start the offset at which the compare operation begins
    * @param length the number of characters in this to compare
    * @param srcChars the characters to be compared
-   * @param srcStart the offset into <TT>srcChars</TT> to start comparison
-   * @param srcLength the number of characters in <TT>srcChars</TT> to compare
+   * @param srcStart the offset into `srcChars` to start comparison
+   * @param srcLength the number of characters in `srcChars` to compare
    * @return The result of bitwise character comparison: 0 if this
-   * contains the same characters as <code>srcChars</code>, -1 if the characters in
-   * this are bitwise less than the characters in <code>srcChars</code>, +1 if the
+   * contains the same characters as `srcChars`, -1 if the characters in
+   * this are bitwise less than the characters in `srcChars`, +1 if the
    * characters in this are bitwise greater than the characters
-   * in <code>srcChars</code>.
+   * in `srcChars`.
    * @stable ICU 2.0
    */
   inline int8_t compare(int32_t start,
@@ -476,19 +533,19 @@ public:
 
   /**
    * Compare the characters bitwise in the range
-   * [<TT>start</TT>, <TT>limit</TT>) with the characters
-   * in <TT>srcText</TT> in the range
-   * [<TT>srcStart</TT>, <TT>srcLimit</TT>).
+   * [`start`, `limit`) with the characters
+   * in `srcText` in the range
+   * [`srcStart`, `srcLimit`).
    * @param start the offset at which the compare operation begins
    * @param limit the offset immediately following the compare operation
    * @param srcText the text to be compared
-   * @param srcStart the offset into <TT>srcText</TT> to start comparison
-   * @param srcLimit the offset into <TT>srcText</TT> to limit comparison
+   * @param srcStart the offset into `srcText` to start comparison
+   * @param srcLimit the offset into `srcText` to limit comparison
    * @return The result of bitwise character comparison: 0 if this
-   * contains the same characters as <code>srcText</code>, -1 if the characters in
-   * this are bitwise less than the characters in <code>srcText</code>, +1 if the
+   * contains the same characters as `srcText`, -1 if the characters in
+   * this are bitwise less than the characters in `srcText`, +1 if the
    * characters in this are bitwise greater than the characters
-   * in <code>srcText</code>.
+   * in `srcText`.
    * @stable ICU 2.0
    */
   inline int8_t compareBetween(int32_t start,
@@ -845,22 +902,22 @@ public:
             uint32_t options) const;
 
   /**
-   * Determine if this starts with the characters in <TT>text</TT>
+   * Determine if this starts with the characters in `text`
    * @param text The text to match.
-   * @return TRUE if this starts with the characters in <TT>text</TT>,
-   * FALSE otherwise
+   * @return true if this starts with the characters in `text`,
+   * false otherwise
    * @stable ICU 2.0
    */
   inline UBool startsWith(const UnicodeString& text) const;
 
   /**
-   * Determine if this starts with the characters in <TT>srcText</TT>
-   * in the range [<TT>srcStart</TT>, <TT>srcStart + srcLength</TT>).
+   * Determine if this starts with the characters in `srcText`
+   * in the range [`srcStart`, `srcStart + srcLength`).
    * @param srcText The text to match.
-   * @param srcStart the offset into <TT>srcText</TT> to start matching
-   * @param srcLength the number of characters in <TT>srcText</TT> to match
-   * @return TRUE if this starts with the characters in <TT>text</TT>,
-   * FALSE otherwise
+   * @param srcStart the offset into `srcText` to start matching
+   * @param srcLength the number of characters in `srcText` to match
+   * @return true if this starts with the characters in `text`,
+   * false otherwise
    * @stable ICU 2.0
    */
   inline UBool startsWith(const UnicodeString& srcText,
@@ -868,23 +925,23 @@ public:
             int32_t srcLength) const;
 
   /**
-   * Determine if this starts with the characters in <TT>srcChars</TT>
+   * Determine if this starts with the characters in `srcChars`
    * @param srcChars The characters to match.
-   * @param srcLength the number of characters in <TT>srcChars</TT>
-   * @return TRUE if this starts with the characters in <TT>srcChars</TT>,
-   * FALSE otherwise
+   * @param srcLength the number of characters in `srcChars`
+   * @return true if this starts with the characters in `srcChars`,
+   * false otherwise
    * @stable ICU 2.0
    */
   inline UBool startsWith(ConstChar16Ptr srcChars,
             int32_t srcLength) const;
 
   /**
-   * Determine if this ends with the characters in <TT>srcChars</TT>
-   * in the range  [<TT>srcStart</TT>, <TT>srcStart + srcLength</TT>).
+   * Determine if this ends with the characters in `srcChars`
+   * in the range  [`srcStart`, `srcStart + srcLength`).
    * @param srcChars The characters to match.
-   * @param srcStart the offset into <TT>srcText</TT> to start matching
-   * @param srcLength the number of characters in <TT>srcChars</TT> to match
-   * @return TRUE if this ends with the characters in <TT>srcChars</TT>, FALSE otherwise
+   * @param srcStart the offset into `srcText` to start matching
+   * @param srcLength the number of characters in `srcChars` to match
+   * @return true if this ends with the characters in `srcChars`, false otherwise
    * @stable ICU 2.0
    */
   inline UBool startsWith(const char16_t *srcChars,
@@ -892,22 +949,22 @@ public:
             int32_t srcLength) const;
 
   /**
-   * Determine if this ends with the characters in <TT>text</TT>
+   * Determine if this ends with the characters in `text`
    * @param text The text to match.
-   * @return TRUE if this ends with the characters in <TT>text</TT>,
-   * FALSE otherwise
+   * @return true if this ends with the characters in `text`,
+   * false otherwise
    * @stable ICU 2.0
    */
   inline UBool endsWith(const UnicodeString& text) const;
 
   /**
-   * Determine if this ends with the characters in <TT>srcText</TT>
-   * in the range [<TT>srcStart</TT>, <TT>srcStart + srcLength</TT>).
+   * Determine if this ends with the characters in `srcText`
+   * in the range [`srcStart`, `srcStart + srcLength`).
    * @param srcText The text to match.
-   * @param srcStart the offset into <TT>srcText</TT> to start matching
-   * @param srcLength the number of characters in <TT>srcText</TT> to match
-   * @return TRUE if this ends with the characters in <TT>text</TT>,
-   * FALSE otherwise
+   * @param srcStart the offset into `srcText` to start matching
+   * @param srcLength the number of characters in `srcText` to match
+   * @return true if this ends with the characters in `text`,
+   * false otherwise
    * @stable ICU 2.0
    */
   inline UBool endsWith(const UnicodeString& srcText,
@@ -915,24 +972,24 @@ public:
           int32_t srcLength) const;
 
   /**
-   * Determine if this ends with the characters in <TT>srcChars</TT>
+   * Determine if this ends with the characters in `srcChars`
    * @param srcChars The characters to match.
-   * @param srcLength the number of characters in <TT>srcChars</TT>
-   * @return TRUE if this ends with the characters in <TT>srcChars</TT>,
-   * FALSE otherwise
+   * @param srcLength the number of characters in `srcChars`
+   * @return true if this ends with the characters in `srcChars`,
+   * false otherwise
    * @stable ICU 2.0
    */
   inline UBool endsWith(ConstChar16Ptr srcChars,
           int32_t srcLength) const;
 
   /**
-   * Determine if this ends with the characters in <TT>srcChars</TT>
-   * in the range  [<TT>srcStart</TT>, <TT>srcStart + srcLength</TT>).
+   * Determine if this ends with the characters in `srcChars`
+   * in the range  [`srcStart`, `srcStart + srcLength`).
    * @param srcChars The characters to match.
-   * @param srcStart the offset into <TT>srcText</TT> to start matching
-   * @param srcLength the number of characters in <TT>srcChars</TT> to match
-   * @return TRUE if this ends with the characters in <TT>srcChars</TT>,
-   * FALSE otherwise
+   * @param srcStart the offset into `srcText` to start matching
+   * @param srcLength the number of characters in `srcChars` to match
+   * @return true if this ends with the characters in `srcChars`,
+   * false otherwise
    * @stable ICU 2.0
    */
   inline UBool endsWith(const char16_t *srcChars,
@@ -943,21 +1000,21 @@ public:
   /* Searching - bitwise only */
 
   /**
-   * Locate in this the first occurrence of the characters in <TT>text</TT>,
+   * Locate in this the first occurrence of the characters in `text`,
    * using bitwise comparison.
    * @param text The text to search for.
-   * @return The offset into this of the start of <TT>text</TT>,
+   * @return The offset into this of the start of `text`,
    * or -1 if not found.
    * @stable ICU 2.0
    */
   inline int32_t indexOf(const UnicodeString& text) const;
 
   /**
-   * Locate in this the first occurrence of the characters in <TT>text</TT>
-   * starting at offset <TT>start</TT>, using bitwise comparison.
+   * Locate in this the first occurrence of the characters in `text`
+   * starting at offset `start`, using bitwise comparison.
    * @param text The text to search for.
    * @param start The offset at which searching will start.
-   * @return The offset into this of the start of <TT>text</TT>,
+   * @return The offset into this of the start of `text`,
    * or -1 if not found.
    * @stable ICU 2.0
    */
@@ -966,12 +1023,12 @@ public:
 
   /**
    * Locate in this the first occurrence in the range
-   * [<TT>start</TT>, <TT>start + length</TT>) of the characters
-   * in <TT>text</TT>, using bitwise comparison.
+   * [`start`, `start + length`) of the characters
+   * in `text`, using bitwise comparison.
    * @param text The text to search for.
    * @param start The offset at which searching will start.
    * @param length The number of characters to search
-   * @return The offset into this of the start of <TT>text</TT>,
+   * @return The offset into this of the start of `text`,
    * or -1 if not found.
    * @stable ICU 2.0
    */
@@ -981,17 +1038,17 @@ public:
 
   /**
    * Locate in this the first occurrence in the range
-   * [<TT>start</TT>, <TT>start + length</TT>) of the characters
-   *  in <TT>srcText</TT> in the range
-   * [<TT>srcStart</TT>, <TT>srcStart + srcLength</TT>),
+   * [`start`, `start + length`) of the characters
+   *  in `srcText` in the range
+   * [`srcStart`, `srcStart + srcLength`),
    * using bitwise comparison.
    * @param srcText The text to search for.
-   * @param srcStart the offset into <TT>srcText</TT> at which
+   * @param srcStart the offset into `srcText` at which
    * to start matching
-   * @param srcLength the number of characters in <TT>srcText</TT> to match
+   * @param srcLength the number of characters in `srcText` to match
    * @param start the offset into this at which to start matching
    * @param length the number of characters in this to search
-   * @return The offset into this of the start of <TT>text</TT>,
+   * @return The offset into this of the start of `text`,
    * or -1 if not found.
    * @stable ICU 2.0
    */
@@ -1003,12 +1060,12 @@ public:
 
   /**
    * Locate in this the first occurrence of the characters in
-   * <TT>srcChars</TT>
-   * starting at offset <TT>start</TT>, using bitwise comparison.
+   * `srcChars`
+   * starting at offset `start`, using bitwise comparison.
    * @param srcChars The text to search for.
-   * @param srcLength the number of characters in <TT>srcChars</TT> to match
+   * @param srcLength the number of characters in `srcChars` to match
    * @param start the offset into this at which to start matching
-   * @return The offset into this of the start of <TT>text</TT>,
+   * @return The offset into this of the start of `text`,
    * or -1 if not found.
    * @stable ICU 2.0
    */
@@ -1018,13 +1075,13 @@ public:
 
   /**
    * Locate in this the first occurrence in the range
-   * [<TT>start</TT>, <TT>start + length</TT>) of the characters
-   * in <TT>srcChars</TT>, using bitwise comparison.
+   * [`start`, `start + length`) of the characters
+   * in `srcChars`, using bitwise comparison.
    * @param srcChars The text to search for.
-   * @param srcLength the number of characters in <TT>srcChars</TT>
+   * @param srcLength the number of characters in `srcChars`
    * @param start The offset at which searching will start.
    * @param length The number of characters to search
-   * @return The offset into this of the start of <TT>srcChars</TT>,
+   * @return The offset into this of the start of `srcChars`,
    * or -1 if not found.
    * @stable ICU 2.0
    */
@@ -1035,17 +1092,17 @@ public:
 
   /**
    * Locate in this the first occurrence in the range
-   * [<TT>start</TT>, <TT>start + length</TT>) of the characters
-   * in <TT>srcChars</TT> in the range
-   * [<TT>srcStart</TT>, <TT>srcStart + srcLength</TT>),
+   * [`start`, `start + length`) of the characters
+   * in `srcChars` in the range
+   * [`srcStart`, `srcStart + srcLength`),
    * using bitwise comparison.
    * @param srcChars The text to search for.
-   * @param srcStart the offset into <TT>srcChars</TT> at which
+   * @param srcStart the offset into `srcChars` at which
    * to start matching
-   * @param srcLength the number of characters in <TT>srcChars</TT> to match
+   * @param srcLength the number of characters in `srcChars` to match
    * @param start the offset into this at which to start matching
    * @param length the number of characters in this to search
-   * @return The offset into this of the start of <TT>text</TT>,
+   * @return The offset into this of the start of `text`,
    * or -1 if not found.
    * @stable ICU 2.0
    */
@@ -1056,55 +1113,55 @@ public:
               int32_t length) const;
 
   /**
-   * Locate in this the first occurrence of the BMP code point <code>c</code>,
+   * Locate in this the first occurrence of the BMP code point `c`,
    * using bitwise comparison.
    * @param c The code unit to search for.
-   * @return The offset into this of <TT>c</TT>, or -1 if not found.
+   * @return The offset into this of `c`, or -1 if not found.
    * @stable ICU 2.0
    */
   inline int32_t indexOf(char16_t c) const;
 
   /**
-   * Locate in this the first occurrence of the code point <TT>c</TT>,
+   * Locate in this the first occurrence of the code point `c`,
    * using bitwise comparison.
    *
    * @param c The code point to search for.
-   * @return The offset into this of <TT>c</TT>, or -1 if not found.
+   * @return The offset into this of `c`, or -1 if not found.
    * @stable ICU 2.0
    */
   inline int32_t indexOf(UChar32 c) const;
 
   /**
-   * Locate in this the first occurrence of the BMP code point <code>c</code>,
-   * starting at offset <TT>start</TT>, using bitwise comparison.
+   * Locate in this the first occurrence of the BMP code point `c`,
+   * starting at offset `start`, using bitwise comparison.
    * @param c The code unit to search for.
    * @param start The offset at which searching will start.
-   * @return The offset into this of <TT>c</TT>, or -1 if not found.
+   * @return The offset into this of `c`, or -1 if not found.
    * @stable ICU 2.0
    */
   inline int32_t indexOf(char16_t c,
               int32_t start) const;
 
   /**
-   * Locate in this the first occurrence of the code point <TT>c</TT>
-   * starting at offset <TT>start</TT>, using bitwise comparison.
+   * Locate in this the first occurrence of the code point `c`
+   * starting at offset `start`, using bitwise comparison.
    *
    * @param c The code point to search for.
    * @param start The offset at which searching will start.
-   * @return The offset into this of <TT>c</TT>, or -1 if not found.
+   * @return The offset into this of `c`, or -1 if not found.
    * @stable ICU 2.0
    */
   inline int32_t indexOf(UChar32 c,
               int32_t start) const;
 
   /**
-   * Locate in this the first occurrence of the BMP code point <code>c</code>
-   * in the range [<TT>start</TT>, <TT>start + length</TT>),
+   * Locate in this the first occurrence of the BMP code point `c`
+   * in the range [`start`, `start + length`),
    * using bitwise comparison.
    * @param c The code unit to search for.
    * @param start the offset into this at which to start matching
    * @param length the number of characters in this to search
-   * @return The offset into this of <TT>c</TT>, or -1 if not found.
+   * @return The offset into this of `c`, or -1 if not found.
    * @stable ICU 2.0
    */
   inline int32_t indexOf(char16_t c,
@@ -1112,14 +1169,14 @@ public:
               int32_t length) const;
 
   /**
-   * Locate in this the first occurrence of the code point <TT>c</TT>
-   * in the range [<TT>start</TT>, <TT>start + length</TT>),
+   * Locate in this the first occurrence of the code point `c`
+   * in the range [`start`, `start + length`),
    * using bitwise comparison.
    *
    * @param c The code point to search for.
    * @param start the offset into this at which to start matching
    * @param length the number of characters in this to search
-   * @return The offset into this of <TT>c</TT>, or -1 if not found.
+   * @return The offset into this of `c`, or -1 if not found.
    * @stable ICU 2.0
    */
   inline int32_t indexOf(UChar32 c,
@@ -1127,21 +1184,21 @@ public:
               int32_t length) const;
 
   /**
-   * Locate in this the last occurrence of the characters in <TT>text</TT>,
+   * Locate in this the last occurrence of the characters in `text`,
    * using bitwise comparison.
    * @param text The text to search for.
-   * @return The offset into this of the start of <TT>text</TT>,
+   * @return The offset into this of the start of `text`,
    * or -1 if not found.
    * @stable ICU 2.0
    */
   inline int32_t lastIndexOf(const UnicodeString& text) const;
 
   /**
-   * Locate in this the last occurrence of the characters in <TT>text</TT>
-   * starting at offset <TT>start</TT>, using bitwise comparison.
+   * Locate in this the last occurrence of the characters in `text`
+   * starting at offset `start`, using bitwise comparison.
    * @param text The text to search for.
    * @param start The offset at which searching will start.
-   * @return The offset into this of the start of <TT>text</TT>,
+   * @return The offset into this of the start of `text`,
    * or -1 if not found.
    * @stable ICU 2.0
    */
@@ -1150,12 +1207,12 @@ public:
 
   /**
    * Locate in this the last occurrence in the range
-   * [<TT>start</TT>, <TT>start + length</TT>) of the characters
-   * in <TT>text</TT>, using bitwise comparison.
+   * [`start`, `start + length`) of the characters
+   * in `text`, using bitwise comparison.
    * @param text The text to search for.
    * @param start The offset at which searching will start.
    * @param length The number of characters to search
-   * @return The offset into this of the start of <TT>text</TT>,
+   * @return The offset into this of the start of `text`,
    * or -1 if not found.
    * @stable ICU 2.0
    */
@@ -1165,17 +1222,17 @@ public:
 
   /**
    * Locate in this the last occurrence in the range
-   * [<TT>start</TT>, <TT>start + length</TT>) of the characters
-   * in <TT>srcText</TT> in the range
-   * [<TT>srcStart</TT>, <TT>srcStart + srcLength</TT>),
+   * [`start`, `start + length`) of the characters
+   * in `srcText` in the range
+   * [`srcStart`, `srcStart + srcLength`),
    * using bitwise comparison.
    * @param srcText The text to search for.
-   * @param srcStart the offset into <TT>srcText</TT> at which
+   * @param srcStart the offset into `srcText` at which
    * to start matching
-   * @param srcLength the number of characters in <TT>srcText</TT> to match
+   * @param srcLength the number of characters in `srcText` to match
    * @param start the offset into this at which to start matching
    * @param length the number of characters in this to search
-   * @return The offset into this of the start of <TT>text</TT>,
+   * @return The offset into this of the start of `text`,
    * or -1 if not found.
    * @stable ICU 2.0
    */
@@ -1186,12 +1243,12 @@ public:
               int32_t length) const;
 
   /**
-   * Locate in this the last occurrence of the characters in <TT>srcChars</TT>
-   * starting at offset <TT>start</TT>, using bitwise comparison.
+   * Locate in this the last occurrence of the characters in `srcChars`
+   * starting at offset `start`, using bitwise comparison.
    * @param srcChars The text to search for.
-   * @param srcLength the number of characters in <TT>srcChars</TT> to match
+   * @param srcLength the number of characters in `srcChars` to match
    * @param start the offset into this at which to start matching
-   * @return The offset into this of the start of <TT>text</TT>,
+   * @return The offset into this of the start of `text`,
    * or -1 if not found.
    * @stable ICU 2.0
    */
@@ -1201,13 +1258,13 @@ public:
 
   /**
    * Locate in this the last occurrence in the range
-   * [<TT>start</TT>, <TT>start + length</TT>) of the characters
-   * in <TT>srcChars</TT>, using bitwise comparison.
+   * [`start`, `start + length`) of the characters
+   * in `srcChars`, using bitwise comparison.
    * @param srcChars The text to search for.
-   * @param srcLength the number of characters in <TT>srcChars</TT>
+   * @param srcLength the number of characters in `srcChars`
    * @param start The offset at which searching will start.
    * @param length The number of characters to search
-   * @return The offset into this of the start of <TT>srcChars</TT>,
+   * @return The offset into this of the start of `srcChars`,
    * or -1 if not found.
    * @stable ICU 2.0
    */
@@ -1218,17 +1275,17 @@ public:
 
   /**
    * Locate in this the last occurrence in the range
-   * [<TT>start</TT>, <TT>start + length</TT>) of the characters
-   * in <TT>srcChars</TT> in the range
-   * [<TT>srcStart</TT>, <TT>srcStart + srcLength</TT>),
+   * [`start`, `start + length`) of the characters
+   * in `srcChars` in the range
+   * [`srcStart`, `srcStart + srcLength`),
    * using bitwise comparison.
    * @param srcChars The text to search for.
-   * @param srcStart the offset into <TT>srcChars</TT> at which
+   * @param srcStart the offset into `srcChars` at which
    * to start matching
-   * @param srcLength the number of characters in <TT>srcChars</TT> to match
+   * @param srcLength the number of characters in `srcChars` to match
    * @param start the offset into this at which to start matching
    * @param length the number of characters in this to search
-   * @return The offset into this of the start of <TT>text</TT>,
+   * @return The offset into this of the start of `text`,
    * or -1 if not found.
    * @stable ICU 2.0
    */
@@ -1239,55 +1296,55 @@ public:
               int32_t length) const;
 
   /**
-   * Locate in this the last occurrence of the BMP code point <code>c</code>,
+   * Locate in this the last occurrence of the BMP code point `c`,
    * using bitwise comparison.
    * @param c The code unit to search for.
-   * @return The offset into this of <TT>c</TT>, or -1 if not found.
+   * @return The offset into this of `c`, or -1 if not found.
    * @stable ICU 2.0
    */
   inline int32_t lastIndexOf(char16_t c) const;
 
   /**
-   * Locate in this the last occurrence of the code point <TT>c</TT>,
+   * Locate in this the last occurrence of the code point `c`,
    * using bitwise comparison.
    *
    * @param c The code point to search for.
-   * @return The offset into this of <TT>c</TT>, or -1 if not found.
+   * @return The offset into this of `c`, or -1 if not found.
    * @stable ICU 2.0
    */
   inline int32_t lastIndexOf(UChar32 c) const;
 
   /**
-   * Locate in this the last occurrence of the BMP code point <code>c</code>
-   * starting at offset <TT>start</TT>, using bitwise comparison.
+   * Locate in this the last occurrence of the BMP code point `c`
+   * starting at offset `start`, using bitwise comparison.
    * @param c The code unit to search for.
    * @param start The offset at which searching will start.
-   * @return The offset into this of <TT>c</TT>, or -1 if not found.
+   * @return The offset into this of `c`, or -1 if not found.
    * @stable ICU 2.0
    */
   inline int32_t lastIndexOf(char16_t c,
               int32_t start) const;
 
   /**
-   * Locate in this the last occurrence of the code point <TT>c</TT>
-   * starting at offset <TT>start</TT>, using bitwise comparison.
+   * Locate in this the last occurrence of the code point `c`
+   * starting at offset `start`, using bitwise comparison.
    *
    * @param c The code point to search for.
    * @param start The offset at which searching will start.
-   * @return The offset into this of <TT>c</TT>, or -1 if not found.
+   * @return The offset into this of `c`, or -1 if not found.
    * @stable ICU 2.0
    */
   inline int32_t lastIndexOf(UChar32 c,
               int32_t start) const;
 
   /**
-   * Locate in this the last occurrence of the BMP code point <code>c</code>
-   * in the range [<TT>start</TT>, <TT>start + length</TT>),
+   * Locate in this the last occurrence of the BMP code point `c`
+   * in the range [`start`, `start + length`),
    * using bitwise comparison.
    * @param c The code unit to search for.
    * @param start the offset into this at which to start matching
    * @param length the number of characters in this to search
-   * @return The offset into this of <TT>c</TT>, or -1 if not found.
+   * @return The offset into this of `c`, or -1 if not found.
    * @stable ICU 2.0
    */
   inline int32_t lastIndexOf(char16_t c,
@@ -1295,14 +1352,14 @@ public:
               int32_t length) const;
 
   /**
-   * Locate in this the last occurrence of the code point <TT>c</TT>
-   * in the range [<TT>start</TT>, <TT>start + length</TT>),
+   * Locate in this the last occurrence of the code point `c`
+   * in the range [`start`, `start + length`),
    * using bitwise comparison.
    *
    * @param c The code point to search for.
    * @param start the offset into this at which to start matching
    * @param length the number of characters in this to search
-   * @return The offset into this of <TT>c</TT>, or -1 if not found.
+   * @return The offset into this of `c`, or -1 if not found.
    * @stable ICU 2.0
    */
   inline int32_t lastIndexOf(UChar32 c,
@@ -1313,32 +1370,32 @@ public:
   /* Character access */
 
   /**
-   * Return the code unit at offset <tt>offset</tt>.
+   * Return the code unit at offset `offset`.
    * If the offset is not valid (0..length()-1) then U+ffff is returned.
    * @param offset a valid offset into the text
-   * @return the code unit at offset <tt>offset</tt>
+   * @return the code unit at offset `offset`
    *         or 0xffff if the offset is not valid for this string
    * @stable ICU 2.0
    */
   inline char16_t charAt(int32_t offset) const;
 
   /**
-   * Return the code unit at offset <tt>offset</tt>.
+   * Return the code unit at offset `offset`.
    * If the offset is not valid (0..length()-1) then U+ffff is returned.
    * @param offset a valid offset into the text
-   * @return the code unit at offset <tt>offset</tt>
+   * @return the code unit at offset `offset`
    * @stable ICU 2.0
    */
   inline char16_t operator[] (int32_t offset) const;
 
   /**
    * Return the code point that contains the code unit
-   * at offset <tt>offset</tt>.
+   * at offset `offset`.
    * If the offset is not valid (0..length()-1) then U+ffff is returned.
    * @param offset a valid offset into the text
    * that indicates the text offset of any of the code units
    * that will be assembled into a code point (21-bit value) and returned
-   * @return the code point of text at <tt>offset</tt>
+   * @return the code point of text at `offset`
    *         or 0xffff if the offset is not valid for this string
    * @stable ICU 2.0
    */
@@ -1395,33 +1452,33 @@ public:
    * This behaves like CharacterIterator::move32(delta, kCurrent).
    *
    * Behavior for out-of-bounds indexes:
-   * <code>moveIndex32</code> pins the input index to 0..length(), i.e.,
+   * `moveIndex32` pins the input index to 0..length(), i.e.,
    * if the input index<0 then it is pinned to 0;
    * if it is index>length() then it is pinned to length().
-   * Afterwards, the index is moved by <code>delta</code> code points
+   * Afterwards, the index is moved by `delta` code points
    * forward or backward,
    * but no further backward than to 0 and no further forward than to length().
    * The resulting index return value will be in between 0 and length(), inclusively.
    *
    * Examples:
-   * <pre>
-   * // s has code points 'a' U+10000 'b' U+10ffff U+2029
-   * UnicodeString s=UNICODE_STRING("a\\U00010000b\\U0010ffff\\u2029", 31).unescape();
+   * \code
+   *     // s has code points 'a' U+10000 'b' U+10ffff U+2029
+   *     UnicodeString s(u"a\U00010000b\U0010ffff\u2029");
    *
-   * // initial index: position of U+10000
-   * int32_t index=1;
+   *     // initial index: position of U+10000
+   *     int32_t index=1;
    *
-   * // the following examples will all result in index==4, position of U+10ffff
+   *     // the following examples will all result in index==4, position of U+10ffff
    *
-   * // skip 2 code points from some position in the string
-   * index=s.moveIndex32(index, 2); // skips U+10000 and 'b'
+   *     // skip 2 code points from some position in the string
+   *     index=s.moveIndex32(index, 2); // skips U+10000 and 'b'
    *
-   * // go to the 3rd code point from the start of s (0-based)
-   * index=s.moveIndex32(0, 3); // skips 'a', U+10000, and 'b'
+   *     // go to the 3rd code point from the start of s (0-based)
+   *     index=s.moveIndex32(0, 3); // skips 'a', U+10000, and 'b'
    *
-   * // go to the next-to-last code point of s
-   * index=s.moveIndex32(s.length(), -2); // backward-skips U+2029 and U+10ffff
-   * </pre>
+   *     // go to the next-to-last code point of s
+   *     index=s.moveIndex32(s.length(), -2); // backward-skips U+2029 and U+10ffff
+   * \endcode
    *
    * @param index input code unit index
    * @param delta (signed) code point count to move the index forward or backward
@@ -1435,16 +1492,16 @@ public:
 
   /**
    * Copy the characters in the range
-   * [<tt>start</tt>, <tt>start + length</tt>) into the array <tt>dst</tt>,
-   * beginning at <tt>dstStart</tt>.
-   * If the string aliases to <code>dst</code> itself as an external buffer,
+   * [`start`, `start + length`) into the array `dst`,
+   * beginning at `dstStart`.
+   * If the string aliases to `dst` itself as an external buffer,
    * then extract() will not copy the contents.
    *
    * @param start offset of first character which will be copied into the array
    * @param length the number of characters to extract
-   * @param dst array in which to copy characters.  The length of <tt>dst</tt>
-   * must be at least (<tt>dstStart + length</tt>).
-   * @param dstStart the offset in <TT>dst</TT> where the first character
+   * @param dst array in which to copy characters.  The length of `dst`
+   * must be at least (`dstStart + length`).
+   * @param dstStart the offset in `dst` where the first character
    * will be extracted
    * @stable ICU 2.0
    */
@@ -1465,7 +1522,7 @@ public:
    * If the string itself does not fit into dest
    * (length()>destCapacity) then the error code is set to U_BUFFER_OVERFLOW_ERROR.
    *
-   * If the string aliases to <code>dest</code> itself as an external buffer,
+   * If the string aliases to `dest` itself as an external buffer,
    * then extract() will not copy the contents.
    *
    * @param dest Destination string buffer.
@@ -1480,12 +1537,11 @@ public:
 
   /**
    * Copy the characters in the range
-   * [<tt>start</tt>, <tt>start + length</tt>) into the  UnicodeString
-   * <tt>target</tt>.
+   * [`start`, `start + length`) into the  UnicodeString
+   * `target`.
    * @param start offset of first character which will be copied
    * @param length the number of characters to extract
    * @param target UnicodeString into which to copy characters.
-   * @return A reference to <TT>target</TT>
    * @stable ICU 2.0
    */
   inline void extract(int32_t start,
@@ -1493,13 +1549,13 @@ public:
            UnicodeString& target) const;
 
   /**
-   * Copy the characters in the range [<tt>start</tt>, <tt>limit</tt>)
-   * into the array <tt>dst</tt>, beginning at <tt>dstStart</tt>.
+   * Copy the characters in the range [`start`, `limit`)
+   * into the array `dst`, beginning at `dstStart`.
    * @param start offset of first character which will be copied into the array
    * @param limit offset immediately following the last character to be copied
-   * @param dst array in which to copy characters.  The length of <tt>dst</tt>
-   * must be at least (<tt>dstStart + (limit - start)</tt>).
-   * @param dstStart the offset in <TT>dst</TT> where the first character
+   * @param dst array in which to copy characters.  The length of `dst`
+   * must be at least (`dstStart + (limit - start)`).
+   * @param dstStart the offset in `dst` where the first character
    * will be extracted
    * @stable ICU 2.0
    */
@@ -1509,25 +1565,24 @@ public:
               int32_t dstStart = 0) const;
 
   /**
-   * Copy the characters in the range [<tt>start</tt>, <tt>limit</tt>)
-   * into the UnicodeString <tt>target</tt>.  Replaceable API.
+   * Copy the characters in the range [`start`, `limit`)
+   * into the UnicodeString `target`.  Replaceable API.
    * @param start offset of first character which will be copied
    * @param limit offset immediately following the last character to be copied
    * @param target UnicodeString into which to copy characters.
-   * @return A reference to <TT>target</TT>
    * @stable ICU 2.0
    */
   virtual void extractBetween(int32_t start,
               int32_t limit,
-              UnicodeString& target) const;
+              UnicodeString& target) const override;
 
   /**
    * Copy the characters in the range
-   * [<tt>start</TT>, <tt>start + startLength</TT>) into an array of characters.
+   * [`start`, `start + startLength`) into an array of characters.
    * All characters must be invariant (see utypes.h).
    * Use US_INV as the last, signature-distinguishing parameter.
    *
-   * This function does not write any more than <code>targetCapacity</code>
+   * This function does not write any more than `targetCapacity`
    * characters but returns the length of the entire output string
    * so that one can allocate a larger buffer and call the function again
    * if necessary.
@@ -1535,10 +1590,10 @@ public:
    *
    * @param start offset of first character which will be copied
    * @param startLength the number of characters to extract
-   * @param target the target buffer for extraction, can be NULL
+   * @param target the target buffer for extraction, can be nullptr
    *               if targetLength is 0
    * @param targetCapacity the length of the target buffer
-   * @param inv Signature-distinguishing paramater, use US_INV.
+   * @param inv Signature-distinguishing parameter, use US_INV.
    * @return the output string length, not including the terminating NUL
    * @stable ICU 3.2
    */
@@ -1552,9 +1607,9 @@ public:
 
   /**
    * Copy the characters in the range
-   * [<tt>start</TT>, <tt>start + length</TT>) into an array of characters
+   * [`start`, `start + length`) into an array of characters
    * in the platform's default codepage.
-   * This function does not write any more than <code>targetLength</code>
+   * This function does not write any more than `targetLength`
    * characters but returns the length of the entire output string
    * so that one can allocate a larger buffer and call the function again
    * if necessary.
@@ -1564,8 +1619,8 @@ public:
    * @param startLength the number of characters to extract
    * @param target the target buffer for extraction
    * @param targetLength the length of the target buffer
-   * If <TT>target</TT> is NULL, then the number of bytes required for
-   * <TT>target</TT> is returned.
+   * If `target` is nullptr, then the number of bytes required for
+   * `target` is returned.
    * @return the output string length, not including the terminating NUL
    * @stable ICU 2.0
    */
@@ -1580,7 +1635,7 @@ public:
 
   /**
    * Copy the characters in the range
-   * [<tt>start</TT>, <tt>start + length</TT>) into an array of characters
+   * [`start`, `start + length`) into an array of characters
    * in a specified codepage.
    * The output string is NUL-terminated.
    *
@@ -1594,25 +1649,25 @@ public:
    * @param target the target buffer for extraction
    * @param codepage the desired codepage for the characters.  0 has
    * the special meaning of the default codepage
-   * If <code>codepage</code> is an empty string (<code>""</code>),
+   * If `codepage` is an empty string (`""`),
    * then a simple conversion is performed on the codepage-invariant
    * subset ("invariant characters") of the platform encoding. See utypes.h.
-   * If <TT>target</TT> is NULL, then the number of bytes required for
-   * <TT>target</TT> is returned. It is assumed that the target is big enough
+   * If `target` is nullptr, then the number of bytes required for
+   * `target` is returned. It is assumed that the target is big enough
    * to fit all of the characters.
    * @return the output string length, not including the terminating NUL
    * @stable ICU 2.0
    */
   inline int32_t extract(int32_t start,
-                 int32_t startLength,
-                 char *target,
-                 const char *codepage = 0) const;
+                         int32_t startLength,
+                         char* target,
+                         const char* codepage = nullptr) const;
 
   /**
    * Copy the characters in the range
-   * [<tt>start</TT>, <tt>start + length</TT>) into an array of characters
+   * [`start`, `start + length`) into an array of characters
    * in a specified codepage.
-   * This function does not write any more than <code>targetLength</code>
+   * This function does not write any more than `targetLength`
    * characters but returns the length of the entire output string
    * so that one can allocate a larger buffer and call the function again
    * if necessary.
@@ -1629,11 +1684,11 @@ public:
    * @param targetLength the length of the target buffer
    * @param codepage the desired codepage for the characters.  0 has
    * the special meaning of the default codepage
-   * If <code>codepage</code> is an empty string (<code>""</code>),
+   * If `codepage` is an empty string (`""`),
    * then a simple conversion is performed on the codepage-invariant
    * subset ("invariant characters") of the platform encoding. See utypes.h.
-   * If <TT>target</TT> is NULL, then the number of bytes required for
-   * <TT>target</TT> is returned.
+   * If `target` is nullptr, then the number of bytes required for
+   * `target` is returned.
    * @return the output string length, not including the terminating NUL
    * @stable ICU 2.0
    */
@@ -1650,10 +1705,10 @@ public:
    * This function avoids the overhead of opening and closing a converter if
    * multiple strings are extracted.
    *
-   * @param dest destination string buffer, can be NULL if destCapacity==0
+   * @param dest destination string buffer, can be nullptr if destCapacity==0
    * @param destCapacity the number of chars available at dest
    * @param cnv the converter object to be used (ucnv_resetFromUnicode() will be called),
-   *        or NULL for the default converter
+   *        or nullptr for the default converter
    * @param errorCode normal ICU error code
    * @return the length of the output string, not counting the terminating NUL;
    *         if the length is greater than destCapacity, then the string will not fit
@@ -1730,7 +1785,7 @@ public:
    * Unpaired surrogates are replaced with U+FFFD.
    * Calls u_strToUTF32WithSub().
    *
-   * @param utf32 destination string buffer, can be NULL if capacity==0
+   * @param utf32 destination string buffer, can be nullptr if capacity==0
    * @param capacity the number of UChar32s available at utf32
    * @param errorCode Standard ICU error code. Its input value must
    *                  pass the U_SUCCESS() test, or else the function returns
@@ -1752,7 +1807,7 @@ public:
    * @see countChar32
    * @stable ICU 2.0
    */
-  inline int32_t length(void) const;
+  inline int32_t length() const;
 
   /**
    * Count Unicode code points in the length char16_t code units of the string.
@@ -1798,10 +1853,10 @@ public:
 
   /**
    * Determine if this string is empty.
-   * @return TRUE if this string contains 0 characters, FALSE otherwise.
+   * @return true if this string contains 0 characters, false otherwise.
    * @stable ICU 2.0
    */
-  inline UBool isEmpty(void) const;
+  inline UBool isEmpty() const;
 
   /**
    * Return the capacity of the internal buffer of the UnicodeString object.
@@ -1812,7 +1867,7 @@ public:
    * @see getBuffer
    * @stable ICU 2.0
    */
-  inline int32_t getCapacity(void) const;
+  inline int32_t getCapacity() const;
 
   /* Other operations */
 
@@ -1821,22 +1876,21 @@ public:
    * @return The hash code of this UnicodeString.
    * @stable ICU 2.0
    */
-  inline int32_t hashCode(void) const;
+  inline int32_t hashCode() const;
 
   /**
    * Determine if this object contains a valid string.
    * A bogus string has no value. It is different from an empty string,
-   * although in both cases isEmpty() returns TRUE and length() returns 0.
+   * although in both cases isEmpty() returns true and length() returns 0.
    * setToBogus() and isBogus() can be used to indicate that no string value is available.
-   * For a bogus string, getBuffer() and getTerminatedBuffer() return NULL, and
+   * For a bogus string, getBuffer() and getTerminatedBuffer() return nullptr, and
    * length() returns 0.
    *
-   * @return TRUE if the string is bogus/invalid, FALSE otherwise
+   * @return true if the string is bogus/invalid, false otherwise
    * @see setToBogus()
    * @stable ICU 2.0
    */
-  inline UBool isBogus(void) const;
-
+  inline UBool isBogus() const;
 
   //========================================
   // Write operations
@@ -1846,7 +1900,7 @@ public:
 
   /**
    * Assignment operator.  Replace the characters in this UnicodeString
-   * with the characters from <TT>srcText</TT>.
+   * with the characters from `srcText`.
    *
    * Starting with ICU 2.4, the assignment operator and the copy constructor
    * allocate a new buffer and copy the buffer contents even for readonly aliases.
@@ -1867,7 +1921,7 @@ public:
   /**
    * Almost the same as the assignment operator.
    * Replace the characters in this UnicodeString
-   * with the characters from <code>srcText</code>.
+   * with the characters from `srcText`.
    *
    * This function works the same as the assignment operator
    * for all strings except for ones that are readonly aliases.
@@ -1891,6 +1945,24 @@ public:
    */
   UnicodeString &fastCopyFrom(const UnicodeString &src);
 
+#ifndef U_HIDE_DRAFT_API
+  /**
+   * Assignment operator. Replaces the characters in this UnicodeString
+   * with a copy of the characters from the `src`
+   * which is, or which is implicitly convertible to,
+   * a std::u16string_view or (if U_SIZEOF_WCHAR_T==2) std::wstring_view.
+   *
+   * @param src The string view containing the characters to copy.
+   * @return a reference to this
+   * @draft ICU 76
+   */
+  template<typename S, typename = std::enable_if_t<ConvertibleToU16StringView<S>>>
+  inline UnicodeString &operator=(const S &src) {
+    unBogus();
+    return doReplace(0, length(), internal::toU16StringView(src));
+  }
+#endif  // U_HIDE_DRAFT_API
+
   /**
    * Move assignment operator; might leave src in bogus state.
    * This string will have the same contents and state that the source string had.
@@ -1899,29 +1971,14 @@ public:
    * @return *this
    * @stable ICU 56
    */
-  UnicodeString &operator=(UnicodeString &&src) U_NOEXCEPT {
-    return moveFrom(src);
-  }
-
-  // do not use #ifndef U_HIDE_DRAFT_API for moveFrom, needed by non-draft API
-  /**
-   * Move assignment; might leave src in bogus state.
-   * This string will have the same contents and state that the source string had.
-   * The behavior is undefined if *this and src are the same object.
-   *
-   * Can be called explicitly, does not need C++11 support.
-   * @param src source string
-   * @return *this
-   * @draft ICU 56
-   */
-  UnicodeString &moveFrom(UnicodeString &src) U_NOEXCEPT;
+  UnicodeString &operator=(UnicodeString &&src) noexcept;
 
   /**
    * Swap strings.
    * @param other other string
    * @stable ICU 56
    */
-  void swap(UnicodeString &other) U_NOEXCEPT;
+  void swap(UnicodeString &other) noexcept;
 
   /**
    * Non-member UnicodeString swap function.
@@ -1929,14 +1986,14 @@ public:
    * @param s2 will get s1's contents and state
    * @stable ICU 56
    */
-  friend U_COMMON_API inline void U_EXPORT2
-  swap(UnicodeString &s1, UnicodeString &s2) U_NOEXCEPT {
+  friend inline void U_EXPORT2
+  swap(UnicodeString &s1, UnicodeString &s2) noexcept {
     s1.swap(s2);
   }
 
   /**
    * Assignment operator.  Replace the characters in this UnicodeString
-   * with the code unit <TT>ch</TT>.
+   * with the code unit `ch`.
    * @param ch the code unit to replace
    * @return a reference to this
    * @stable ICU 2.0
@@ -1945,7 +2002,7 @@ public:
 
   /**
    * Assignment operator.  Replace the characters in this UnicodeString
-   * with the code point <TT>ch</TT>.
+   * with the code point `ch`.
    * @param ch the code point to replace
    * @return a reference to this
    * @stable ICU 2.0
@@ -1954,11 +2011,11 @@ public:
 
   /**
    * Set the text in the UnicodeString object to the characters
-   * in <TT>srcText</TT> in the range
-   * [<TT>srcStart</TT>, <TT>srcText.length()</TT>).
-   * <TT>srcText</TT> is not modified.
+   * in `srcText` in the range
+   * [`srcStart`, `srcText.length()`).
+   * `srcText` is not modified.
    * @param srcText the source for the new characters
-   * @param srcStart the offset into <TT>srcText</TT> where new characters
+   * @param srcStart the offset into `srcText` where new characters
    * will be obtained
    * @return a reference to this
    * @stable ICU 2.2
@@ -1968,13 +2025,13 @@ public:
 
   /**
    * Set the text in the UnicodeString object to the characters
-   * in <TT>srcText</TT> in the range
-   * [<TT>srcStart</TT>, <TT>srcStart + srcLength</TT>).
-   * <TT>srcText</TT> is not modified.
+   * in `srcText` in the range
+   * [`srcStart`, `srcStart + srcLength`).
+   * `srcText` is not modified.
    * @param srcText the source for the new characters
-   * @param srcStart the offset into <TT>srcText</TT> where new characters
+   * @param srcStart the offset into `srcText` where new characters
    * will be obtained
-   * @param srcLength the number of characters in <TT>srcText</TT> in the
+   * @param srcLength the number of characters in `srcText` in the
    * replace string.
    * @return a reference to this
    * @stable ICU 2.0
@@ -1985,8 +2042,8 @@ public:
 
   /**
    * Set the text in the UnicodeString object to the characters in
-   * <TT>srcText</TT>.
-   * <TT>srcText</TT> is not modified.
+   * `srcText`.
+   * `srcText` is not modified.
    * @param srcText the source for the new characters
    * @return a reference to this
    * @stable ICU 2.0
@@ -1995,7 +2052,7 @@ public:
 
   /**
    * Set the characters in the UnicodeString object to the characters
-   * in <TT>srcChars</TT>. <TT>srcChars</TT> is not modified.
+   * in `srcChars`. `srcChars` is not modified.
    * @param srcChars the source for the new characters
    * @param srcLength the number of Unicode characters in srcChars.
    * @return a reference to this
@@ -2006,23 +2063,23 @@ public:
 
   /**
    * Set the characters in the UnicodeString object to the code unit
-   * <TT>srcChar</TT>.
+   * `srcChar`.
    * @param srcChar the code unit which becomes the UnicodeString's character
    * content
    * @return a reference to this
    * @stable ICU 2.0
    */
-  UnicodeString& setTo(char16_t srcChar);
+  inline UnicodeString& setTo(char16_t srcChar);
 
   /**
    * Set the characters in the UnicodeString object to the code point
-   * <TT>srcChar</TT>.
+   * `srcChar`.
    * @param srcChar the code point which becomes the UnicodeString's character
    * content
    * @return a reference to this
    * @stable ICU 2.0
    */
-  UnicodeString& setTo(UChar32 srcChar);
+  inline UnicodeString& setTo(UChar32 srcChar);
 
   /**
    * Aliasing setTo() function, analogous to the readonly-aliasing char16_t* constructor.
@@ -2038,12 +2095,12 @@ public:
    * When using fastCopyFrom(), the text will be aliased again,
    * so that both strings then alias the same readonly-text.
    *
-   * @param isTerminated specifies if <code>text</code> is <code>NUL</code>-terminated.
-   *                     This must be true if <code>textLength==-1</code>.
+   * @param isTerminated specifies if `text` is `NUL`-terminated.
+   *                     This must be true if `textLength==-1`.
    * @param text The characters to alias for the UnicodeString.
-   * @param textLength The number of Unicode characters in <code>text</code> to alias.
+   * @param textLength The number of Unicode characters in `text` to alias.
    *                   If -1, then this constructor will determine the length
-   *                   by calling <code>u_strlen()</code>.
+   *                   by calling `u_strlen()`.
    * @return a reference to this
    * @stable ICU 2.0
    */
@@ -2065,8 +2122,8 @@ public:
    * as the string buffer itself and will in this case not copy the contents.
    *
    * @param buffer The characters to alias for the UnicodeString.
-   * @param buffLength The number of Unicode characters in <code>buffer</code> to alias.
-   * @param buffCapacity The size of <code>buffer</code> in char16_ts.
+   * @param buffLength The number of Unicode characters in `buffer` to alias.
+   * @param buffCapacity The size of `buffer` in char16_ts.
    * @return a reference to this
    * @stable ICU 2.0
    */
@@ -2076,11 +2133,11 @@ public:
 
   /**
    * Make this UnicodeString object invalid.
-   * The string will test TRUE with isBogus().
+   * The string will test true with isBogus().
    *
    * A bogus string has no value. It is different from an empty string.
    * It can be used to indicate that no string value is available.
-   * getBuffer() and getTerminatedBuffer() return NULL, and
+   * getBuffer() and getTerminatedBuffer() return nullptr, and
    * length() returns 0.
    *
    * This utility function is used throughout the UnicodeString
@@ -2106,8 +2163,7 @@ public:
    *   s.truncate(0);        // set to an empty string (complete truncation), or
    *   s=UnicodeString();    // assign an empty string, or
    *   s.setTo((UChar32)-1); // set to a pseudo code point that is out of range, or
-   *   static const char16_t nul=0;
-   *   s.setTo(&nul, 0);     // set to an empty C Unicode string
+   *   s.setTo(u"", 0);      // set to an empty C Unicode string
    * }
    * \endcode
    *
@@ -2130,7 +2186,7 @@ public:
   /* Append operations */
 
   /**
-   * Append operator. Append the code unit <TT>ch</TT> to the UnicodeString
+   * Append operator. Append the code unit `ch` to the UnicodeString
    * object.
    * @param ch the code unit to be appended
    * @return a reference to this
@@ -2139,7 +2195,7 @@ public:
  inline  UnicodeString& operator+= (char16_t ch);
 
   /**
-   * Append operator. Append the code point <TT>ch</TT> to the UnicodeString
+   * Append operator. Append the code point `ch` to the UnicodeString
    * object.
    * @param ch the code point to be appended
    * @return a reference to this
@@ -2148,24 +2204,41 @@ public:
  inline  UnicodeString& operator+= (UChar32 ch);
 
   /**
-   * Append operator. Append the characters in <TT>srcText</TT> to the
-   * UnicodeString object. <TT>srcText</TT> is not modified.
+   * Append operator. Append the characters in `srcText` to the
+   * UnicodeString object. `srcText` is not modified.
    * @param srcText the source for the new characters
    * @return a reference to this
    * @stable ICU 2.0
    */
   inline UnicodeString& operator+= (const UnicodeString& srcText);
 
+#ifndef U_HIDE_DRAFT_API
+  /**
+   * Append operator. Appends the characters in `src`
+   * which is, or which is implicitly convertible to,
+   * a std::u16string_view or (if U_SIZEOF_WCHAR_T==2) std::wstring_view,
+   * to the UnicodeString object.
+   *
+   * @param src the source for the new characters
+   * @return a reference to this
+   * @draft ICU 76
+   */
+  template<typename S, typename = std::enable_if_t<ConvertibleToU16StringView<S>>>
+  inline UnicodeString& operator+=(const S &src) {
+    return doAppend(internal::toU16StringView(src));
+  }
+#endif  // U_HIDE_DRAFT_API
+
   /**
    * Append the characters
-   * in <TT>srcText</TT> in the range
-   * [<TT>srcStart</TT>, <TT>srcStart + srcLength</TT>) to the
-   * UnicodeString object at offset <TT>start</TT>. <TT>srcText</TT>
+   * in `srcText` in the range
+   * [`srcStart`, `srcStart + srcLength`) to the
+   * UnicodeString object at offset `start`. `srcText`
    * is not modified.
    * @param srcText the source for the new characters
-   * @param srcStart the offset into <TT>srcText</TT> where new characters
+   * @param srcStart the offset into `srcText` where new characters
    * will be obtained
-   * @param srcLength the number of characters in <TT>srcText</TT> in
+   * @param srcLength the number of characters in `srcText` in
    * the append string
    * @return a reference to this
    * @stable ICU 2.0
@@ -2175,8 +2248,8 @@ public:
             int32_t srcLength);
 
   /**
-   * Append the characters in <TT>srcText</TT> to the UnicodeString object.
-   * <TT>srcText</TT> is not modified.
+   * Append the characters in `srcText` to the UnicodeString object.
+   * `srcText` is not modified.
    * @param srcText the source for the new characters
    * @return a reference to this
    * @stable ICU 2.0
@@ -2184,15 +2257,15 @@ public:
   inline UnicodeString& append(const UnicodeString& srcText);
 
   /**
-   * Append the characters in <TT>srcChars</TT> in the range
-   * [<TT>srcStart</TT>, <TT>srcStart + srcLength</TT>) to the UnicodeString
+   * Append the characters in `srcChars` in the range
+   * [`srcStart`, `srcStart + srcLength`) to the UnicodeString
    * object at offset
-   * <TT>start</TT>. <TT>srcChars</TT> is not modified.
+   * `start`. `srcChars` is not modified.
    * @param srcChars the source for the new characters
-   * @param srcStart the offset into <TT>srcChars</TT> where new characters
+   * @param srcStart the offset into `srcChars` where new characters
    * will be obtained
-   * @param srcLength the number of characters in <TT>srcChars</TT> in
-   *                  the append string; can be -1 if <TT>srcChars</TT> is NUL-terminated
+   * @param srcLength the number of characters in `srcChars` in
+   *                  the append string; can be -1 if `srcChars` is NUL-terminated
    * @return a reference to this
    * @stable ICU 2.0
    */
@@ -2201,19 +2274,36 @@ public:
             int32_t srcLength);
 
   /**
-   * Append the characters in <TT>srcChars</TT> to the UnicodeString object
-   * at offset <TT>start</TT>. <TT>srcChars</TT> is not modified.
+   * Append the characters in `srcChars` to the UnicodeString object.
+   * `srcChars` is not modified.
    * @param srcChars the source for the new characters
-   * @param srcLength the number of Unicode characters in <TT>srcChars</TT>;
-   *                  can be -1 if <TT>srcChars</TT> is NUL-terminated
+   * @param srcLength the number of Unicode characters in `srcChars`;
+   *                  can be -1 if `srcChars` is NUL-terminated
    * @return a reference to this
    * @stable ICU 2.0
    */
   inline UnicodeString& append(ConstChar16Ptr srcChars,
             int32_t srcLength);
 
+#ifndef U_HIDE_DRAFT_API
   /**
-   * Append the code unit <TT>srcChar</TT> to the UnicodeString object.
+   * Appends the characters in `src`
+   * which is, or which is implicitly convertible to,
+   * a std::u16string_view or (if U_SIZEOF_WCHAR_T==2) std::wstring_view,
+   * to the UnicodeString object.
+   *
+   * @param src the source for the new characters
+   * @return a reference to this
+   * @draft ICU 76
+   */
+  template<typename S, typename = std::enable_if_t<ConvertibleToU16StringView<S>>>
+  inline UnicodeString& append(const S &src) {
+    return doAppend(internal::toU16StringView(src));
+  }
+#endif  // U_HIDE_DRAFT_API
+
+  /**
+   * Append the code unit `srcChar` to the UnicodeString object.
    * @param srcChar the code unit to append
    * @return a reference to this
    * @stable ICU 2.0
@@ -2221,7 +2311,7 @@ public:
   inline UnicodeString& append(char16_t srcChar);
 
   /**
-   * Append the code point <TT>srcChar</TT> to the UnicodeString object.
+   * Append the code point `srcChar` to the UnicodeString object.
    * @param srcChar the code point to append
    * @return a reference to this
    * @stable ICU 2.0
@@ -2232,14 +2322,14 @@ public:
   /* Insert operations */
 
   /**
-   * Insert the characters in <TT>srcText</TT> in the range
-   * [<TT>srcStart</TT>, <TT>srcStart + srcLength</TT>) into the UnicodeString
-   * object at offset <TT>start</TT>. <TT>srcText</TT> is not modified.
+   * Insert the characters in `srcText` in the range
+   * [`srcStart`, `srcStart + srcLength`) into the UnicodeString
+   * object at offset `start`. `srcText` is not modified.
    * @param start the offset where the insertion begins
    * @param srcText the source for the new characters
-   * @param srcStart the offset into <TT>srcText</TT> where new characters
+   * @param srcStart the offset into `srcText` where new characters
    * will be obtained
-   * @param srcLength the number of characters in <TT>srcText</TT> in
+   * @param srcLength the number of characters in `srcText` in
    * the insert string
    * @return a reference to this
    * @stable ICU 2.0
@@ -2250,8 +2340,8 @@ public:
             int32_t srcLength);
 
   /**
-   * Insert the characters in <TT>srcText</TT> into the UnicodeString object
-   * at offset <TT>start</TT>. <TT>srcText</TT> is not modified.
+   * Insert the characters in `srcText` into the UnicodeString object
+   * at offset `start`. `srcText` is not modified.
    * @param start the offset where the insertion begins
    * @param srcText the source for the new characters
    * @return a reference to this
@@ -2261,14 +2351,14 @@ public:
             const UnicodeString& srcText);
 
   /**
-   * Insert the characters in <TT>srcChars</TT> in the range
-   * [<TT>srcStart</TT>, <TT>srcStart + srcLength</TT>) into the UnicodeString
-   *  object at offset <TT>start</TT>. <TT>srcChars</TT> is not modified.
+   * Insert the characters in `srcChars` in the range
+   * [`srcStart`, `srcStart + srcLength`) into the UnicodeString
+   *  object at offset `start`. `srcChars` is not modified.
    * @param start the offset at which the insertion begins
    * @param srcChars the source for the new characters
-   * @param srcStart the offset into <TT>srcChars</TT> where new characters
+   * @param srcStart the offset into `srcChars` where new characters
    * will be obtained
-   * @param srcLength the number of characters in <TT>srcChars</TT>
+   * @param srcLength the number of characters in `srcChars`
    * in the insert string
    * @return a reference to this
    * @stable ICU 2.0
@@ -2279,8 +2369,8 @@ public:
             int32_t srcLength);
 
   /**
-   * Insert the characters in <TT>srcChars</TT> into the UnicodeString object
-   * at offset <TT>start</TT>. <TT>srcChars</TT> is not modified.
+   * Insert the characters in `srcChars` into the UnicodeString object
+   * at offset `start`. `srcChars` is not modified.
    * @param start the offset where the insertion begins
    * @param srcChars the source for the new characters
    * @param srcLength the number of Unicode characters in srcChars.
@@ -2292,8 +2382,8 @@ public:
             int32_t srcLength);
 
   /**
-   * Insert the code unit <TT>srcChar</TT> into the UnicodeString object at
-   * offset <TT>start</TT>.
+   * Insert the code unit `srcChar` into the UnicodeString object at
+   * offset `start`.
    * @param start the offset at which the insertion occurs
    * @param srcChar the code unit to insert
    * @return a reference to this
@@ -2303,8 +2393,8 @@ public:
             char16_t srcChar);
 
   /**
-   * Insert the code point <TT>srcChar</TT> into the UnicodeString object at
-   * offset <TT>start</TT>.
+   * Insert the code point `srcChar` into the UnicodeString object at
+   * offset `start`.
    * @param start the offset at which the insertion occurs
    * @param srcChar the code point to insert
    * @return a reference to this
@@ -2318,22 +2408,22 @@ public:
 
   /**
    * Replace the characters in the range
-   * [<TT>start</TT>, <TT>start + length</TT>) with the characters in
-   * <TT>srcText</TT> in the range
-   * [<TT>srcStart</TT>, <TT>srcStart + srcLength</TT>).
-   * <TT>srcText</TT> is not modified.
+   * [`start`, `start + length`) with the characters in
+   * `srcText` in the range
+   * [`srcStart`, `srcStart + srcLength`).
+   * `srcText` is not modified.
    * @param start the offset at which the replace operation begins
    * @param length the number of characters to replace. The character at
-   * <TT>start + length</TT> is not modified.
+   * `start + length` is not modified.
    * @param srcText the source for the new characters
-   * @param srcStart the offset into <TT>srcText</TT> where new characters
+   * @param srcStart the offset into `srcText` where new characters
    * will be obtained
-   * @param srcLength the number of characters in <TT>srcText</TT> in
+   * @param srcLength the number of characters in `srcText` in
    * the replace string
    * @return a reference to this
    * @stable ICU 2.0
    */
-  UnicodeString& replace(int32_t start,
+  inline UnicodeString& replace(int32_t start,
              int32_t length,
              const UnicodeString& srcText,
              int32_t srcStart,
@@ -2341,38 +2431,38 @@ public:
 
   /**
    * Replace the characters in the range
-   * [<TT>start</TT>, <TT>start + length</TT>)
-   * with the characters in <TT>srcText</TT>.  <TT>srcText</TT> is
+   * [`start`, `start + length`)
+   * with the characters in `srcText`.  `srcText` is
    *  not modified.
    * @param start the offset at which the replace operation begins
    * @param length the number of characters to replace. The character at
-   * <TT>start + length</TT> is not modified.
+   * `start + length` is not modified.
    * @param srcText the source for the new characters
    * @return a reference to this
    * @stable ICU 2.0
    */
-  UnicodeString& replace(int32_t start,
+  inline UnicodeString& replace(int32_t start,
              int32_t length,
              const UnicodeString& srcText);
 
   /**
    * Replace the characters in the range
-   * [<TT>start</TT>, <TT>start + length</TT>) with the characters in
-   * <TT>srcChars</TT> in the range
-   * [<TT>srcStart</TT>, <TT>srcStart + srcLength</TT>). <TT>srcChars</TT>
+   * [`start`, `start + length`) with the characters in
+   * `srcChars` in the range
+   * [`srcStart`, `srcStart + srcLength`). `srcChars`
    * is not modified.
    * @param start the offset at which the replace operation begins
    * @param length the number of characters to replace.  The character at
-   * <TT>start + length</TT> is not modified.
+   * `start + length` is not modified.
    * @param srcChars the source for the new characters
-   * @param srcStart the offset into <TT>srcChars</TT> where new characters
+   * @param srcStart the offset into `srcChars` where new characters
    * will be obtained
-   * @param srcLength the number of characters in <TT>srcChars</TT>
+   * @param srcLength the number of characters in `srcChars`
    * in the replace string
    * @return a reference to this
    * @stable ICU 2.0
    */
-  UnicodeString& replace(int32_t start,
+  inline UnicodeString& replace(int32_t start,
              int32_t length,
              const char16_t *srcChars,
              int32_t srcStart,
@@ -2380,11 +2470,11 @@ public:
 
   /**
    * Replace the characters in the range
-   * [<TT>start</TT>, <TT>start + length</TT>) with the characters in
-   * <TT>srcChars</TT>.  <TT>srcChars</TT> is not modified.
+   * [`start`, `start + length`) with the characters in
+   * `srcChars`.  `srcChars` is not modified.
    * @param start the offset at which the replace operation begins
    * @param length number of characters to replace.  The character at
-   * <TT>start + length</TT> is not modified.
+   * `start + length` is not modified.
    * @param srcChars the source for the new characters
    * @param srcLength the number of Unicode characters in srcChars
    * @return a reference to this
@@ -2397,11 +2487,11 @@ public:
 
   /**
    * Replace the characters in the range
-   * [<TT>start</TT>, <TT>start + length</TT>) with the code unit
-   * <TT>srcChar</TT>.
+   * [`start`, `start + length`) with the code unit
+   * `srcChar`.
    * @param start the offset at which the replace operation begins
    * @param length the number of characters to replace.  The character at
-   * <TT>start + length</TT> is not modified.
+   * `start + length` is not modified.
    * @param srcChar the new code unit
    * @return a reference to this
    * @stable ICU 2.0
@@ -2412,11 +2502,11 @@ public:
 
   /**
    * Replace the characters in the range
-   * [<TT>start</TT>, <TT>start + length</TT>) with the code point
-   * <TT>srcChar</TT>.
+   * [`start`, `start + length`) with the code point
+   * `srcChar`.
    * @param start the offset at which the replace operation begins
    * @param length the number of characters to replace.  The character at
-   * <TT>start + length</TT> is not modified.
+   * `start + length` is not modified.
    * @param srcChar the new code point
    * @return a reference to this
    * @stable ICU 2.0
@@ -2424,8 +2514,8 @@ public:
   UnicodeString& replace(int32_t start, int32_t length, UChar32 srcChar);
 
   /**
-   * Replace the characters in the range [<TT>start</TT>, <TT>limit</TT>)
-   * with the characters in <TT>srcText</TT>. <TT>srcText</TT> is not modified.
+   * Replace the characters in the range [`start`, `limit`)
+   * with the characters in `srcText`. `srcText` is not modified.
    * @param start the offset at which the replace operation begins
    * @param limit the offset immediately following the replace range
    * @param srcText the source for the new characters
@@ -2437,16 +2527,16 @@ public:
                 const UnicodeString& srcText);
 
   /**
-   * Replace the characters in the range [<TT>start</TT>, <TT>limit</TT>)
-   * with the characters in <TT>srcText</TT> in the range
-   * [<TT>srcStart</TT>, <TT>srcLimit</TT>). <TT>srcText</TT> is not modified.
+   * Replace the characters in the range [`start`, `limit`)
+   * with the characters in `srcText` in the range
+   * [`srcStart`, `srcLimit`). `srcText` is not modified.
    * @param start the offset at which the replace operation begins
    * @param limit the offset immediately following the replace range
    * @param srcText the source for the new characters
-   * @param srcStart the offset into <TT>srcChars</TT> where new characters
+   * @param srcStart the offset into `srcChars` where new characters
    * will be obtained
    * @param srcLimit the offset immediately following the range to copy
-   * in <TT>srcText</TT>
+   * in `srcText`
    * @return a reference to this
    * @stable ICU 2.0
    */
@@ -2458,41 +2548,36 @@ public:
 
   /**
    * Replace a substring of this object with the given text.
-   * @param start the beginning index, inclusive; <code>0 <= start
-   * <= limit</code>.
-   * @param limit the ending index, exclusive; <code>start <= limit
-   * <= length()</code>.
-   * @param text the text to replace characters <code>start</code>
-   * to <code>limit - 1</code>
+   * @param start the beginning index, inclusive; `0 <= start <= limit`.
+   * @param limit the ending index, exclusive; `start <= limit <= length()`.
+   * @param text the text to replace characters `start` to `limit - 1`
    * @stable ICU 2.0
    */
   virtual void handleReplaceBetween(int32_t start,
                                     int32_t limit,
-                                    const UnicodeString& text);
+                                    const UnicodeString& text) override;
 
   /**
    * Replaceable API
-   * @return TRUE if it has MetaData
+   * @return true if it has MetaData
    * @stable ICU 2.4
    */
-  virtual UBool hasMetaData() const;
+  virtual UBool hasMetaData() const override;
 
   /**
    * Copy a substring of this object, retaining attribute (out-of-band)
    * information.  This method is used to duplicate or reorder substrings.
    * The destination index must not overlap the source range.
    *
-   * @param start the beginning index, inclusive; <code>0 <= start <=
-   * limit</code>.
-   * @param limit the ending index, exclusive; <code>start <= limit <=
-   * length()</code>.
+   * @param start the beginning index, inclusive; `0 <= start <= limit`.
+   * @param limit the ending index, exclusive; `start <= limit <= length()`.
    * @param dest the destination index.  The characters from
-   * <code>start..limit-1</code> will be copied to <code>dest</code>.
-   * Implementations of this method may assume that <code>dest <= start ||
-   * dest >= limit</code>.
+   *             `start..limit-1` will be copied to `dest`.
+   * Implementations of this method may assume that `dest <= start ||
+   * dest >= limit`.
    * @stable ICU 2.0
    */
-  virtual void copy(int32_t start, int32_t limit, int32_t dest);
+  virtual void copy(int32_t start, int32_t limit, int32_t dest) override;
 
   /* Search and replace operations */
 
@@ -2510,7 +2595,7 @@ public:
   /**
    * Replace all occurrences of characters in oldText with characters
    * in newText
-   * in the range [<TT>start</TT>, <TT>start + length</TT>).
+   * in the range [`start`, `start + length`).
    * @param start the start of the range in which replace will performed
    * @param length the length of the range in which replace will be performed
    * @param oldText the text containing the search text
@@ -2525,18 +2610,18 @@ public:
 
   /**
    * Replace all occurrences of characters in oldText in the range
-   * [<TT>oldStart</TT>, <TT>oldStart + oldLength</TT>) with the characters
+   * [`oldStart`, `oldStart + oldLength`) with the characters
    * in newText in the range
-   * [<TT>newStart</TT>, <TT>newStart + newLength</TT>)
-   * in the range [<TT>start</TT>, <TT>start + length</TT>).
+   * [`newStart`, `newStart + newLength`)
+   * in the range [`start`, `start + length`).
    * @param start the start of the range in which replace will performed
    * @param length the length of the range in which replace will be performed
    * @param oldText the text containing the search text
-   * @param oldStart the start of the search range in <TT>oldText</TT>
-   * @param oldLength the length of the search range in <TT>oldText</TT>
+   * @param oldStart the start of the search range in `oldText`
+   * @param oldLength the length of the search range in `oldText`
    * @param newText the text containing the replacement text
-   * @param newStart the start of the replacement range in <TT>newText</TT>
-   * @param newLength the length of the replacement range in <TT>newText</TT>
+   * @param newStart the start of the replacement range in `newText`
+   * @param newLength the length of the replacement range in `newText`
    * @return a reference to this
    * @stable ICU 2.0
    */
@@ -2553,38 +2638,41 @@ public:
   /* Remove operations */
 
   /**
-   * Remove all characters from the UnicodeString object.
+   * Removes all characters from the UnicodeString object and clears the bogus flag.
+   * This is the UnicodeString equivalent of std::string’s clear().
+   *
    * @return a reference to this
+   * @see setToBogus
    * @stable ICU 2.0
    */
-  inline UnicodeString& remove(void);
+  inline UnicodeString& remove();
 
   /**
    * Remove the characters in the range
-   * [<TT>start</TT>, <TT>start + length</TT>) from the UnicodeString object.
+   * [`start`, `start + length`) from the UnicodeString object.
    * @param start the offset of the first character to remove
    * @param length the number of characters to remove
    * @return a reference to this
    * @stable ICU 2.0
    */
   inline UnicodeString& remove(int32_t start,
-                               int32_t length = (int32_t)INT32_MAX);
+                               int32_t length = static_cast<int32_t>(INT32_MAX));
 
   /**
    * Remove the characters in the range
-   * [<TT>start</TT>, <TT>limit</TT>) from the UnicodeString object.
+   * [`start`, `limit`) from the UnicodeString object.
    * @param start the offset of the first character to remove
    * @param limit the offset immediately following the range to remove
    * @return a reference to this
    * @stable ICU 2.0
    */
   inline UnicodeString& removeBetween(int32_t start,
-                                      int32_t limit = (int32_t)INT32_MAX);
+                                      int32_t limit = static_cast<int32_t>(INT32_MAX));
 
   /**
    * Retain only the characters in the range
-   * [<code>start</code>, <code>limit</code>) from the UnicodeString object.
-   * Removes characters before <code>start</code> and at and after <code>limit</code>.
+   * [`start`, `limit`) from the UnicodeString object.
+   * Removes characters before `start` and at and after `limit`.
    * @param start the offset of the first character to retain
    * @param limit the offset immediately following the range to retain
    * @return a reference to this
@@ -2595,37 +2683,37 @@ public:
   /* Length operations */
 
   /**
-   * Pad the start of this UnicodeString with the character <TT>padChar</TT>.
+   * Pad the start of this UnicodeString with the character `padChar`.
    * If the length of this UnicodeString is less than targetLength,
    * length() - targetLength copies of padChar will be added to the
    * beginning of this UnicodeString.
    * @param targetLength the desired length of the string
    * @param padChar the character to use for padding. Defaults to
    * space (U+0020)
-   * @return TRUE if the text was padded, FALSE otherwise.
+   * @return true if the text was padded, false otherwise.
    * @stable ICU 2.0
    */
   UBool padLeading(int32_t targetLength,
                     char16_t padChar = 0x0020);
 
   /**
-   * Pad the end of this UnicodeString with the character <TT>padChar</TT>.
+   * Pad the end of this UnicodeString with the character `padChar`.
    * If the length of this UnicodeString is less than targetLength,
    * length() - targetLength copies of padChar will be added to the
    * end of this UnicodeString.
    * @param targetLength the desired length of the string
    * @param padChar the character to use for padding. Defaults to
    * space (U+0020)
-   * @return TRUE if the text was padded, FALSE otherwise.
+   * @return true if the text was padded, false otherwise.
    * @stable ICU 2.0
    */
   UBool padTrailing(int32_t targetLength,
                      char16_t padChar = 0x0020);
 
   /**
-   * Truncate this UnicodeString to the <TT>targetLength</TT>.
+   * Truncate this UnicodeString to the `targetLength`.
    * @param targetLength the desired length of this UnicodeString.
-   * @return TRUE if the text was truncated, FALSE otherwise
+   * @return true if the text was truncated, false otherwise
    * @stable ICU 2.0
    */
   inline UBool truncate(int32_t targetLength);
@@ -2635,8 +2723,7 @@ public:
    * @return a reference to this
    * @stable ICU 2.0
    */
-  UnicodeString& trim(void);
-
+  UnicodeString& trim();
 
   /* Miscellaneous operations */
 
@@ -2645,10 +2732,10 @@ public:
    * @return a reference to this
    * @stable ICU 2.0
    */
-  inline UnicodeString& reverse(void);
+  inline UnicodeString& reverse();
 
   /**
-   * Reverse the range [<TT>start</TT>, <TT>start + length</TT>) in
+   * Reverse the range [`start`, `start + length`) in
    * this UnicodeString.
    * @param start the start of the range to reverse
    * @param length the number of characters to to reverse
@@ -2664,7 +2751,7 @@ public:
    * @return A reference to this.
    * @stable ICU 2.0
    */
-  UnicodeString& toUpper(void);
+  UnicodeString& toUpper();
 
   /**
    * Convert the characters in this to UPPER CASE following the conventions of
@@ -2681,7 +2768,7 @@ public:
    * @return A reference to this.
    * @stable ICU 2.0
    */
-  UnicodeString& toLower(void);
+  UnicodeString& toLower();
 
   /**
    * Convert the characters in this to lower case following the conventions of
@@ -2706,8 +2793,8 @@ public:
    * styles, using rules and dictionaries beyond the standard iterators.
    * It may be more efficient to always provide an iterator to avoid
    * opening and closing one for each string.
-   * The standard titlecase iterator for the root locale implements the
-   * algorithm of Unicode TR 21.
+   * If the break iterator passed in is null, the default Unicode algorithm
+   * will be used to determine the titlecase positions.
    *
    * This function uses only the setText(), first() and next() methods of the
    * provided break iterator.
@@ -2734,8 +2821,8 @@ public:
    * styles, using rules and dictionaries beyond the standard iterators.
    * It may be more efficient to always provide an iterator to avoid
    * opening and closing one for each string.
-   * The standard titlecase iterator for the root locale implements the
-   * algorithm of Unicode TR 21.
+   * If the break iterator passed in is null, the default Unicode algorithm
+   * will be used to determine the titlecase positions.
    *
    * This function uses only the setText(), first() and next() methods of the
    * provided break iterator.
@@ -2763,8 +2850,8 @@ public:
    * styles, using rules and dictionaries beyond the standard iterators.
    * It may be more efficient to always provide an iterator to avoid
    * opening and closing one for each string.
-   * The standard titlecase iterator for the root locale implements the
-   * algorithm of Unicode TR 21.
+   * If the break iterator passed in is null, the default Unicode algorithm
+   * will be used to determine the titlecase positions.
    *
    * This function uses only the setText(), first() and next() methods of the
    * provided break iterator.
@@ -2778,7 +2865,6 @@ public:
    * @param options   Options bit set, usually 0. See U_TITLECASE_NO_LOWERCASE,
    *                  U_TITLECASE_NO_BREAK_ADJUSTMENT, U_TITLECASE_ADJUST_TO_CASED,
    *                  U_TITLECASE_WHOLE_STRING, U_TITLECASE_SENTENCES.
-   * @param options Options bit set, see ucasemap_open().
    * @return A reference to this.
    * @stable ICU 3.8
    */
@@ -2833,7 +2919,7 @@ public:
    *   If the length() was greater than minCapacity, then any contents after minCapacity
    *   may be lost.
    *   The buffer contents is not NUL-terminated by getBuffer().
-   *   If length()<getCapacity() then you can terminate it by writing a NUL
+   *   If length() < getCapacity() then you can terminate it by writing a NUL
    *   at index length().
    * - You must call releaseBuffer(newLength) before and in order to
    *   return to normal UnicodeString operation.
@@ -2889,7 +2975,7 @@ public:
    *
    * The buffer contents is (probably) not NUL-terminated.
    * You can check if it is with
-   * <code>(s.length()<s.getCapacity() && buffer[s.length()]==0)</code>.
+   * `(s.length() < s.getCapacity() && buffer[s.length()]==0)`.
    * (See getTerminatedBuffer().)
    *
    * The buffer may reside in read-only memory. Its contents must not
@@ -2939,6 +3025,37 @@ public:
    */
   const char16_t *getTerminatedBuffer();
 
+#ifndef U_HIDE_DRAFT_API
+  /**
+   * Converts to a std::u16string_view.
+   *
+   * @return a string view of the contents of this string
+   * @draft ICU 76
+   */
+  inline operator std::u16string_view() const {
+    return {getBuffer(), static_cast<std::u16string_view::size_type>(length())};
+  }
+
+#if U_SIZEOF_WCHAR_T==2 || defined(U_IN_DOXYGEN)
+  /**
+   * Converts to a std::wstring_view.
+   *
+   * Note: This should remain draft until C++ standard plans
+   * about char16_t vs. wchar_t become clearer.
+   *
+   * @return a string view of the contents of this string
+   * @draft ICU 76
+   */
+  inline operator std::wstring_view() const {
+    const char16_t *p = getBuffer();
+#ifdef U_ALIASING_BARRIER
+    U_ALIASING_BARRIER(p);
+#endif
+    return { reinterpret_cast<const wchar_t *>(p), (std::wstring_view::size_type)length() };
+  }
+#endif  // U_SIZEOF_WCHAR_T
+#endif  // U_HIDE_DRAFT_API
+
   //========================================
   // Constructors
   //========================================
@@ -2949,7 +3066,7 @@ public:
   inline UnicodeString();
 
   /**
-   * Construct a UnicodeString with capacity to hold <TT>capacity</TT> char16_ts
+   * Construct a UnicodeString with capacity to hold `capacity` char16_ts
    * @param capacity the number of char16_ts this UnicodeString should hold
    * before a resize is necessary; if count is greater than 0 and count
    * code points c take up more space than capacity, then capacity is adjusted
@@ -2965,7 +3082,7 @@ public:
    * Single char16_t (code unit) constructor.
    *
    * It is recommended to mark this constructor "explicit" by
-   * <code>-DUNISTR_FROM_CHAR_EXPLICIT=explicit</code>
+   * `-DUNISTR_FROM_CHAR_EXPLICIT=explicit`
    * on the compiler command line or similar.
    * @param ch the character to place in the UnicodeString
    * @stable ICU 2.0
@@ -2976,54 +3093,85 @@ public:
    * Single UChar32 (code point) constructor.
    *
    * It is recommended to mark this constructor "explicit" by
-   * <code>-DUNISTR_FROM_CHAR_EXPLICIT=explicit</code>
+   * `-DUNISTR_FROM_CHAR_EXPLICIT=explicit`
    * on the compiler command line or similar.
    * @param ch the character to place in the UnicodeString
    * @stable ICU 2.0
    */
   UNISTR_FROM_CHAR_EXPLICIT UnicodeString(UChar32 ch);
 
+#ifdef U_HIDE_DRAFT_API
   /**
    * char16_t* constructor.
    *
    * It is recommended to mark this constructor "explicit" by
-   * <code>-DUNISTR_FROM_STRING_EXPLICIT=explicit</code>
+   * `-DUNISTR_FROM_STRING_EXPLICIT=explicit`
    * on the compiler command line or similar.
-   * @param text The characters to place in the UnicodeString.  <TT>text</TT>
-   * must be NULL (U+0000) terminated.
+   *
+   * Note, for string literals:
+   * Since C++17 and ICU 76, you can use UTF-16 string literals with compile-time
+   * length determination:
+   * \code
+   * UnicodeString str(u"literal");
+   * if (str == u"other literal") { ... }
+   * \endcode
+   *
+   * @param text The characters to place in the UnicodeString.  `text`
+   * must be NUL (U+0000) terminated.
    * @stable ICU 2.0
    */
-  UNISTR_FROM_STRING_EXPLICIT UnicodeString(const char16_t *text);
+  UNISTR_FROM_STRING_EXPLICIT UnicodeString(const char16_t *text) :
+      UnicodeString(text, -1) {}
+#endif  // U_HIDE_DRAFT_API
 
-#if !U_CHAR16_IS_TYPEDEF
+#if !U_CHAR16_IS_TYPEDEF && \
+    (defined(U_HIDE_DRAFT_API) || (defined(_LIBCPP_VERSION) && _LIBCPP_VERSION >= 180000))
   /**
    * uint16_t * constructor.
    * Delegates to UnicodeString(const char16_t *).
    *
    * It is recommended to mark this constructor "explicit" by
-   * <code>-DUNISTR_FROM_STRING_EXPLICIT=explicit</code>
+   * `-DUNISTR_FROM_STRING_EXPLICIT=explicit`
    * on the compiler command line or similar.
+   *
+   * Note, for string literals:
+   * Since C++17 and ICU 76, you can use UTF-16 string literals with compile-time
+   * length determination:
+   * \code
+   * UnicodeString str(u"literal");
+   * if (str == u"other literal") { ... }
+   * \endcode
+   *
    * @param text NUL-terminated UTF-16 string
    * @stable ICU 59
    */
   UNISTR_FROM_STRING_EXPLICIT UnicodeString(const uint16_t *text) :
-      UnicodeString(ConstChar16Ptr(text)) {}
+      UnicodeString(ConstChar16Ptr(text), -1) {}
 #endif
 
-#if U_SIZEOF_WCHAR_T==2 || defined(U_IN_DOXYGEN)
+#if defined(U_HIDE_DRAFT_API) && (U_SIZEOF_WCHAR_T==2 || defined(U_IN_DOXYGEN))
   /**
    * wchar_t * constructor.
    * (Only defined if U_SIZEOF_WCHAR_T==2.)
    * Delegates to UnicodeString(const char16_t *).
    *
    * It is recommended to mark this constructor "explicit" by
-   * <code>-DUNISTR_FROM_STRING_EXPLICIT=explicit</code>
+   * `-DUNISTR_FROM_STRING_EXPLICIT=explicit`
    * on the compiler command line or similar.
+   *
+   * Note, for string literals:
+   * Since C++17 and ICU 76, you can use UTF-16 string literals with compile-time
+   * length determination:
+   * \code
+   * UnicodeString str(u"literal");
+   * if (str == u"other literal") { ... }
+   * \endcode
+   *
    * @param text NUL-terminated UTF-16 string
    * @stable ICU 59
    */
   UNISTR_FROM_STRING_EXPLICIT UnicodeString(const wchar_t *text) :
-      UnicodeString(ConstChar16Ptr(text)) {}
+      UnicodeString(ConstChar16Ptr(text), -1) {}
 #endif
 
   /**
@@ -3031,7 +3179,7 @@ public:
    * Effectively the same as the default constructor, makes an empty string object.
    *
    * It is recommended to mark this constructor "explicit" by
-   * <code>-DUNISTR_FROM_STRING_EXPLICIT=explicit</code>
+   * `-DUNISTR_FROM_STRING_EXPLICIT=explicit`
    * on the compiler command line or similar.
    * @param text nullptr
    * @stable ICU 59
@@ -3040,8 +3188,17 @@ public:
 
   /**
    * char16_t* constructor.
+   *
+   * Note, for string literals:
+   * Since C++17 and ICU 76, you can use UTF-16 string literals with compile-time
+   * length determination:
+   * \code
+   * UnicodeString str(u"literal");
+   * if (str == u"other literal") { ... }
+   * \endcode
+   *
    * @param text The characters to place in the UnicodeString.
-   * @param textLength The number of Unicode characters in <TT>text</TT>
+   * @param textLength The number of Unicode characters in `text`
    * to copy.
    * @stable ICU 2.0
    */
@@ -3052,12 +3209,21 @@ public:
   /**
    * uint16_t * constructor.
    * Delegates to UnicodeString(const char16_t *, int32_t).
+   *
+   * Note, for string literals:
+   * Since C++17 and ICU 76, you can use UTF-16 string literals with compile-time
+   * length determination:
+   * \code
+   * UnicodeString str(u"literal");
+   * if (str == u"other literal") { ... }
+   * \endcode
+   *
    * @param text UTF-16 string
-   * @param length string length
+   * @param textLength string length
    * @stable ICU 59
    */
-  UnicodeString(const uint16_t *text, int32_t length) :
-      UnicodeString(ConstChar16Ptr(text), length) {}
+  UnicodeString(const uint16_t *text, int32_t textLength) :
+      UnicodeString(ConstChar16Ptr(text), textLength) {}
 #endif
 
 #if U_SIZEOF_WCHAR_T==2 || defined(U_IN_DOXYGEN)
@@ -3065,22 +3231,51 @@ public:
    * wchar_t * constructor.
    * (Only defined if U_SIZEOF_WCHAR_T==2.)
    * Delegates to UnicodeString(const char16_t *, int32_t).
-   * @param text NUL-terminated UTF-16 string
-   * @param length string length
+   *
+   * Note, for string literals:
+   * Since C++17 and ICU 76, you can use UTF-16 string literals with compile-time
+   * length determination:
+   * \code
+   * UnicodeString str(u"literal");
+   * if (str == u"other literal") { ... }
+   * \endcode
+   *
+   * @param text UTF-16 string
+   * @param textLength string length
    * @stable ICU 59
    */
-  UnicodeString(const wchar_t *text, int32_t length) :
-      UnicodeString(ConstChar16Ptr(text), length) {}
+  UnicodeString(const wchar_t *text, int32_t textLength) :
+      UnicodeString(ConstChar16Ptr(text), textLength) {}
 #endif
 
   /**
    * nullptr_t constructor.
    * Effectively the same as the default constructor, makes an empty string object.
    * @param text nullptr
-   * @param length ignored
+   * @param textLength ignored
    * @stable ICU 59
    */
-  inline UnicodeString(const std::nullptr_t text, int32_t length);
+  inline UnicodeString(const std::nullptr_t text, int32_t textLength);
+
+#ifndef U_HIDE_DRAFT_API
+  /**
+   * Constructor from `text`
+   * which is, or which is implicitly convertible to,
+   * a std::u16string_view or (if U_SIZEOF_WCHAR_T==2) std::wstring_view.
+   * The string is bogus if the string view is too long.
+   *
+   * If you need a UnicodeString but need not copy the string view contents,
+   * then you can call the UnicodeString::readOnlyAlias() function instead of this constructor.
+   *
+   * @param text UTF-16 string
+   * @draft ICU 76
+   */
+  template<typename S, typename = std::enable_if_t<ConvertibleToU16StringView<S>>>
+  UNISTR_FROM_STRING_EXPLICIT UnicodeString(const S &text) {
+    fUnion.fFields.fLengthAndFlags = kShortString;
+    doAppend(internal::toU16StringViewNullable(text));
+  }
+#endif  // U_HIDE_DRAFT_API
 
   /**
    * Readonly-aliasing char16_t* constructor.
@@ -3096,12 +3291,20 @@ public:
    * When using fastCopyFrom(), the text will be aliased again,
    * so that both strings then alias the same readonly-text.
    *
-   * @param isTerminated specifies if <code>text</code> is <code>NUL</code>-terminated.
-   *                     This must be true if <code>textLength==-1</code>.
+   * Note, for string literals:
+   * Since C++17 and ICU 76, you can use UTF-16 string literals with compile-time
+   * length determination:
+   * \code
+   * UnicodeString alias = UnicodeString::readOnlyAlias(u"literal");
+   * if (str == u"other literal") { ... }
+   * \endcode
+   *
+   * @param isTerminated specifies if `text` is `NUL`-terminated.
+   *                     This must be true if `textLength==-1`.
    * @param text The characters to alias for the UnicodeString.
-   * @param textLength The number of Unicode characters in <code>text</code> to alias.
+   * @param textLength The number of Unicode characters in `text` to alias.
    *                   If -1, then this constructor will determine the length
-   *                   by calling <code>u_strlen()</code>.
+   *                   by calling `u_strlen()`.
    * @stable ICU 2.0
    */
   UnicodeString(UBool isTerminated,
@@ -3122,8 +3325,8 @@ public:
    * as the string buffer itself and will in this case not copy the contents.
    *
    * @param buffer The characters to alias for the UnicodeString.
-   * @param buffLength The number of Unicode characters in <code>buffer</code> to alias.
-   * @param buffCapacity The size of <code>buffer</code> in char16_ts.
+   * @param buffLength The number of Unicode characters in `buffer` to alias.
+   * @param buffCapacity The size of `buffer` in char16_ts.
    * @stable ICU 2.0
    */
   UnicodeString(char16_t *buffer, int32_t buffLength, int32_t buffCapacity);
@@ -3174,17 +3377,21 @@ public:
    *
    * For ASCII (really "invariant character") strings it is more efficient to use
    * the constructor that takes a US_INV (for its enum EInvariant).
-   * For ASCII (invariant-character) string literals, see UNICODE_STRING and
-   * UNICODE_STRING_SIMPLE.
+   *
+   * Note, for string literals:
+   * Since C++17 and ICU 76, you can use UTF-16 string literals with compile-time
+   * length determination:
+   * \code
+   * UnicodeString str(u"literal");
+   * if (str == u"other literal") { ... }
+   * \endcode
    *
    * It is recommended to mark this constructor "explicit" by
-   * <code>-DUNISTR_FROM_STRING_EXPLICIT=explicit</code>
+   * `-DUNISTR_FROM_STRING_EXPLICIT=explicit`
    * on the compiler command line or similar.
    * @param codepageData an array of bytes, null-terminated,
    *                     in the platform's default codepage.
    * @stable ICU 2.0
-   * @see UNICODE_STRING
-   * @see UNICODE_STRING_SIMPLE
    */
   UNISTR_FROM_STRING_EXPLICIT UnicodeString(const char *codepageData);
 
@@ -3193,7 +3400,7 @@ public:
    * Uses the default converter (and thus depends on the ICU conversion code)
    * unless U_CHARSET_IS_UTF8 is set to 1.
    * @param codepageData an array of bytes in the platform's default codepage.
-   * @param dataLength The number of bytes in <TT>codepageData</TT>.
+   * @param dataLength The number of bytes in `codepageData`.
    * @stable ICU 2.0
    */
   UnicodeString(const char *codepageData, int32_t dataLength);
@@ -3205,11 +3412,11 @@ public:
   /**
    * char* constructor.
    * @param codepageData an array of bytes, null-terminated
-   * @param codepage the encoding of <TT>codepageData</TT>.  The special
-   * value 0 for <TT>codepage</TT> indicates that the text is in the
+   * @param codepage the encoding of `codepageData`.  The special
+   * value 0 for `codepage` indicates that the text is in the
    * platform's default codepage.
    *
-   * If <code>codepage</code> is an empty string (<code>""</code>),
+   * If `codepage` is an empty string (`""`),
    * then a simple conversion is performed on the codepage-invariant
    * subset ("invariant characters") of the platform encoding. See utypes.h.
    * Recommendation: For invariant-character strings use the constructor
@@ -3224,11 +3431,11 @@ public:
   /**
    * char* constructor.
    * @param codepageData an array of bytes.
-   * @param dataLength The number of bytes in <TT>codepageData</TT>.
-   * @param codepage the encoding of <TT>codepageData</TT>.  The special
-   * value 0 for <TT>codepage</TT> indicates that the text is in the
+   * @param dataLength The number of bytes in `codepageData`.
+   * @param codepage the encoding of `codepageData`.  The special
+   * value 0 for `codepage` indicates that the text is in the
    * platform's default codepage.
-   * If <code>codepage</code> is an empty string (<code>""</code>),
+   * If `codepage` is an empty string (`""`),
    * then a simple conversion is performed on the codepage-invariant
    * subset ("invariant characters") of the platform encoding. See utypes.h.
    * Recommendation: For invariant-character strings use the constructor
@@ -3257,7 +3464,7 @@ public:
    * @param src input codepage string
    * @param srcLength length of the input string, can be -1 for NUL-terminated strings
    * @param cnv converter object (ucnv_resetToUnicode() will be called),
-   *        can be NULL for the default converter
+   *        can be nullptr for the default converter
    * @param errorCode normal ICU error code
    * @stable ICU 2.0
    */
@@ -3279,20 +3486,28 @@ public:
    *
    * For example:
    * \code
-   * void fn(const char *s) {
-   *   UnicodeString ustr(s, -1, US_INV);
-   *   // use ustr ...
-   * }
+   *     void fn(const char *s) {
+   *       UnicodeString ustr(s, -1, US_INV);
+   *       // use ustr ...
+   *     }
+   * \endcode
+   *
+   * Note, for string literals:
+   * Since C++17 and ICU 76, you can use UTF-16 string literals with compile-time
+   * length determination:
+   * \code
+   * UnicodeString str(u"literal");
+   * if (str == u"other literal") { ... }
    * \endcode
    *
    * @param src String using only invariant characters.
-   * @param length Length of src, or -1 if NUL-terminated.
-   * @param inv Signature-distinguishing paramater, use US_INV.
+   * @param textLength Length of src, or -1 if NUL-terminated.
+   * @param inv Signature-distinguishing parameter, use US_INV.
    *
    * @see US_INV
    * @stable ICU 3.2
    */
-  UnicodeString(const char *src, int32_t length, enum EInvariant inv);
+  UnicodeString(const char *src, int32_t textLength, enum EInvariant inv);
 
 
   /**
@@ -3319,12 +3534,12 @@ public:
    * @param src source string
    * @stable ICU 56
    */
-  UnicodeString(UnicodeString &&src) U_NOEXCEPT;
+  UnicodeString(UnicodeString &&src) noexcept;
 
   /**
    * 'Substring' constructor from tail of source string.
    * @param src The UnicodeString object to copy.
-   * @param srcStart The offset into <tt>src</tt> at which to start copying.
+   * @param srcStart The offset into `src` at which to start copying.
    * @stable ICU 2.2
    */
   UnicodeString(const UnicodeString& src, int32_t srcStart);
@@ -3332,8 +3547,8 @@ public:
   /**
    * 'Substring' constructor from subrange of source string.
    * @param src The UnicodeString object to copy.
-   * @param srcStart The offset into <tt>src</tt> at which to start copying.
-   * @param srcLength The number of characters from <tt>src</tt> to copy.
+   * @param srcStart The offset into `src` at which to start copying.
+   * @param srcLength The number of characters from `src` to copy.
    * @stable ICU 2.2
    */
   UnicodeString(const UnicodeString& src, int32_t srcStart, int32_t srcLength);
@@ -3342,10 +3557,7 @@ public:
    * Clone this object, an instance of a subclass of Replaceable.
    * Clones can be used concurrently in multiple threads.
    * If a subclass does not implement clone(), or if an error occurs,
-   * then NULL is returned.
-   * The clone functions in all subclasses return a pointer to a Replaceable
-   * because some compilers do not support covariant (same-as-this)
-   * return types; cast to the appropriate subclass if necessary.
+   * then nullptr is returned.
    * The caller must delete the clone.
    *
    * @return a clone of this object
@@ -3354,12 +3566,64 @@ public:
    * @see getDynamicClassID
    * @stable ICU 2.6
    */
-  virtual Replaceable *clone() const;
+  virtual UnicodeString *clone() const override;
 
   /** Destructor.
    * @stable ICU 2.0
    */
   virtual ~UnicodeString();
+
+#ifndef U_HIDE_DRAFT_API
+  /**
+   * Readonly-aliasing factory method.
+   * Aliases the same buffer as the input `text`
+   * which is, or which is implicitly convertible to,
+   * a std::u16string_view or (if U_SIZEOF_WCHAR_T==2) std::wstring_view.
+   * The string is bogus if the string view is too long.
+   *
+   * The text will be used for the UnicodeString object, but
+   * it will not be released when the UnicodeString is destroyed.
+   * This has copy-on-write semantics:
+   * When the string is modified, then the buffer is first copied into
+   * newly allocated memory.
+   * The aliased buffer is never modified.
+   *
+   * In an assignment to another UnicodeString, when using the copy constructor
+   * or the assignment operator, the text will be copied.
+   * When using fastCopyFrom(), the text will be aliased again,
+   * so that both strings then alias the same readonly-text.
+   *
+   * @param text The string view to alias for the UnicodeString.
+   * @draft ICU 76
+   */
+  template<typename S, typename = std::enable_if_t<ConvertibleToU16StringView<S>>>
+  static inline UnicodeString readOnlyAlias(const S &text) {
+    return readOnlyAliasFromU16StringView(internal::toU16StringView(text));
+  }
+
+  /**
+   * Readonly-aliasing factory method.
+   * Aliases the same buffer as the input `text`.
+   *
+   * The text will be used for the UnicodeString object, but
+   * it will not be released when the UnicodeString is destroyed.
+   * This has copy-on-write semantics:
+   * When the string is modified, then the buffer is first copied into
+   * newly allocated memory.
+   * The aliased buffer is never modified.
+   *
+   * In an assignment to another UnicodeString, when using the copy constructor
+   * or the assignment operator, the text will be copied.
+   * When using fastCopyFrom(), the text will be aliased again,
+   * so that both strings then alias the same readonly-text.
+   *
+   * @param text The UnicodeString to alias.
+   * @draft ICU 76
+   */
+  static inline UnicodeString readOnlyAlias(const UnicodeString &text) {
+    return readOnlyAliasFromUnicodeString(text);
+  }
+#endif  // U_HIDE_DRAFT_API
 
   /**
    * Create a UnicodeString from a UTF-8 string.
@@ -3381,7 +3645,7 @@ public:
    * Illegal input is replaced with U+FFFD. Otherwise, errors result in a bogus string.
    * Calls u_strFromUTF32WithSub().
    *
-   * @param utf32 UTF-32 input string. Must not be NULL.
+   * @param utf32 UTF-32 input string. Must not be nullptr.
    * @param length Length of the input string, or -1 if NUL-terminated.
    * @return A UnicodeString with equivalent UTF-16 contents.
    * @see toUTF32
@@ -3405,7 +3669,7 @@ public:
    *
    * \\a => U+0007, \\b => U+0008, \\t => U+0009, \\n => U+000A,
    * \\v => U+000B, \\f => U+000C, \\r => U+000D, \\e => U+001B,
-   * \\&quot; => U+0022, \\' => U+0027, \\? => U+003F, \\\\ => U+005C
+   * \\" => U+0022, \\' => U+0027, \\? => U+003F, \\\\ => U+005C
    *
    * Anything else following a backslash is generically escaped.  For
    * example, "[a\\-z]" returns "[a-z]".
@@ -3460,7 +3724,7 @@ public:
    *
    * @stable ICU 2.2
    */
-  virtual UClassID getDynamicClassID() const;
+  virtual UClassID getDynamicClassID() const override;
 
   //========================================
   // Implementation methods
@@ -3471,23 +3735,26 @@ protected:
    * Implement Replaceable::getLength() (see jitterbug 1027).
    * @stable ICU 2.4
    */
-  virtual int32_t getLength() const;
+  virtual int32_t getLength() const override;
 
   /**
    * The change in Replaceable to use virtual getCharAt() allows
    * UnicodeString::charAt() to be inline again (see jitterbug 709).
    * @stable ICU 2.4
    */
-  virtual char16_t getCharAt(int32_t offset) const;
+  virtual char16_t getCharAt(int32_t offset) const override;
 
   /**
    * The change in Replaceable to use virtual getChar32At() allows
    * UnicodeString::char32At() to be inline again (see jitterbug 709).
    * @stable ICU 2.4
    */
-  virtual UChar32 getChar32At(int32_t offset) const;
+  virtual UChar32 getChar32At(int32_t offset) const override;
 
 private:
+  static UnicodeString readOnlyAliasFromU16StringView(std::u16string_view text);
+  static UnicodeString readOnlyAliasFromUnicodeString(const UnicodeString &text);
+
   // For char* constructors. Could be made public.
   UnicodeString &setToUTF8(StringPiece utf8);
   // For extract(char*).
@@ -3503,7 +3770,23 @@ private:
    * Internal string contents comparison, called by operator==.
    * Requires: this & text not bogus and have same lengths.
    */
-  UBool doEquals(const UnicodeString &text, int32_t len) const;
+  inline UBool doEquals(const UnicodeString &text, int32_t len) const {
+    return doEquals(text.getArrayStart(), len);
+  }
+  UBool doEquals(const char16_t *text, int32_t len) const;
+
+  inline UBool
+  doEqualsSubstring(int32_t start,
+           int32_t length,
+           const UnicodeString& srcText,
+           int32_t srcStart,
+           int32_t srcLength) const;
+
+  UBool doEqualsSubstring(int32_t start,
+           int32_t length,
+           const char16_t *srcChars,
+           int32_t srcStart,
+           int32_t srcLength) const;
 
   inline int8_t
   doCompare(int32_t start,
@@ -3585,20 +3868,22 @@ private:
                const char16_t *srcChars,
                int32_t srcStart,
                int32_t srcLength);
+  UnicodeString& doReplace(int32_t start, int32_t length, std::u16string_view src);
 
   UnicodeString& doAppend(const UnicodeString& src, int32_t srcStart, int32_t srcLength);
   UnicodeString& doAppend(const char16_t *srcChars, int32_t srcStart, int32_t srcLength);
+  UnicodeString& doAppend(std::u16string_view src);
 
   UnicodeString& doReverse(int32_t start,
                int32_t length);
 
   // calculate hash code
-  int32_t doHashCode(void) const;
+  int32_t doHashCode() const;
 
   // get pointer to start of array
   // these do not check for kOpenGetBuffer, unlike the public getBuffer() function
-  inline char16_t* getArrayStart(void);
-  inline const char16_t* getArrayStart(void) const;
+  inline char16_t* getArrayStart();
+  inline const char16_t* getArrayStart() const;
 
   inline UBool hasShortLength() const;
   inline int32_t getShortLength() const;
@@ -3625,16 +3910,16 @@ private:
   UBool allocate(int32_t capacity);
 
   // release the array if owned
-  void releaseArray(void);
+  void releaseArray();
 
   // turn a bogus string into an empty one
   void unBogus();
 
-  // implements assigment operator, copy constructor, and fastCopyFrom()
-  UnicodeString &copyFrom(const UnicodeString &src, UBool fastCopy=FALSE);
+  // implements assignment operator, copy constructor, and fastCopyFrom()
+  UnicodeString &copyFrom(const UnicodeString &src, UBool fastCopy=false);
 
   // Copies just the fields without memory management.
-  void copyFieldsFrom(UnicodeString &src, UBool setSrcToBogus) U_NOEXCEPT;
+  void copyFieldsFrom(UnicodeString &src, UBool setSrcToBogus) noexcept;
 
   // Pin start and limit to acceptable values.
   inline void pinIndex(int32_t& start) const;
@@ -3653,9 +3938,9 @@ private:
    * Real constructor for converting from codepage data.
    * It assumes that it is called with !fRefCounted.
    *
-   * If <code>codepage==0</code>, then the default converter
+   * If `codepage==0`, then the default converter
    * is used for the platform encoding.
-   * If <code>codepage</code> is an empty string (<code>""</code>),
+   * If `codepage` is an empty string (`""`),
    * then a simple conversion is performed on the codepage-invariant
    * subset ("invariant characters") of the platform encoding. See utypes.h.
    */
@@ -3684,13 +3969,13 @@ private:
    * the buffer is refCounted (shared), and refCount>1, or
    * the buffer is too small.
    *
-   * Return FALSE if memory could not be allocated.
+   * Return false if memory could not be allocated.
    */
   UBool cloneArrayIfNeeded(int32_t newCapacity = -1,
-                            int32_t growCapacity = -1,
-                            UBool doCopyArray = TRUE,
-                            int32_t **pBufferToDelete = 0,
-                            UBool forceClone = FALSE);
+                           int32_t growCapacity = -1,
+                           UBool doCopyArray = true,
+                           int32_t** pBufferToDelete = nullptr,
+                           UBool forceClone = false);
 
   /**
    * Common function for UnicodeString case mappings.
@@ -3705,9 +3990,9 @@ private:
           UStringCaseMapper *stringCaseMapper);
 
   // ref counting
-  void addRef(void);
-  int32_t removeRef(void);
-  int32_t refCount(void) const;
+  void addRef();
+  int32_t removeRef();
+  int32_t refCount() const;
 
   // constants
   enum {
@@ -3716,13 +4001,13 @@ private:
      * Must be at least U16_MAX_LENGTH for the single-code point constructor to work.
      * @see UNISTR_OBJECT_SIZE
      */
-    US_STACKBUF_SIZE=(int32_t)(UNISTR_OBJECT_SIZE-sizeof(void *)-2)/U_SIZEOF_UCHAR,
+    US_STACKBUF_SIZE = static_cast<int32_t>(UNISTR_OBJECT_SIZE - sizeof(void*) - 2) / U_SIZEOF_UCHAR,
     kInvalidUChar=0xffff, // U+FFFF returned by charAt(invalid index)
     kInvalidHashCode=0, // invalid hash code
     kEmptyHashCode=1, // hash code for empty string
 
     // bit flag values for fLengthAndFlags
-    kIsBogus=1,         // this string is bogus, i.e., not valid or NULL
+    kIsBogus=1,         // this string is bogus, i.e., not valid or nullptr
     kUsingStackBuffer=2,// using fUnion.fStackFields instead of fUnion.fFields
     kRefCounted=4,      // there is a refCount field before the characters in fArray
     kBufferIsReadonly=8,// do not write to this buffer
@@ -3807,7 +4092,7 @@ private:
 };
 
 /**
- * Create a new UnicodeString with the concatenation of two others.
+ * Creates a new UnicodeString from the concatenation of two others.
  *
  * @param s1 The first string to be copied to the new one.
  * @param s2 The second string to be copied to the new one, after s1.
@@ -3816,6 +4101,29 @@ private:
  */
 U_COMMON_API UnicodeString U_EXPORT2
 operator+ (const UnicodeString &s1, const UnicodeString &s2);
+
+#ifndef U_HIDE_DRAFT_API
+/**
+ * Creates a new UnicodeString from the concatenation of a UnicodeString and `s2`
+ * which is, or which is implicitly convertible to,
+ * a std::u16string_view or (if U_SIZEOF_WCHAR_T==2) std::wstring_view.
+ *
+ * @param s1 The string to be copied to the new one.
+ * @param s2 The string view to be copied to the new string, after s1.
+ * @return UnicodeString(s1).append(s2)
+ * @draft ICU 76
+ */
+template<typename S, typename = std::enable_if_t<ConvertibleToU16StringView<S>>>
+inline UnicodeString operator+(const UnicodeString &s1, const S &s2) {
+  return unistr_internalConcat(s1, internal::toU16StringView(s2));
+}
+#endif  // U_HIDE_DRAFT_API
+
+#ifndef U_FORCE_HIDE_INTERNAL_API
+/** @internal */
+U_COMMON_API UnicodeString U_EXPORT2
+unistr_internalConcat(const UnicodeString &s1, std::u16string_view s2);
+#endif
 
 //========================================
 // Inline members
@@ -3919,18 +4227,18 @@ UnicodeString::hashCode() const
 
 inline UBool
 UnicodeString::isBogus() const
-{ return (UBool)(fUnion.fFields.fLengthAndFlags & kIsBogus); }
+{ return fUnion.fFields.fLengthAndFlags & kIsBogus; }
 
 inline UBool
 UnicodeString::isWritable() const
-{ return (UBool)!(fUnion.fFields.fLengthAndFlags&(kOpenGetBuffer|kIsBogus)); }
+{ return !(fUnion.fFields.fLengthAndFlags & (kOpenGetBuffer | kIsBogus)); }
 
 inline UBool
 UnicodeString::isBufferWritable() const
 {
-  return (UBool)(
+  return
       !(fUnion.fFields.fLengthAndFlags&(kOpenGetBuffer|kIsBogus|kBufferIsReadonly)) &&
-      (!(fUnion.fFields.fLengthAndFlags&kRefCounted) || refCount()==1));
+      (!(fUnion.fFields.fLengthAndFlags&kRefCounted) || refCount()==1);
 }
 
 inline const char16_t *
@@ -3955,7 +4263,7 @@ UnicodeString::doCompare(int32_t start,
               int32_t srcLength) const
 {
   if(srcText.isBogus()) {
-    return (int8_t)!isBogus(); // 0 if both are bogus, 1 otherwise
+    return static_cast<int8_t>(!isBogus()); // 0 if both are bogus, 1 otherwise
   } else {
     srcText.pinIndices(srcStart, srcLength);
     return doCompare(start, thisLength, srcText.getArrayStart(), srcStart, srcLength);
@@ -3963,6 +4271,21 @@ UnicodeString::doCompare(int32_t start,
 }
 
 inline UBool
+UnicodeString::doEqualsSubstring(int32_t start,
+              int32_t thisLength,
+              const UnicodeString& srcText,
+              int32_t srcStart,
+              int32_t srcLength) const
+{
+  if(srcText.isBogus()) {
+    return isBogus();
+  } else {
+    srcText.pinIndices(srcStart, srcLength);
+    return !isBogus() && doEqualsSubstring(start, thisLength, srcText.getArrayStart(), srcStart, srcLength);
+  }
+}
+
+inline bool
 UnicodeString::operator== (const UnicodeString& text) const
 {
   if(isBogus()) {
@@ -3973,7 +4296,7 @@ UnicodeString::operator== (const UnicodeString& text) const
   }
 }
 
-inline UBool
+inline bool
 UnicodeString::operator!= (const UnicodeString& text) const
 { return (! operator==(text)); }
 
@@ -4047,7 +4370,7 @@ UnicodeString::doCompareCodePointOrder(int32_t start,
                                        int32_t srcLength) const
 {
   if(srcText.isBogus()) {
-    return (int8_t)!isBogus(); // 0 if both are bogus, 1 otherwise
+    return static_cast<int8_t>(!isBogus()); // 0 if both are bogus, 1 otherwise
   } else {
     srcText.pinIndices(srcStart, srcLength);
     return doCompareCodePointOrder(start, thisLength, srcText.getArrayStart(), srcStart, srcLength);
@@ -4109,7 +4432,7 @@ UnicodeString::doCaseCompare(int32_t start,
                              uint32_t options) const
 {
   if(srcText.isBogus()) {
-    return (int8_t)!isBogus(); // 0 if both are bogus, 1 otherwise
+    return static_cast<int8_t>(!isBogus()); // 0 if both are bogus, 1 otherwise
   } else {
     srcText.pinIndices(srcStart, srcLength);
     return doCaseCompare(start, thisLength, srcText.getArrayStart(), srcStart, srcLength, options);
@@ -4342,20 +4665,20 @@ UnicodeString::lastIndexOf(UChar32 c,
 
 inline UBool
 UnicodeString::startsWith(const UnicodeString& text) const
-{ return compare(0, text.length(), text, 0, text.length()) == 0; }
+{ return doEqualsSubstring(0, text.length(), text, 0, text.length()); }
 
 inline UBool
 UnicodeString::startsWith(const UnicodeString& srcText,
               int32_t srcStart,
               int32_t srcLength) const
-{ return doCompare(0, srcLength, srcText, srcStart, srcLength) == 0; }
+{ return doEqualsSubstring(0, srcLength, srcText, srcStart, srcLength); }
 
 inline UBool
 UnicodeString::startsWith(ConstChar16Ptr srcChars, int32_t srcLength) const {
   if(srcLength < 0) {
     srcLength = u_strlen(toUCharPtr(srcChars));
   }
-  return doCompare(0, srcLength, srcChars, 0, srcLength) == 0;
+  return doEqualsSubstring(0, srcLength, srcChars, 0, srcLength);
 }
 
 inline UBool
@@ -4363,21 +4686,21 @@ UnicodeString::startsWith(const char16_t *srcChars, int32_t srcStart, int32_t sr
   if(srcLength < 0) {
     srcLength = u_strlen(toUCharPtr(srcChars));
   }
-  return doCompare(0, srcLength, srcChars, srcStart, srcLength) == 0;
+  return doEqualsSubstring(0, srcLength, srcChars, srcStart, srcLength);
 }
 
 inline UBool
 UnicodeString::endsWith(const UnicodeString& text) const
-{ return doCompare(length() - text.length(), text.length(),
-           text, 0, text.length()) == 0; }
+{ return doEqualsSubstring(length() - text.length(), text.length(),
+           text, 0, text.length()); }
 
 inline UBool
 UnicodeString::endsWith(const UnicodeString& srcText,
             int32_t srcStart,
             int32_t srcLength) const {
   srcText.pinIndices(srcStart, srcLength);
-  return doCompare(length() - srcLength, srcLength,
-                   srcText, srcStart, srcLength) == 0;
+  return doEqualsSubstring(length() - srcLength, srcLength,
+                   srcText, srcStart, srcLength);
 }
 
 inline UBool
@@ -4386,8 +4709,7 @@ UnicodeString::endsWith(ConstChar16Ptr srcChars,
   if(srcLength < 0) {
     srcLength = u_strlen(toUCharPtr(srcChars));
   }
-  return doCompare(length() - srcLength, srcLength,
-                   srcChars, 0, srcLength) == 0;
+  return doEqualsSubstring(length() - srcLength, srcLength, srcChars, 0, srcLength);
 }
 
 inline UBool
@@ -4397,8 +4719,8 @@ UnicodeString::endsWith(const char16_t *srcChars,
   if(srcLength < 0) {
     srcLength = u_strlen(toUCharPtr(srcChars + srcStart));
   }
-  return doCompare(length() - srcLength, srcLength,
-                   srcChars, srcStart, srcLength) == 0;
+  return doEqualsSubstring(length() - srcLength, srcLength,
+                   srcChars, srcStart, srcLength);
 }
 
 //========================================
@@ -4499,7 +4821,7 @@ UnicodeString::extract(int32_t start,
 
 {
   // This dstSize value will be checked explicitly
-  return extract(start, _length, dst, dst!=0 ? 0xffffffff : 0, codepage);
+  return extract(start, _length, dst, dst != nullptr ? 0xffffffff : 0, codepage);
 }
 
 #endif
@@ -4522,7 +4844,7 @@ UnicodeString::tempSubStringBetween(int32_t start, int32_t limit) const {
 inline char16_t
 UnicodeString::doCharAt(int32_t offset) const
 {
-  if((uint32_t)offset < (uint32_t)length()) {
+  if (static_cast<uint32_t>(offset) < static_cast<uint32_t>(length())) {
     return getArrayStart()[offset];
   } else {
     return kInvalidUChar;
@@ -4555,7 +4877,7 @@ inline void
 UnicodeString::setShortLength(int32_t len) {
   // requires 0 <= len <= kMaxShortLength
   fUnion.fFields.fLengthAndFlags =
-    (int16_t)((fUnion.fFields.fLengthAndFlags & kAllStorageFlags) | (len << kLengthShift));
+    static_cast<int16_t>((fUnion.fFields.fLengthAndFlags & kAllStorageFlags) | (len << kLengthShift));
 }
 
 inline void
@@ -4728,18 +5050,18 @@ UnicodeString::remove(int32_t start,
         // remove(guaranteed everything) of a bogus string makes the string empty and non-bogus
         return remove();
     }
-    return doReplace(start, _length, NULL, 0, 0);
+    return doReplace(start, _length, nullptr, 0, 0);
 }
 
 inline UnicodeString&
 UnicodeString::removeBetween(int32_t start,
                 int32_t limit)
-{ return doReplace(start, limit - start, NULL, 0, 0); }
+{ return doReplace(start, limit - start, nullptr, 0, 0); }
 
 inline UnicodeString &
 UnicodeString::retainBetween(int32_t start, int32_t limit) {
   truncate(limit);
-  return doReplace(0, start, NULL, 0, 0);
+  return doReplace(0, start, nullptr, 0, 0);
 }
 
 inline UBool
@@ -4748,12 +5070,12 @@ UnicodeString::truncate(int32_t targetLength)
   if(isBogus() && targetLength == 0) {
     // truncate(0) of a bogus string makes the string empty and non-bogus
     unBogus();
-    return FALSE;
-  } else if((uint32_t)targetLength < (uint32_t)length()) {
+    return false;
+  } else if (static_cast<uint32_t>(targetLength) < static_cast<uint32_t>(length())) {
     setLength(targetLength);
-    return TRUE;
+    return true;
   } else {
-    return FALSE;
+    return false;
   }
 }
 
@@ -4767,5 +5089,7 @@ UnicodeString::reverse(int32_t start,
 { return doReverse(start, _length); }
 
 U_NAMESPACE_END
+
+#endif /* U_SHOW_CPLUSPLUS_API */
 
 #endif

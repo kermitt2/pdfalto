@@ -15,13 +15,15 @@
 #define __DTINTRV_H__
 
 #include "unicode/utypes.h"
+
+#if U_SHOW_CPLUSPLUS_API
+
 #include "unicode/uobject.h"
 
 /**
  * \file
  * \brief C++ API: Date Interval data type
  */
-
 
 U_NAMESPACE_BEGIN
 
@@ -53,14 +55,14 @@ public:
      * @return  the from date in dateInterval.
      * @stable ICU 4.0
      */
-    UDate getFromDate() const;
+    inline UDate getFromDate() const;
 
     /** 
      * Get the to date.
      * @return  the to date in dateInterval.
      * @stable ICU 4.0
      */
-    UDate getToDate() const;
+    inline UDate getToDate() const;
 
 
     /**
@@ -74,7 +76,7 @@ public:
      * @return          The class ID for all objects of this class.
      * @stable ICU 4.0
      */
-    static UClassID U_EXPORT2 getStaticClassID(void);
+    static UClassID U_EXPORT2 getStaticClassID();
 
     /**
      * Returns a unique class ID POLYMORPHICALLY. Pure virtual override. This
@@ -87,9 +89,8 @@ public:
      *                  other classes have different class IDs.
      * @stable ICU 4.0
      */
-    virtual UClassID getDynamicClassID(void) const;
+    virtual UClassID getDynamicClassID() const override;
 
-    
     /**
      * Copy constructor.
      * @stable ICU 4.0
@@ -104,17 +105,17 @@ public:
 
     /**
      * Equality operator.
-     * @return TRUE if the two DateIntervals are the same
+     * @return true if the two DateIntervals are the same
      * @stable ICU 4.0
      */
-    virtual UBool operator==(const DateInterval& other) const;
+    virtual bool operator==(const DateInterval& other) const;
 
     /**
      * Non-equality operator
-     * @return TRUE if the two DateIntervals are not the same
+     * @return true if the two DateIntervals are not the same
      * @stable ICU 4.0
      */
-    UBool operator!=(const DateInterval& other) const;
+    inline bool operator!=(const DateInterval& other) const;
 
 
     /**
@@ -129,7 +130,7 @@ private:
     /** 
      * Default constructor, not implemented.
      */
-    DateInterval();
+    DateInterval() = delete;
 
     UDate fromDate;
     UDate toDate;
@@ -149,12 +150,14 @@ DateInterval::getToDate() const {
 }
 
 
-inline UBool 
+inline bool
 DateInterval::operator!=(const DateInterval& other) const { 
     return ( !operator==(other) );
 }
 
 
 U_NAMESPACE_END
+
+#endif /* U_SHOW_CPLUSPLUS_API */
 
 #endif
