@@ -11,7 +11,7 @@ jobs:
 
       fail-fast: false
 
-    runs-on: ${{ matrix.os }}
+    runs-on: [ubuntu-24.04, ubuntu-24.04-arm]
 
     steps:
       - name: Checkout
@@ -37,6 +37,7 @@ jobs:
           gcc -v
           g++ -v
           cmake --version
+          uconv -V
 
       - name: set env variables
         if: runner.os == 'macOS'
