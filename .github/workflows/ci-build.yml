@@ -33,12 +33,21 @@ jobs:
           brew install automake autoconf fontconfig
           brew install icu4c ucon64
 
-      - name: Display versions
+      - name: Display versions macOs
+        if: runner.os == 'macOS'
         run: |
           gcc -v
           g++ -v
-          cmake --version
+          cmake --version          
           /opt/homebrew/Cellar/ucon64/*/bin/ucon64 -v
+
+      - name: Display versions Linux
+        if: runner.os == 'Linux'
+        run: |
+          gcc -v
+          g++ -v
+          cmake --version          
+          uconv -v
 
       - name: set env variables
         if: runner.os == 'macOS'
