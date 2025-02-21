@@ -23,7 +23,7 @@ jobs:
         if: runner.os == 'Linux'
         run: |
           sudo apt-get update -qq
-          sudo apt-get install -qq cmake build-essential clang
+          sudo apt-get install -qq cmake build-essential clang ucon64
 
       - name: Set up dependencies for macOS
         if: runner.os == 'macOS'
