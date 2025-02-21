@@ -4790,7 +4790,7 @@ void TextPage::dumpInReadingOrder(GBool noLineNumbers, GBool fullFontName) {
                     if (wordI < line->words->getLength() - 1)
                         nextWord = (TextWord *) line->words->get(wordI + 1);
                     else
-                        nextWord == NULL;
+                        nextWord = NULL;
 
                     char *tmp;
 
