@@ -710,15 +710,15 @@ TextWord::TextWord(GList *charsA, int start, int lenA,
                 if (rightClass != NOT_A_MODIFIER) {
                     if (leftClass == NOT_A_MODIFIER) {
                         diactritic = getCombiningDiacritic(rightClass);
-                        baseChar = new UnicodeString(wchar_t(getStandardBaseChar(chPrev->c)));
+                        baseChar = new UnicodeString(UChar32(getStandardBaseChar(chPrev->c)));
                     }
                 } else if (leftClass != NOT_A_MODIFIER) {
                     diactritic = getCombiningDiacritic(leftClass);
-                    baseChar = new UnicodeString(wchar_t(getStandardBaseChar(ch->c)));
+                    baseChar = new UnicodeString(UChar32(getStandardBaseChar(ch->c)));
                 }
 
                 if (diactritic != 0) {
-                    diacriticChar = new UnicodeString(wchar_t(diactritic));
+                    diacriticChar = new UnicodeString(UChar32(diactritic));
                     UErrorCode errorCode = U_ZERO_ERROR;
                     const Normalizer2 *nfkc = Normalizer2::getNFKCInstance(errorCode);
                     if (!nfkc->isNormalized(*baseChar, errorCode)) {
@@ -1088,7 +1088,7 @@ void TextRawWord::addChar(GfxState *state, double x, double y, double dx,
             if (leftClass != NOT_A_MODIFIER) {
                 if (rightClass == NOT_A_MODIFIER) {
                     diactritic = getCombiningDiacritic(leftClass);
-                    baseChar = new UnicodeString(wchar_t(getStandardBaseChar(u)));
+                    baseChar = new UnicodeString(UChar32(getStandardBaseChar(u)));
                 }
                 // note that in this case we have to be careful with the word coordinates, as the first
                 // character of the word might be a modifier, we should use the base char instead
@@ -1096,11 +1096,11 @@ void TextRawWord::addChar(GfxState *state, double x, double y, double dx,
                 // to shift from the base line
             } else if (rightClass != NOT_A_MODIFIER) {
                 diactritic = getCombiningDiacritic(rightClass);
-                baseChar = new UnicodeString(wchar_t(getStandardBaseChar(prvChar)));
+                baseChar = new UnicodeString(UChar32(getStandardBaseChar(prvChar)));
             }
 
             if (diactritic != 0) {
-                diacriticChar = new UnicodeString(wchar_t(diactritic));
+                diacriticChar = new UnicodeString(UChar32(diactritic));
                 UErrorCode errorCode = U_ZERO_ERROR;
                 const Normalizer2 *nfkc = Normalizer2::getNFKCInstance(errorCode);
                 if (!nfkc->isNormalized(*baseChar, errorCode)) {
