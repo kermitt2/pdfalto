@@ -27,3 +27,5 @@ traingenerator
 jeu/*
 build/
 install/
+.ninja_*
+build.ninja
