@@ -1,6 +1,12 @@
-name: Build dependencies
+name: Manual build static libraries
 
-on: [ push ]
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - feature/update-external-libraries-experiment
+      - main
+
 
 jobs:
   build-libxml2-linux:
@@ -107,8 +113,8 @@ jobs:
       - name: Download source
         run: |
           cd libs/freetype
-          wget -O source.tar.xz https://sourceforge.net/projects/freetype/files/latest/download
-          unzip source.tar.xz
+          wget -O source.tar.gz https://sourceforge.net/projects/freetype/files/freetype2/2.13.3/freetype-2.13.3.tar.gz/download
+          tar -zxf source.tar.gz
           mv freetype-* src
 
       - name: Build source
@@ -148,7 +154,7 @@ jobs:
       - name: Download source
         run: |
           cd libs/freetype
-          wget -O source.tar.gz https://sourceforge.net/projects/freetype/files/latest/download
+          wget -O source.tar.gz https://sourceforge.net/projects/freetype/files/freetype2/2.13.3/freetype-2.13.3.tar.gz/download
           ls -l 
           pwd
           tar -xzf source.tar.gz
@@ -192,16 +198,16 @@ jobs:
       - name: Download source
         run: |
           cd libs/image/png
-          wget -O source.tar.xz https://sourceforge.net/projects/libpng/files/latest/download
-          unzip source.tar.xz
-          mv lpng* src
+          wget -O source.tar.gz https://sourceforge.net/projects/libpng/files/libpng16/1.6.46/libpng-1.6.46.tar.gz/download
+          tar -zxf source.tar.gz
+          mv libpng* src
 
       - name: Build source
         run: |
           cd libs/image/png/src
           mkdir build 
           cd build 
-          cmake .. 
+          cmake .. -DBUILD_SHARED_LIBS=OFF
           make
           cd ..
           mkdir -p output
@@ -232,19 +238,17 @@ jobs:
 
       - name: Download source
         run: |
-          cd libs/image/png/src
-          wget -O source.tar.gz https://sourceforge.net/projects/libpng/files/latest/download
-          ls -l 
-          pwd
+          cd libs/image/png
+          wget -O source.tar.gz https://sourceforge.net/projects/libpng/files/libpng16/1.6.46/libpng-1.6.46.tar.gz/download
           tar -xzf source.tar.gz
-          mv lpng* src
+          mv libpng* src
 
       - name: Build source
         run: |
           cd libs/image/png/src
           mkdir build 
           cd build 
-          cmake .. 
+          cmake .. -DBUILD_SHARED_LIBS=OFF
           make
           cd ..
           mkdir -p output
@@ -286,18 +290,17 @@ jobs:
           cd libs/image/zlib/src
           mkdir build 
           cd build 
-          cmake ..
+          cmake .. -DBUILD_SHARED_LIBS=OFF
           make
           cd ..
-          mkdir -p output
-          cp build/libzlib.a output/
+          mkdir -p zlib/linux/${{ matrix.os == 'ubuntu-24.04' && '64' || 'arm64' }}
+          cp build/libz.a zlib/linux/${{ matrix.os == 'ubuntu-24.04' && '64' || 'arm64' }}
 
       - name: Save specific file
         uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.os == 'ubuntu-24.04' && 'libzlib-linux-64' || 'libzlib-linux-arm64' }}
-          path: libs/image/png/zlib/output/libzlib.a
-
+          path: libs/image/zlib/src/zlib
 
   build-zlib-macos:
     strategy:
@@ -328,17 +331,17 @@ jobs:
           cd libs/image/zlib/src
           mkdir build 
           cd build 
-          cmake ..
+          cmake .. -DBUILD_SHARED_LIBS=OFF
           make
           cd ..
-          mkdir -p output
-          cp build/libzlib.a output/
+          mkdir -p zlib/macos/arm64
+          cp build/libz.a zlib/macos/arm64
 
       - name: Save specific file
         uses: actions/upload-artifact@v4
         with:
           name: libzlib-macos-arm64
-          path: libs/image/zlib/src/output/libzlib.a
+          path: libs/image/zlib/src/zlib
 
   build-icu-linux:
     strategy:
@@ -371,15 +374,15 @@ jobs:
           ./runConfigureICU Linux --enable-static --disable-shared
           make -j8
           cd ../../
-          mkdir -p output
-          cp icu4c/source/lib/libicudata.a output/
-          cp icu4c/source/lib/libicuuc.a output/
+          mkdir -p icu/linux/${{ matrix.os == 'ubuntu-24.04' && '64' || 'arm64' }}
+          cp icu4c/source/lib/libicudata.a icu/linux/${{ matrix.os == 'ubuntu-24.04' && '64' || 'arm64' }}
+          cp icu4c/source/lib/libicuuc.a icu/linux/${{ matrix.os == 'ubuntu-24.04' && '64' || 'arm64' }}
 
       - name: Save specific file
         uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.os == 'ubuntu-24.04' && 'icu-linux-64' || 'icu-linux-arm64' }}
-          path: libs/icu/src/output/libicu*.a
+          path: libs/icu/src/icu
 
 
   build-icu-macos:
@@ -415,12 +418,12 @@ jobs:
           ./runConfigureICU macOS --enable-static --disable-shared
           make -j8
           cd ../../
-          mkdir -p output
-          cp icu4c/source/lib/libicudata.a output/
-          cp icu4c/source/lib/libicuuc.a output/
+          mkdir -p icu/mac/arm64
+          cp icu4c/source/lib/libicudata.a icu/mac/arm64
+          cp icu4c/source/lib/libicuuc.a icu/mac/arm64
 
       - name: Save specific file
         uses: actions/upload-artifact@v4
         with:
           name: icu-macos-arm64
-          path: libs/icu/src/output/libicu*.a
+          path: libs/icu/src/icu
