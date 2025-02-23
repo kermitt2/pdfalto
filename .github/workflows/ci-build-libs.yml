@@ -1,0 +1,426 @@
+name: Build dependencies
+
+on: [ push ]
+
+jobs:
+  build-libxml2-linux:
+    strategy:
+      matrix:
+        os: [ ubuntu-24.04, ubuntu-24.04-arm ]
+
+      fail-fast: false
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Set up dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y wget cmake autoconf automake
+
+      - name: Download source
+        run: |
+          cd libs/libxml
+          wget -O source.tar.gz https://gitlab.gnome.org/GNOME/libxml2/-/archive/v2.13.6/libxml2-v2.13.6.tar.gz
+          tar -xzf source.tar.gz
+          mv libxml2-* src
+
+      - name: Build source
+        run: |
+          cd libs/libxml/src
+          mkdir build 
+          cd build 
+          cmake -G "Unix Makefiles" .. -DWITH_LZMA=OFF -DWITH_ICONV=OFF -DWITH_ZLIB=OFF -DBUILD_SHARED_LIBS=OFF
+          make
+          cd ..
+          mkdir -p output
+          cp build/libxml2.a output/
+
+      - name: Save specific file
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.os == 'ubuntu-24.04' && 'libxml2-linux-64' || 'libxml2-linux-arm64' }}
+          path: libs/libxml/src/output/libxml2.a
+
+  build-libxml2-macos:
+    strategy:
+      matrix:
+        os: [ macos-latest ]
+
+      fail-fast: false
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Set up dependencies
+        run: |
+          brew install wget cmake autoconf automake
+
+      - name: Download source
+        run: |
+          cd libs/libxml
+          wget -O source.tar.gz https://gitlab.gnome.org/GNOME/libxml2/-/archive/v2.13.6/libxml2-v2.13.6.tar.gz
+          tar -xzf source.tar.gz
+          mv libxml2-* src
+
+      - name: Build source
+        run: |
+          cd libs/libxml/src
+          mkdir build 
+          cd build 
+          cmake -G "Unix Makefiles" .. -DWITH_LZMA=OFF -DWITH_ICONV=OFF -DWITH_ZLIB=OFF -DBUILD_SHARED_LIBS=OFF
+          make
+          cd ..
+          mkdir -p output
+          cp build/libxml2.a output/
+
+      - name: Save specific file
+        uses: actions/upload-artifact@v4
+        with:
+          name: libxml2-macos-arm64
+          path: libs/libxml/src/output/libxml2.a
+
+  build-freetype-linux:
+    strategy:
+      matrix:
+        os: [ ubuntu-24.04, ubuntu-24.04-arm ]
+
+      fail-fast: false
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Set up dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y wget cmake autoconf automake
+
+      - name: Download source
+        run: |
+          cd libs/freetype
+          wget -O source.tar.xz https://sourceforge.net/projects/freetype/files/latest/download
+          unzip source.tar.xz
+          mv freetype-* src
+
+      - name: Build source
+        run: |
+          cd libs/freetype/src
+          mkdir build 
+          cd build 
+          cmake -G "Unix Makefiles" .. -DCMAKE_DISABLE_FIND_PACKAGE_HarfBuzz=TRUE -DFT_WITH_ZLIB=OFF -DFT_WITH_BZIP2=OFF -DFT_WITH_PNG=OFF
+          make
+          cd ..
+          mkdir -p output
+          cp build/libfreetype.a output/
+
+      - name: Save specific file
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.os == 'ubuntu-24.04' && 'freetype-linux-64' || 'freetype-linux-arm64' }}
+          path: libs/freetype/src/output/libfreetype.a
+
+  build-freetype-macos:
+    strategy:
+      matrix:
+        os: [ macos-latest ]
+
+      fail-fast: false
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Set up dependencies
+        run: |
+          brew install wget cmake autoconf automake
+
+      - name: Download source
+        run: |
+          cd libs/freetype
+          wget -O source.tar.gz https://sourceforge.net/projects/freetype/files/latest/download
+          ls -l 
+          pwd
+          tar -xzf source.tar.gz
+          mv freetype-* src
+
+      - name: Build source
+        run: |
+          cd libs/freetype/src
+          mkdir build 
+          cd build 
+          cmake -G "Unix Makefiles" .. -DWITH_LZMA=OFF -DWITH_ICONV=OFF -DWITH_ZLIB=OFF -DBUILD_SHARED_LIBS=OFF
+          make
+          cd ..
+          mkdir -p output
+          cp build/libfreetype.a output/
+
+      - name: Save specific file
+        uses: actions/upload-artifact@v4
+        with:
+          name: freetype-macos-arm64
+          path: libs/freetype/src/output/libfreetype.a
+
+  build-libpng-linux:
+    strategy:
+      matrix:
+        os: [ ubuntu-24.04, ubuntu-24.04-arm ]
+
+      fail-fast: false
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Set up dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y wget cmake autoconf automake
+
+      - name: Download source
+        run: |
+          cd libs/image/png
+          wget -O source.tar.xz https://sourceforge.net/projects/libpng/files/latest/download
+          unzip source.tar.xz
+          mv lpng* src
+
+      - name: Build source
+        run: |
+          cd libs/image/png/src
+          mkdir build 
+          cd build 
+          cmake .. 
+          make
+          cd ..
+          mkdir -p output
+          cp build/libpng.a output/
+
+      - name: Save specific file
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.os == 'ubuntu-24.04' && 'libpng-linux-64' || 'libpng-linux-arm64' }}
+          path: libs/image/png/src/output/libpng.a
+
+  build-libpng-macos:
+    strategy:
+      matrix:
+        os: [ macos-latest ]
+
+      fail-fast: false
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Set up dependencies
+        run: |
+          brew install wget cmake autoconf automake
+
+      - name: Download source
+        run: |
+          cd libs/image/png/src
+          wget -O source.tar.gz https://sourceforge.net/projects/libpng/files/latest/download
+          ls -l 
+          pwd
+          tar -xzf source.tar.gz
+          mv lpng* src
+
+      - name: Build source
+        run: |
+          cd libs/image/png/src
+          mkdir build 
+          cd build 
+          cmake .. 
+          make
+          cd ..
+          mkdir -p output
+          cp build/libpng.a output/
+
+      - name: Save specific file
+        uses: actions/upload-artifact@v4
+        with:
+          name: libpng-macos-arm64
+          path: libs/image/png/src/output/libpng.a
+
+  build-zlib-linux:
+    strategy:
+      matrix:
+        os: [ ubuntu-24.04, ubuntu-24.04-arm ]
+
+      fail-fast: false
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Set up dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y wget cmake autoconf automake
+
+      - name: Download source
+        run: |
+          cd libs/image/zlib
+          wget -O source.tar.gz https://zlib.net/zlib-1.3.1.tar.gz
+          tar -zxf source.tar.gz
+          mv zlib-* src
+
+      - name: Build source
+        run: |
+          cd libs/image/zlib/src
+          mkdir build 
+          cd build 
+          cmake ..
+          make
+          cd ..
+          mkdir -p output
+          cp build/libzlib.a output/
+
+      - name: Save specific file
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.os == 'ubuntu-24.04' && 'libzlib-linux-64' || 'libzlib-linux-arm64' }}
+          path: libs/image/png/zlib/output/libzlib.a
+
+
+  build-zlib-macos:
+    strategy:
+      matrix:
+        os: [ macos-latest ]
+
+      fail-fast: false
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Set up dependencies
+        run: |
+          brew install wget cmake autoconf automake
+
+      - name: Download source
+        run: |
+          cd libs/image/zlib
+          wget -O source.tar.gz https://zlib.net/zlib-1.3.1.tar.gz
+          tar -xzf source.tar.gz
+          mv zlib-* src
+
+      - name: Build source
+        run: |
+          cd libs/image/zlib/src
+          mkdir build 
+          cd build 
+          cmake ..
+          make
+          cd ..
+          mkdir -p output
+          cp build/libzlib.a output/
+
+      - name: Save specific file
+        uses: actions/upload-artifact@v4
+        with:
+          name: libzlib-macos-arm64
+          path: libs/image/zlib/src/output/libzlib.a
+
+  build-icu-linux:
+    strategy:
+      matrix:
+        os: [ ubuntu-24.04, ubuntu-24.04-arm ]
+
+      fail-fast: false
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Set up dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y wget cmake autoconf automake
+
+      - name: Download source
+        run: |
+          cd libs/icu
+          wget -O source.tar.gz https://github.com/unicode-org/icu/archive/refs/tags/release-76-1.tar.gz
+          tar -zxf source.tar.gz
+          mv icu-release-* src
+
+      - name: Build source
+        run: |
+          cd libs/icu/src/icu4c/source
+          ./runConfigureICU Linux --enable-static --disable-shared
+          make -j8
+          cd ../../
+          mkdir -p output
+          cp icu4c/source/lib/libicudata.a output/
+          cp icu4c/source/lib/libicuuc.a output/
+
+      - name: Save specific file
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.os == 'ubuntu-24.04' && 'icu-linux-64' || 'icu-linux-arm64' }}
+          path: libs/icu/src/output/libicu*.a
+
+
+  build-icu-macos:
+    strategy:
+      matrix:
+        os: [ macos-latest ]
+
+      fail-fast: false
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Set up dependencies
+        run: |
+          brew install wget cmake autoconf automake
+
+      - name: Download source
+        run: |
+          cd libs/icu
+          wget -O source.tar.gz https://github.com/unicode-org/icu/archive/refs/tags/release-76-1.tar.gz
+          tar -zxf source.tar.gz
+          mv icu-release-* src
+
+      - name: Build source
+        env:
+          C_INCLUDE_PATH: '/opt/homebrew/include'
+          CPLUS_INCLUDE_PATH: '/opt/homebrew/include'
+        run: |
+          cd libs/icu/src/icu4c/source 
+          ./runConfigureICU macOS --enable-static --disable-shared
+          make -j8
+          cd ../../
+          mkdir -p output
+          cp icu4c/source/lib/libicudata.a output/
+          cp icu4c/source/lib/libicuuc.a output/
+
+      - name: Save specific file
+        uses: actions/upload-artifact@v4
+        with:
+          name: icu-macos-arm64
+          path: libs/icu/src/output/libicu*.a
