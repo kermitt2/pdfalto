@@ -8,9 +8,10 @@ Here we describe procedures to compile the static dependencies.
 * makefile generator : cmake 3.12.0
 * fetching dependencies : wget
 
-## Current versions: 
-- LibPNG: 
-- zLib: 
+## Current versions:
+
+- LibPNG:
+- zLib:
 - libxml2: 2.13.6
 - freetype: 2.13.3
 
@@ -33,17 +34,18 @@ Here we describe procedures to compile the static dependencies.
 
 ## libxml2
 
-1. Download the source from https://gitlab.gnome.org/GNOME/libxml2/-/archive/v2.13.6/libxml2-v2.13.6.tar.gz and unpack it.
+1. Download the source from https://gitlab.gnome.org/GNOME/libxml2/-/archive/v2.13.6/libxml2-v2.13.6.tar.gz and unpack
+   it.
 
-2. Access the directory: 
+2. Access the directory:
 
    ```shell
    mkdir build && cd build && \
    cmake -G "Unix Makefiles" .. -DWITH_LZMA=OFF -DWITH_ICONV=OFF -DWITH_ZLIB=OFF -DBUILD_SHARED_LIBS=OFF
    ```
 
-3. Run `make` to compile, then take the static file from `./libxml2.a` and copy it under corresponding OS `libs/libxml/<OS>`
-
+3. Run `make` to compile, then take the static file from `./libxml2.a` and copy it under corresponding OS
+   `libs/libxml/<OS>`
 
 ## Freetype
 
@@ -52,7 +54,7 @@ Here we describe procedures to compile the static dependencies.
    ```shell
    mkdir build && cd build
    ```
-   
+
    (you might need to use dos2unix to fix encoding problem from windows)
 
    ```shell
@@ -62,34 +64,44 @@ Here we describe procedures to compile the static dependencies.
    (options are set to avoid searching libraries)
 
 3. Finally run `make` , then copy the static file from `libfreetype.a` and paste it under corresponding OS
-`libs/freetype/<OS>`
-
+   `libs/freetype/<OS>`
 
 ## ICU
 
-After downloading sources (tested with version 62) from http://site.icu-project.org/download/ :
+1. Download the sources (tested with version 76-1)
+   from https://github.com/unicode-org/icu/archive/refs/tags/release-76-1.tar.gz :
 
-1- Decompress the archive file. For example,
-> gunzip -d < icu-X.Y.tgz | tar xvf -
+2. Decompress the archive file. For example,
+   ```shell
+   gunzip -d < icu-X.Y.tgz | tar xvf -
+    ```
 
-2- Change directory to icu/source.
-> cd icu/source && mkdir lib && mkdir bin
+3. Change directory to icu/source.
+   ```shell
+   cd icu/source && mkdir lib && mkdir bin
+    ```
 
-3- Some files may have the wrong permissions.
-> chmod +x runConfigureICU configure install-sh
+4. Some files may have the wrong permissions.
+    ```shell
+   chmod +x runConfigureICU configure install-sh
+    ```
 
 (using cygwin from windows, you might need to use dos2unix to fix encoding problem or correct manually)
 
-4- Run the runConfigureICU script for your platform (static library should be generated).
-> ./runConfigureICU <MacOSX | Linux | Cygwin>  --enable-static --disable-shared
+5. Run the runConfigureICU script for your platform (static library should be generated).
+   ```shell
+   ./runConfigureICU <MacOSX | Linux | Cygwin>  --enable-static --disable-shared
+   ```
 
-5- Now build:
-> make
+6. Now build:
+   ```shell
+   make
+    ```
 
 See [ICU Readme](http://source.icu-project.org/repos/icu/trunk/icu4c/readme.html) for futher details.
 
-6- Copy `libicuuc.a` from `icu/source/lib` and `libicudata.a` from `icu/source/stubdata` and put it under corresponding
-OS `libs/icu/<OS>`
+7. Copy `libicuuc.a` from `icu/source/lib` and `libicudata.a` from `icu/source/stubdata` and put it under corresponding
+   OS `libs/icu/<OS>`
 
 # Contributors
 
