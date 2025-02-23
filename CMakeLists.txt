@@ -7,34 +7,34 @@ set(CMAKE_BUILD_TYPE "Release")
 
 #--- look for fontconfig
 if (NOT NO_FONTCONFIG)
-  find_library(FONTCONFIG_LIBRARY
-               NAMES fontconfig libfontconfig
-               PATH_SUFFIXES lib64 lib
-  )
-  if (FONTCONFIG_LIBRARY)
-    set(HAVE_FONTCONFIG TRUE)
-    message(STATUS "Found fontconfig")
-  else ()
+    find_library(FONTCONFIG_LIBRARY
+            NAMES fontconfig libfontconfig
+            PATH_SUFFIXES lib64 lib
+    )
+    if (FONTCONFIG_LIBRARY)
+        set(HAVE_FONTCONFIG TRUE)
+        message(STATUS "Found fontconfig")
+    else ()
+        set(HAVE_FONTCONFIG FALSE)
+        set(FONTCONFIG_LIBRARY "")
+    endif ()
+else ()
     set(HAVE_FONTCONFIG FALSE)
     set(FONTCONFIG_LIBRARY "")
-  endif ()
-else ()
-  set(HAVE_FONTCONFIG FALSE)
-  set(FONTCONFIG_LIBRARY "")
 endif ()
 
 #build xpdf
-set ( XPDF_SUBDIR ${CMAKE_CURRENT_SOURCE_DIR}/xpdf-4.03)
+set(XPDF_SUBDIR ${CMAKE_CURRENT_SOURCE_DIR}/xpdf-4.03)
 
-set ( IMAGE_SUBDIR ${CMAKE_CURRENT_SOURCE_DIR}/libs/image)
+set(IMAGE_SUBDIR ${CMAKE_CURRENT_SOURCE_DIR}/libs/image)
 
-set ( PNG_SUBDIR ${CMAKE_CURRENT_SOURCE_DIR}/libs/image/png)
+set(PNG_SUBDIR ${CMAKE_CURRENT_SOURCE_DIR}/libs/image/png)
 
-set ( ZLIB_SUBDIR ${CMAKE_CURRENT_SOURCE_DIR}/libs/image/zlib)
+set(ZLIB_SUBDIR ${CMAKE_CURRENT_SOURCE_DIR}/libs/image/zlib)
 
-set ( ICU_LIB_SUBDIR ${CMAKE_CURRENT_SOURCE_DIR}/libs/icu)
+set(ICU_LIB_SUBDIR ${CMAKE_CURRENT_SOURCE_DIR}/libs/icu)
 
-set ( XML_LIB_SUBDIR ${CMAKE_CURRENT_SOURCE_DIR}/libs/libxml)
+set(XML_LIB_SUBDIR ${CMAKE_CURRENT_SOURCE_DIR}/libs/libxml)
 
 set(FREETYPE_INCLUDE_DIR_ft2build ${CMAKE_CURRENT_SOURCE_DIR}/libs/freetype/include)
 set(FREETYPE_INCLUDE_DIR_freetype_freetype ${CMAKE_CURRENT_SOURCE_DIR}/libs/freetype/include)
@@ -43,7 +43,7 @@ include_directories("${ZLIB_SUBDIR}/src")
 set(PNG_INCLUDE_DIRS ${PNG_SUBDIR}/src)
 set(PNG_FOUND TRUE)
 
-set ( ICU_PATH ${CMAKE_CURRENT_SOURCE_DIR}/libs/icu)
+set(ICU_PATH ${CMAKE_CURRENT_SOURCE_DIR}/libs/icu)
 
 if (APPLE)
     message("Using macos settings.")
@@ -56,13 +56,13 @@ if (APPLE)
     message("arm64Supported=${arm64Supported}")
 
 
-    IF( ${arm64Supported} MATCHES 1 )
+    IF (${arm64Supported} MATCHES 1)
         set(ARCHSUFFIX "arm64")
-        MESSAGE( STATUS "Check if the building for macOS ARM - TRUE" )
-    ELSE()
+        MESSAGE(STATUS "Check if the building for macOS ARM - TRUE")
+    ELSE ()
         set(ARCHSUFFIX "64")
-        MESSAGE( STATUS "Check if the building for macOS ARM - FALSE" )
-    ENDIF( )
+        MESSAGE(STATUS "Check if the building for macOS ARM - FALSE")
+    ENDIF ()
 
 elseif (CYGWIN OR MSVC OR WIN32 OR MINGW)
     message("Using windows settings.")
@@ -74,22 +74,37 @@ elseif (UNIX)
     set(OSSUFFIX "linux")
 endif ()
 
-if ( ${OSSUFFIX} MATCHES "windows" OR ${OSSUFFIX} MATCHES "linux" )
-    if("${CMAKE_SIZEOF_VOID_P}" EQUAL "8")
-        MESSAGE("++ 64 bit architecture")
-        set(ARCHSUFFIX "64")
-    else()
+if (${OSSUFFIX} MATCHES "windows" OR ${OSSUFFIX} MATCHES "linux")
+    if (CMAKE_SYSTEM_PROCESSOR MATCHES "aarch64" OR CMAKE_SYSTEM_PROCESSOR MATCHES "arm64")
+        set(ARM64 TRUE)
+    else ()
+        set(ARM64 FALSE)
+    endif ()
+
+    if ("${CMAKE_SIZEOF_VOID_P}" EQUAL "8")
+        if(ARM64)
+            MESSAGE("++ 64 bit ARM architecture")
+            set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -march=armv8-a")
+            set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -march=armv8-a")
+            set(ARCHSUFFIX "arm64")
+        else()
+            MESSAGE("++ 64 bit architecture")
+            set(ARCHSUFFIX "64")
+        endif()
+    else ()
         MESSAGE("++ 32 bit architecture")
         set(ARCHSUFFIX "32")
-    endif()
-endif()
+    endif ()
+endif ()
 
-set ( XML_LIBRARY ${XML_LIB_SUBDIR}/${OSSUFFIX}/${ARCHSUFFIX}/libxml2.a)
-set ( PNG_LIBRARIES ${PNG_SUBDIR}/${OSSUFFIX}/${ARCHSUFFIX}/libpng.a)
-set ( ZLIB_LIBRARY ${ZLIB_SUBDIR}/${OSSUFFIX}/${ARCHSUFFIX}/libzlib.a)
-set ( FREETYPE_LIBRARY ${CMAKE_CURRENT_SOURCE_DIR}/libs/freetype/${OSSUFFIX}/${ARCHSUFFIX}/libfreetype.a)
-set ( ICUUC_LIB ${CMAKE_CURRENT_SOURCE_DIR}/libs/icu/${OSSUFFIX}/${ARCHSUFFIX}/libicuuc.a)
-set ( ICUDATA_LIB ${CMAKE_CURRENT_SOURCE_DIR}/libs/icu/${OSSUFFIX}/${ARCHSUFFIX}/libicudata.a)
+MESSAGE("Final os/arch: " ${OSSUFFIX}/${ARCHSUFFIX})
+
+set(XML_LIBRARY ${XML_LIB_SUBDIR}/${OSSUFFIX}/${ARCHSUFFIX}/libxml2.a)
+set(PNG_LIBRARIES ${PNG_SUBDIR}/${OSSUFFIX}/${ARCHSUFFIX}/libpng.a)
+set(ZLIB_LIBRARY ${ZLIB_SUBDIR}/${OSSUFFIX}/${ARCHSUFFIX}/libzlib.a)
+set(FREETYPE_LIBRARY ${CMAKE_CURRENT_SOURCE_DIR}/libs/freetype/${OSSUFFIX}/${ARCHSUFFIX}/libfreetype.a)
+set(ICUUC_LIB ${CMAKE_CURRENT_SOURCE_DIR}/libs/icu/${OSSUFFIX}/${ARCHSUFFIX}/libicuuc.a)
+set(ICUDATA_LIB ${CMAKE_CURRENT_SOURCE_DIR}/libs/icu/${OSSUFFIX}/${ARCHSUFFIX}/libicudata.a)
 
 
 set(XPDF_BUILD_DIR ${XPDF_SUBDIR}/build)
@@ -112,23 +127,23 @@ set(SOURCE_FILES
         src/pdfalto.cc
         src/XmlAltoOutputDev.cc
         src/XmlAltoOutputDev.h
-        )
+)
 
 add_executable(pdfalto ${SOURCE_FILES})
 
-if(HAVE_PAPER_H)
-    if(HAVE_FONTCONFIG)
+if (HAVE_PAPER_H)
+    if (HAVE_FONTCONFIG)
         target_link_libraries(pdfalto ${PNG_LIBRARIES} ${ZLIB_LIBRARY} ${XML_LIBRARY} splash xpdf goo fofi ${ICUUC_LIB} ${ICUDATA_LIB} ${FREETYPE_LIBRARY} dl ${PAPER_LIBRARY} ${FONTCONFIG_LIBRARY})
-    else()
+    else ()
         target_link_libraries(pdfalto ${PNG_LIBRARIES} ${ZLIB_LIBRARY} ${XML_LIBRARY} splash xpdf goo fofi ${ICUUC_LIB} ${ICUDATA_LIB} ${FREETYPE_LIBRARY} dl ${PAPER_LIBRARY})
-    endif()
-else()
-    if(HAVE_FONTCONFIG)
+    endif ()
+else ()
+    if (HAVE_FONTCONFIG)
         target_link_libraries(pdfalto ${PNG_LIBRARIES} ${ZLIB_LIBRARY} ${XML_LIBRARY} splash xpdf goo fofi ${ICUUC_LIB} ${ICUDATA_LIB} ${FREETYPE_LIBRARY} dl ${FONTCONFIG_LIBRARY})
-    else()
+    else ()
         target_link_libraries(pdfalto ${PNG_LIBRARIES} ${ZLIB_LIBRARY} ${XML_LIBRARY} splash xpdf goo fofi ${ICUUC_LIB} ${ICUDATA_LIB} ${FREETYPE_LIBRARY} dl)
-    endif()
-endif()
+    endif ()
+endif ()
 
 target_include_directories(pdfalto
         PUBLIC ${XML_LIB_SUBDIR}/include
@@ -141,4 +156,4 @@ target_include_directories(pdfalto
         PUBLIC ${XPDF_SUBDIR}/xpdf
         PUBLIC ${XPDF_BUILD_DIR}
         PUBLIC ${ICU_PATH}/common
-        )
+)
