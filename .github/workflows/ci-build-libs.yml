@@ -4,98 +4,72 @@ on:
   workflow_dispatch:
   push:
     branches:
-      - feature/update-external-libraries-experiment
+      - feature/update-external-libraries-merge-builds
       - main
 
 
 jobs:
-  build-libxml2-linux:
+  build-libxml2:
     strategy:
       matrix:
-        os: [ ubuntu-24.04, ubuntu-24.04-arm ]
+        os: [ ubuntu-24.04, ubuntu-24.04-arm, macos-latest ]
 
       fail-fast: false
 
     runs-on: ${{ matrix.os }}
+    env:
+      JOB_VAR: "job_value"
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
 
-      - name: Set up dependencies
+      - name: Set up dependencies Linux
+        if: runner.os == 'Linux'
         run: |
           sudo apt-get update
           sudo apt-get install -y wget cmake autoconf automake
 
-      - name: Download source
-        run: |
-          cd libs/libxml
-          wget -O source.tar.gz https://gitlab.gnome.org/GNOME/libxml2/-/archive/v2.13.6/libxml2-v2.13.6.tar.gz
-          tar -xzf source.tar.gz
-          mv libxml2-* src
-
-      - name: Build source
-        run: |
-          cd libs/libxml/src
-          mkdir build 
-          cd build 
-          cmake -G "Unix Makefiles" .. -DWITH_LZMA=OFF -DWITH_ICONV=OFF -DWITH_ZLIB=OFF -DBUILD_SHARED_LIBS=OFF
-          make
-          cd ..
-          mkdir -p output
-          cp build/libxml2.a output/
-
-      - name: Save specific file
-        uses: actions/upload-artifact@v4
-        with:
-          name: ${{ matrix.os == 'ubuntu-24.04' && 'libxml2-linux-64' || 'libxml2-linux-arm64' }}
-          path: libs/libxml/src/output/libxml2.a
-
-  build-libxml2-macos:
-    strategy:
-      matrix:
-        os: [ macos-latest ]
-
-      fail-fast: false
-
-    runs-on: ${{ matrix.os }}
-
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v3
-
-      - name: Set up dependencies
+      - name: Set up dependencies Macos
+        if: runner.os == 'macOS'
         run: |
           brew install wget cmake autoconf automake
 
+      - name: Set OS and ARCH variables
+        run: |
+          echo "OS=${{ runner.os == 'Linux' && 'linux' || 'mac' }}" >> $GITHUB_ENV
+          echo "ARCH=${{ runner.arch == 'X64' && '64' || 'arm64' }}" >> $GITHUB_ENV
+        shell: bash
+
       - name: Download source
         run: |
-          cd libs/libxml
+          pushd libs/libxml
           wget -O source.tar.gz https://gitlab.gnome.org/GNOME/libxml2/-/archive/v2.13.6/libxml2-v2.13.6.tar.gz
           tar -xzf source.tar.gz
           mv libxml2-* src
 
       - name: Build source
         run: |
-          cd libs/libxml/src
-          mkdir build 
-          cd build 
+          pushd libs/libxml/src
+          mkdir -p build 
+          pushd build 
           cmake -G "Unix Makefiles" .. -DWITH_LZMA=OFF -DWITH_ICONV=OFF -DWITH_ZLIB=OFF -DBUILD_SHARED_LIBS=OFF
           make
-          cd ..
-          mkdir -p output
-          cp build/libxml2.a output/
+          popd
+          mkdir -p output/libxml/$OS/$ARCH
+          cp build/libxml2.a output/libxml/$OS/$ARCH          
 
       - name: Save specific file
         uses: actions/upload-artifact@v4
         with:
-          name: libxml2-macos-arm64
-          path: libs/libxml/src/output/libxml2.a
+          name: libxml2-binary-${{ env.OS }}-${{ env.ARCH }}
+          path: libs/libxml/src/output
 
-  build-freetype-linux:
+
+  build-freetype:
     strategy:
       matrix:
-        os: [ ubuntu-24.04, ubuntu-24.04-arm ]
+        os: [ ubuntu-24.04, ubuntu-24.04-arm, macos-latest ]
 
       fail-fast: false
 
@@ -105,10 +79,22 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v3
 
-      - name: Set up dependencies
+      - name: Set up dependencies Linux
+        if: runner.os == 'Linux'
         run: |
           sudo apt-get update
           sudo apt-get install -y wget cmake autoconf automake
+
+      - name: Set up dependencies Macos
+        if: runner.os == 'macOS'
+        run: |
+          brew install wget cmake autoconf automake
+
+      - name: Set OS and ARCH variables
+        run: |
+          echo "OS=${{ runner.os == 'Linux' && 'linux' || 'mac' }}" >> $GITHUB_ENV
+          echo "ARCH=${{ runner.arch == 'X64' && '64' || 'arm64' }}" >> $GITHUB_ENV
+        shell: bash
 
       - name: Download source
         run: |
@@ -120,24 +106,24 @@ jobs:
       - name: Build source
         run: |
           cd libs/freetype/src
-          mkdir build 
-          cd build 
+          mkdir build
+          cd build
           cmake -G "Unix Makefiles" .. -DCMAKE_DISABLE_FIND_PACKAGE_HarfBuzz=TRUE -DFT_WITH_ZLIB=OFF -DFT_WITH_BZIP2=OFF -DFT_WITH_PNG=OFF
           make
           cd ..
-          mkdir -p output
-          cp build/libfreetype.a output/
+          mkdir -p output/freetype/$OS/$ARCH
+          cp build/libfreetype.a output/freetype/$OS/$ARCH/
 
       - name: Save specific file
         uses: actions/upload-artifact@v4
         with:
-          name: ${{ matrix.os == 'ubuntu-24.04' && 'freetype-linux-64' || 'freetype-linux-arm64' }}
-          path: libs/freetype/src/output/libfreetype.a
+          name: freetype-binary-${{ env.OS }}-${{ env.ARCH }}
+          path: libs/freetype/src/output
 
-  build-freetype-macos:
+  build-libpng:
     strategy:
       matrix:
-        os: [ macos-latest ]
+        os: [ ubuntu-24.04, ubuntu-24.04-arm, macos-latest ]
 
       fail-fast: false
 
@@ -147,53 +133,22 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v3
 
-      - name: Set up dependencies
-        run: |
-          brew install wget cmake autoconf automake
-
-      - name: Download source
-        run: |
-          cd libs/freetype
-          wget -O source.tar.gz https://sourceforge.net/projects/freetype/files/freetype2/2.13.3/freetype-2.13.3.tar.gz/download
-          ls -l 
-          pwd
-          tar -xzf source.tar.gz
-          mv freetype-* src
-
-      - name: Build source
-        run: |
-          cd libs/freetype/src
-          mkdir build 
-          cd build 
-          cmake -G "Unix Makefiles" .. -DWITH_LZMA=OFF -DWITH_ICONV=OFF -DWITH_ZLIB=OFF -DBUILD_SHARED_LIBS=OFF
-          make
-          cd ..
-          mkdir -p output
-          cp build/libfreetype.a output/
-
-      - name: Save specific file
-        uses: actions/upload-artifact@v4
-        with:
-          name: freetype-macos-arm64
-          path: libs/freetype/src/output/libfreetype.a
-
-  build-libpng-linux:
-    strategy:
-      matrix:
-        os: [ ubuntu-24.04, ubuntu-24.04-arm ]
-
-      fail-fast: false
-
-    runs-on: ${{ matrix.os }}
-
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v3
-
-      - name: Set up dependencies
+      - name: Set up dependencies Linux
+        if: runner.os == 'Linux'
         run: |
           sudo apt-get update
           sudo apt-get install -y wget cmake autoconf automake
+
+      - name: Set up dependencies Macos
+        if: runner.os == 'macOS'
+        run: |
+          brew install wget cmake autoconf automake
+
+      - name: Set OS and ARCH variables
+        run: |
+          echo "OS=${{ runner.os == 'Linux' && 'linux' || 'mac' }}" >> $GITHUB_ENV
+          echo "ARCH=${{ runner.arch == 'X64' && '64' || 'arm64' }}" >> $GITHUB_ENV
+        shell: bash
 
       - name: Download source
         run: |
@@ -205,24 +160,24 @@ jobs:
       - name: Build source
         run: |
           cd libs/image/png/src
-          mkdir build 
-          cd build 
+          mkdir build
+          cd build
           cmake .. -DBUILD_SHARED_LIBS=OFF
           make
           cd ..
-          mkdir -p output
-          cp build/libpng.a output/
+          mkdir -p output/image/png/$OS/$ARCH
+          cp build/libpng.a output/image/png/$OS/$ARCH
 
       - name: Save specific file
         uses: actions/upload-artifact@v4
         with:
-          name: ${{ matrix.os == 'ubuntu-24.04' && 'libpng-linux-64' || 'libpng-linux-arm64' }}
-          path: libs/image/png/src/output/libpng.a
+          name: libpng-binary-${{ env.OS }}-${{ env.ARCH }}
+          path: libs/image/png/src/output
 
-  build-libpng-macos:
+  build-zlib:
     strategy:
       matrix:
-        os: [ macos-latest ]
+        os: [ ubuntu-24.04, ubuntu-24.04-arm, macos-latest ]
 
       fail-fast: false
 
@@ -232,51 +187,22 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v3
 
-      - name: Set up dependencies
-        run: |
-          brew install wget cmake autoconf automake
-
-      - name: Download source
-        run: |
-          cd libs/image/png
-          wget -O source.tar.gz https://sourceforge.net/projects/libpng/files/libpng16/1.6.46/libpng-1.6.46.tar.gz/download
-          tar -xzf source.tar.gz
-          mv libpng* src
-
-      - name: Build source
-        run: |
-          cd libs/image/png/src
-          mkdir build 
-          cd build 
-          cmake .. -DBUILD_SHARED_LIBS=OFF
-          make
-          cd ..
-          mkdir -p output
-          cp build/libpng.a output/
-
-      - name: Save specific file
-        uses: actions/upload-artifact@v4
-        with:
-          name: libpng-macos-arm64
-          path: libs/image/png/src/output/libpng.a
-
-  build-zlib-linux:
-    strategy:
-      matrix:
-        os: [ ubuntu-24.04, ubuntu-24.04-arm ]
-
-      fail-fast: false
-
-    runs-on: ${{ matrix.os }}
-
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v3
-
-      - name: Set up dependencies
+      - name: Set up dependencies Linux
+        if: runner.os == 'Linux'
         run: |
           sudo apt-get update
           sudo apt-get install -y wget cmake autoconf automake
+
+      - name: Set up dependencies Macos
+        if: runner.os == 'macOS'
+        run: |
+          brew install wget cmake autoconf automake
+
+      - name: Set OS and ARCH variables
+        run: |
+          echo "OS=${{ runner.os == 'Linux' && 'linux' || 'mac' }}" >> $GITHUB_ENV
+          echo "ARCH=${{ runner.arch == 'X64' && '64' || 'arm64' }}" >> $GITHUB_ENV
+        shell: bash
 
       - name: Download source
         run: |
@@ -288,24 +214,24 @@ jobs:
       - name: Build source
         run: |
           cd libs/image/zlib/src
-          mkdir build 
-          cd build 
+          mkdir build
+          cd build
           cmake .. -DBUILD_SHARED_LIBS=OFF
           make
           cd ..
-          mkdir -p zlib/linux/${{ matrix.os == 'ubuntu-24.04' && '64' || 'arm64' }}
-          cp build/libz.a zlib/linux/${{ matrix.os == 'ubuntu-24.04' && '64' || 'arm64' }}
+          mkdir -p output/image/zlib/$OS/$ARCH
+          cp build/libz.a output/image/zlib/$OS/$ARCH
 
       - name: Save specific file
         uses: actions/upload-artifact@v4
         with:
-          name: ${{ matrix.os == 'ubuntu-24.04' && 'libzlib-linux-64' || 'libzlib-linux-arm64' }}
-          path: libs/image/zlib/src/zlib
+          name: libzlib-binary-${{ env.OS }}-${{ env.ARCH }}
+          path: libs/image/zlib/src/output
 
-  build-zlib-macos:
+  build-icu:
     strategy:
       matrix:
-        os: [ macos-latest ]
+        os: [ ubuntu-24.04, ubuntu-24.04-arm, macos-latest ]
 
       fail-fast: false
 
@@ -315,51 +241,22 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v3
 
-      - name: Set up dependencies
-        run: |
-          brew install wget cmake autoconf automake
-
-      - name: Download source
-        run: |
-          cd libs/image/zlib
-          wget -O source.tar.gz https://zlib.net/zlib-1.3.1.tar.gz
-          tar -xzf source.tar.gz
-          mv zlib-* src
-
-      - name: Build source
-        run: |
-          cd libs/image/zlib/src
-          mkdir build 
-          cd build 
-          cmake .. -DBUILD_SHARED_LIBS=OFF
-          make
-          cd ..
-          mkdir -p zlib/macos/arm64
-          cp build/libz.a zlib/macos/arm64
-
-      - name: Save specific file
-        uses: actions/upload-artifact@v4
-        with:
-          name: libzlib-macos-arm64
-          path: libs/image/zlib/src/zlib
-
-  build-icu-linux:
-    strategy:
-      matrix:
-        os: [ ubuntu-24.04, ubuntu-24.04-arm ]
-
-      fail-fast: false
-
-    runs-on: ${{ matrix.os }}
-
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v3
-
-      - name: Set up dependencies
+      - name: Set up dependencies Linux
+        if: runner.os == 'Linux'
         run: |
           sudo apt-get update
           sudo apt-get install -y wget cmake autoconf automake
+
+      - name: Set up dependencies Macos
+        if: runner.os == 'macOS'
+        run: |
+          brew install wget cmake autoconf automake
+
+      - name: Set OS and ARCH variables
+        run: |
+          echo "OS=${{ runner.os == 'Linux' && 'linux' || 'mac' }}" >> $GITHUB_ENV
+          echo "ARCH=${{ runner.arch == 'X64' && '64' || 'arm64' }}" >> $GITHUB_ENV
+        shell: bash
 
       - name: Download source
         run: |
@@ -374,56 +271,42 @@ jobs:
           ./runConfigureICU Linux --enable-static --disable-shared
           make -j8
           cd ../../
-          mkdir -p icu/linux/${{ matrix.os == 'ubuntu-24.04' && '64' || 'arm64' }}
-          cp icu4c/source/lib/libicudata.a icu/linux/${{ matrix.os == 'ubuntu-24.04' && '64' || 'arm64' }}
-          cp icu4c/source/lib/libicuuc.a icu/linux/${{ matrix.os == 'ubuntu-24.04' && '64' || 'arm64' }}
+          mkdir -p output/icu/$OS/$ARCH
+          cp icu4c/source/lib/libicudata.a output/icu/$OS/$ARCH
+          cp icu4c/source/lib/libicuuc.a output/icu/$OS/$ARCH
 
       - name: Save specific file
         uses: actions/upload-artifact@v4
         with:
-          name: ${{ matrix.os == 'ubuntu-24.04' && 'icu-linux-64' || 'icu-linux-arm64' }}
-          path: libs/icu/src/icu
+          name: icu-binary-${{ env.OS }}-${{ env.ARCH }}
+          path: libs/icu/src/output
 
 
-  build-icu-macos:
-    strategy:
-      matrix:
-        os: [ macos-latest ]
+  assemble-artifact:
+      needs: [build-libxml2, build-freetype, build-libpng, build-zlib, build-icu]
+      runs-on: ubuntu-24.04
 
-      fail-fast: false
+      steps:
+        - name: Checkout repository
+          uses: actions/checkout@v3
 
-    runs-on: ${{ matrix.os }}
-
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v3
-
-      - name: Set up dependencies
-        run: |
-          brew install wget cmake autoconf automake
-
-      - name: Download source
-        run: |
-          cd libs/icu
-          wget -O source.tar.gz https://github.com/unicode-org/icu/archive/refs/tags/release-76-1.tar.gz
-          tar -zxf source.tar.gz
-          mv icu-release-* src
-
-      - name: Build source
-        env:
-          C_INCLUDE_PATH: '/opt/homebrew/include'
-          CPLUS_INCLUDE_PATH: '/opt/homebrew/include'
-        run: |
-          cd libs/icu/src/icu4c/source 
-          ./runConfigureICU macOS --enable-static --disable-shared
-          make -j8
-          cd ../../
-          mkdir -p icu/mac/arm64
-          cp icu4c/source/lib/libicudata.a icu/mac/arm64
-          cp icu4c/source/lib/libicuuc.a icu/mac/arm64
-
-      - name: Save specific file
-        uses: actions/upload-artifact@v4
-        with:
-          name: icu-macos-arm64
-          path: libs/icu/src/icu
+        - name: Download artifacts
+          uses: actions/download-artifact@v4
+          with:
+            path: output
+        - name: Move contents to output directory
+          run: |
+            for dir in output/*; do
+              if [ -d "$dir" ]; then
+                rsync -a "$dir"/* output/
+                rm -rf "$dir"
+              fi
+            done
+          shell: bash
+        - name: Display structure of downloaded files
+          run: ls -R
+        - name: Save artifacts
+          uses: actions/upload-artifact@v4
+          with:
+            name: all-binaries
+            path: output
