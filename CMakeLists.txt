@@ -40,7 +40,7 @@ set(FREETYPE_INCLUDE_DIR_ft2build ${CMAKE_CURRENT_SOURCE_DIR}/libs/freetype/incl
 set(FREETYPE_INCLUDE_DIR_freetype_freetype ${CMAKE_CURRENT_SOURCE_DIR}/libs/freetype/include)
 
 include_directories("${ZLIB_SUBDIR}/src")
-set(PNG_INCLUDE_DIRS ${PNG_SUBDIR}/src)
+set(PNG_INCLUDE_DIRS ${PNG_SUBDIR}/include)
 set(PNG_FOUND TRUE)
 
 set(ICU_PATH ${CMAKE_CURRENT_SOURCE_DIR}/libs/icu)

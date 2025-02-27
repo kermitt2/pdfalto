@@ -77,6 +77,8 @@ using namespace icu;
 
 // PNG lib
 #include "png.h"
+#include "pngstruct.h"
+#include "pnginfo.h"
 
 #include "CharCodeToUnicode.h"
 
@@ -7955,7 +7957,7 @@ bool TextPage::save_png(GString *file_name,
         return false;
     }
 
-    if (setjmp(png_ptr->jmpbuf)) {
+    if (setjmp(png_ptr->jmp_buf_local)) {
         png_destroy_write_struct(&png_ptr, (png_infopp) &info_ptr);
         fclose(file);
         return false;
