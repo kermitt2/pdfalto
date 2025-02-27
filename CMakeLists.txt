@@ -39,7 +39,7 @@ set(XML_LIB_SUBDIR ${CMAKE_CURRENT_SOURCE_DIR}/libs/libxml)
 set(FREETYPE_INCLUDE_DIR_ft2build ${CMAKE_CURRENT_SOURCE_DIR}/libs/freetype/include)
 set(FREETYPE_INCLUDE_DIR_freetype_freetype ${CMAKE_CURRENT_SOURCE_DIR}/libs/freetype/include)
 
-include_directories("${ZLIB_SUBDIR}/src")
+include_directories("${ZLIB_SUBDIR}/include")
 set(PNG_INCLUDE_DIRS ${PNG_SUBDIR}/include)
 set(PNG_FOUND TRUE)
 
@@ -101,7 +101,7 @@ MESSAGE("Final os/arch: " ${OSSUFFIX}/${ARCHSUFFIX})
 
 set(XML_LIBRARY ${XML_LIB_SUBDIR}/${OSSUFFIX}/${ARCHSUFFIX}/libxml2.a)
 set(PNG_LIBRARIES ${PNG_SUBDIR}/${OSSUFFIX}/${ARCHSUFFIX}/libpng.a)
-set(ZLIB_LIBRARY ${ZLIB_SUBDIR}/${OSSUFFIX}/${ARCHSUFFIX}/libzlib.a)
+set(ZLIB_LIBRARY ${ZLIB_SUBDIR}/${OSSUFFIX}/${ARCHSUFFIX}/libz.a)
 set(FREETYPE_LIBRARY ${CMAKE_CURRENT_SOURCE_DIR}/libs/freetype/${OSSUFFIX}/${ARCHSUFFIX}/libfreetype.a)
 set(ICUUC_LIB ${CMAKE_CURRENT_SOURCE_DIR}/libs/icu/${OSSUFFIX}/${ARCHSUFFIX}/libicuuc.a)
 set(ICUDATA_LIB ${CMAKE_CURRENT_SOURCE_DIR}/libs/icu/${OSSUFFIX}/${ARCHSUFFIX}/libicudata.a)
@@ -149,7 +149,7 @@ target_include_directories(pdfalto
         PUBLIC ${XML_LIB_SUBDIR}/include
         PUBLIC ${FREETYPE_INCLUDE_DIR_ft2build}
         PUBLIC ${PNG_INCLUDE_DIRS}
-        PUBLIC ${ZLIB_SUBDIR}/src
+        PUBLIC ${ZLIB_SUBDIR}/include
         PUBLIC ${XPDF_SUBDIR}
         PUBLIC ${XPDF_SUBDIR}/goo
         PUBLIC ${XPDF_SUBDIR}/fofi
