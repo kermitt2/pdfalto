@@ -108,7 +108,7 @@ jobs:
           cd libs/freetype/src
           mkdir build
           cd build
-          cmake -G "Unix Makefiles" .. -D CMAKE_DISABLE_FIND_PACKAGE_HarfBuzz=TRUE -D FT_WITH_ZLIB=OFF -D FT_WITH_BZIP2=OFF -D FT_WITH_PNG=OFF
+          cmake -G "Unix Makefiles" .. -D FT_DISABLE_BROTLI=TRUE -D FT_DISABLE_HARFBUZZ=TRUE -D FT_DISABLE_ZLIB=TRUE -D FT_DISABLE_BZIP2=TRUE -D FT_DISABLE_PNG=TRUE
           make
           cd ..
           mkdir -p output/freetype/$OS/$ARCH

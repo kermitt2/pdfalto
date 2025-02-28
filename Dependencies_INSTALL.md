@@ -58,7 +58,7 @@ Here we describe procedures to compile the static dependencies.
    (you might need to use dos2unix to fix encoding problem from windows)
 
    ```shell
-   cmake -G "Unix Makefiles" ../ -DCMAKE_DISABLE_FIND_PACKAGE_HarfBuzz=TRUE -D FT_WITH_ZLIB=OFF -D FT_WITH_BZIP2=OFF -D FT_WITH_PNG=OFF
+   cmake -G "Unix Makefiles" ../ -D FT_DISABLE_BROTLI=TRUE -D FT_DISABLE_HARFBUZZ=TRUE -D FT_DISABLE_ZLIB=TRUE -D FT_DISABLE_BZIP2=TRUE -D FT_DISABLE_PNG=TRUE
    ```
 
    (options are set to avoid searching libraries)
