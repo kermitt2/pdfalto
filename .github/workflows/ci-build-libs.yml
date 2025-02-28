@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
   push:
     branches:
-      - feature/update-external-libraries-merge-builds
+      - feature/update-external-libraries
       - main
 
 
@@ -113,6 +113,7 @@ jobs:
           cd ..
           mkdir -p output/freetype/$OS/$ARCH
           cp build/libfreetype.a output/freetype/$OS/$ARCH/
+          cp -r include output/freetype
 
       - name: Save specific file
         uses: actions/upload-artifact@v4

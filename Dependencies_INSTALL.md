@@ -41,7 +41,7 @@ Here we describe procedures to compile the static dependencies.
 
    ```shell
    mkdir build && cd build && \
-   cmake -G "Unix Makefiles" .. -DWITH_LZMA=OFF -DWITH_ICONV=OFF -DWITH_ZLIB=OFF -DBUILD_SHARED_LIBS=OFF
+   cmake -G "Unix Makefiles" .. -D LIBXML2_WITH_LZMA=OFF -D LIBXML2_WITH_ICONV=OFF -D LIBXML2_WITH_ZLIB=OFF -D BUILD_SHARED_LIBS=OFF
    ```
 
 3. Run `make` to compile, then take the static file from `./libxml2.a` and copy it under corresponding OS
@@ -58,7 +58,7 @@ Here we describe procedures to compile the static dependencies.
    (you might need to use dos2unix to fix encoding problem from windows)
 
    ```shell
-   cmake -G "Unix Makefiles" ../ -DCMAKE_DISABLE_FIND_PACKAGE_HarfBuzz=TRUE -DFT_WITH_ZLIB=OFF -DFT_WITH_BZIP2=OFF -DFT_WITH_PNG=OFF
+   cmake -G "Unix Makefiles" ../ -DCMAKE_DISABLE_FIND_PACKAGE_HarfBuzz=TRUE -D FT_WITH_ZLIB=OFF -D FT_WITH_BZIP2=OFF -D FT_WITH_PNG=OFF
    ```
 
    (options are set to avoid searching libraries)
