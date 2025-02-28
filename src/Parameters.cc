@@ -1,5 +1,5 @@
 #include "Parameters.h"
-#include <stdio.h>
+#include <cstdlib>
 
 #if MULTITHREADED
 #  define lockGlobalParams            gLockMutex(&mutex)
