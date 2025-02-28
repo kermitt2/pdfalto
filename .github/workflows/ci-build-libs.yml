@@ -53,7 +53,7 @@ jobs:
           pushd libs/libxml/src
           mkdir -p build 
           pushd build 
-          cmake -G "Unix Makefiles" .. -DWITH_LZMA=OFF -DWITH_ICONV=OFF -DWITH_ZLIB=OFF -DBUILD_SHARED_LIBS=OFF
+          cmake -G "Unix Makefiles" .. -D LIBXML2_WITH_LZMA=OFF -D LIBXML2_WITH_ICONV=OFF -D LIBXML2_WITH_ZLIB=OFF -DBUILD_SHARED_LIBS=OFF
           make
           popd
           mkdir -p output/libxml/$OS/$ARCH
@@ -108,7 +108,7 @@ jobs:
           cd libs/freetype/src
           mkdir build
           cd build
-          cmake -G "Unix Makefiles" .. -DCMAKE_DISABLE_FIND_PACKAGE_HarfBuzz=TRUE -DFT_WITH_ZLIB=OFF -DFT_WITH_BZIP2=OFF -DFT_WITH_PNG=OFF
+          cmake -G "Unix Makefiles" .. -D CMAKE_DISABLE_FIND_PACKAGE_HarfBuzz=TRUE -D FT_WITH_ZLIB=OFF -D FT_WITH_BZIP2=OFF -D FT_WITH_PNG=OFF
           make
           cd ..
           mkdir -p output/freetype/$OS/$ARCH
