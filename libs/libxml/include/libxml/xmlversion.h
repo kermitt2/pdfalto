@@ -15,28 +15,28 @@
  *
  * the version string like "1.2.3"
  */
-#define LIBXML_DOTTED_VERSION "@VERSION@"
+#define LIBXML_DOTTED_VERSION "2.13.6"
 
 /**
  * LIBXML_VERSION:
  *
  * the version number: 1.2.3 value is 10203
  */
-#define LIBXML_VERSION @LIBXML_VERSION_NUMBER@
+#define LIBXML_VERSION 21306
 
 /**
  * LIBXML_VERSION_STRING:
  *
  * the version number string, 1.2.3 value is "10203"
  */
-#define LIBXML_VERSION_STRING "@LIBXML_VERSION_NUMBER@"
+#define LIBXML_VERSION_STRING "21306"
 
 /**
  * LIBXML_VERSION_EXTRA:
  *
  * extra version information, used to show a git commit description
  */
-#define LIBXML_VERSION_EXTRA "@LIBXML_VERSION_EXTRA@"
+#define LIBXML_VERSION_EXTRA ""
 
 /**
  * LIBXML_TEST_VERSION:
@@ -44,14 +44,14 @@
  * Macro to check that the libxml version in use is compatible with
  * the version the software has been compiled against
  */
-#define LIBXML_TEST_VERSION xmlCheckVersion(@LIBXML_VERSION_NUMBER@);
+#define LIBXML_TEST_VERSION xmlCheckVersion(21306);
 
 /**
  * LIBXML_THREAD_ENABLED:
  *
  * Whether the thread support is configured in
  */
-#if @WITH_THREADS@
+#if 1
 #define LIBXML_THREAD_ENABLED
 #endif
 
@@ -60,7 +60,7 @@
  *
  * Whether the allocation hooks are per-thread
  */
-#if @WITH_THREAD_ALLOC@
+#if 0
 #define LIBXML_THREAD_ALLOC_ENABLED
 #endif
 
@@ -69,7 +69,7 @@
  *
  * Whether the DOM like tree manipulation API support is configured in
  */
-#if @WITH_TREE@
+#if 1
 #define LIBXML_TREE_ENABLED
 #endif
 
@@ -78,7 +78,7 @@
  *
  * Whether the serialization/saving support is configured in
  */
-#if @WITH_OUTPUT@
+#if 1
 #define LIBXML_OUTPUT_ENABLED
 #endif
 
@@ -87,7 +87,7 @@
  *
  * Whether the push parsing interfaces are configured in
  */
-#if @WITH_PUSH@
+#if 1
 #define LIBXML_PUSH_ENABLED
 #endif
 
@@ -96,7 +96,7 @@
  *
  * Whether the xmlReader parsing interface is configured in
  */
-#if @WITH_READER@
+#if 1
 #define LIBXML_READER_ENABLED
 #endif
 
@@ -105,7 +105,7 @@
  *
  * Whether the xmlPattern node selection interface is configured in
  */
-#if @WITH_PATTERN@
+#if 1
 #define LIBXML_PATTERN_ENABLED
 #endif
 
@@ -114,7 +114,7 @@
  *
  * Whether the xmlWriter saving interface is configured in
  */
-#if @WITH_WRITER@
+#if 1
 #define LIBXML_WRITER_ENABLED
 #endif
 
@@ -123,7 +123,7 @@
  *
  * Whether the older SAX1 interface is configured in
  */
-#if @WITH_SAX1@
+#if 1
 #define LIBXML_SAX1_ENABLED
 #endif
 
@@ -132,7 +132,7 @@
  *
  * Whether the FTP support is configured in
  */
-#if @WITH_FTP@
+#if 0
 #define LIBXML_FTP_ENABLED
 #endif
 
@@ -141,7 +141,7 @@
  *
  * Whether the HTTP support is configured in
  */
-#if @WITH_HTTP@
+#if 0
 #define LIBXML_HTTP_ENABLED
 #endif
 
@@ -150,7 +150,7 @@
  *
  * Whether the DTD validation support is configured in
  */
-#if @WITH_VALID@
+#if 1
 #define LIBXML_VALID_ENABLED
 #endif
 
@@ -159,7 +159,7 @@
  *
  * Whether the HTML support is configured in
  */
-#if @WITH_HTML@
+#if 1
 #define LIBXML_HTML_ENABLED
 #endif
 
@@ -168,7 +168,7 @@
  *
  * Whether the deprecated APIs are compiled in for compatibility
  */
-#if @WITH_LEGACY@
+#if 0
 #define LIBXML_LEGACY_ENABLED
 #endif
 
@@ -177,7 +177,7 @@
  *
  * Whether the Canonicalization support is configured in
  */
-#if @WITH_C14N@
+#if 1
 #define LIBXML_C14N_ENABLED
 #endif
 
@@ -186,7 +186,7 @@
  *
  * Whether the Catalog support is configured in
  */
-#if @WITH_CATALOG@
+#if 1
 #define LIBXML_CATALOG_ENABLED
 #endif
 
@@ -195,7 +195,7 @@
  *
  * Whether XPath is configured in
  */
-#if @WITH_XPATH@
+#if 1
 #define LIBXML_XPATH_ENABLED
 #endif
 
@@ -204,7 +204,7 @@
  *
  * Whether XPointer is configured in
  */
-#if @WITH_XPTR@
+#if 1
 #define LIBXML_XPTR_ENABLED
 #endif
 
@@ -213,7 +213,7 @@
  *
  * Whether support for XPointer locations is configured in
  */
-#if @WITH_XPTR_LOCS@
+#if 0
 #define LIBXML_XPTR_LOCS_ENABLED
 #endif
 
@@ -222,7 +222,7 @@
  *
  * Whether XInclude is configured in
  */
-#if @WITH_XINCLUDE@
+#if 1
 #define LIBXML_XINCLUDE_ENABLED
 #endif
 
@@ -231,7 +231,7 @@
  *
  * Whether iconv support is available
  */
-#if @WITH_ICONV@
+#if 1
 #define LIBXML_ICONV_ENABLED
 #endif
 
@@ -240,7 +240,7 @@
  *
  * Whether icu support is available
  */
-#if @WITH_ICU@
+#if 0
 #define LIBXML_ICU_ENABLED
 #endif
 
@@ -249,7 +249,7 @@
  *
  * Whether ISO-8859-* support is made available in case iconv is not
  */
-#if @WITH_ISO8859X@
+#if 1
 #define LIBXML_ISO8859X_ENABLED
 #endif
 
@@ -258,7 +258,7 @@
  *
  * Whether Debugging module is configured in
  */
-#if @WITH_DEBUG@
+#if 1
 #define LIBXML_DEBUG_ENABLED
 #endif
 
@@ -267,7 +267,7 @@
  *
  * Whether the Unicode related interfaces are compiled in
  */
-#if @WITH_REGEXPS@
+#if 1
 #define LIBXML_UNICODE_ENABLED
 #endif
 
@@ -276,7 +276,7 @@
  *
  * Whether the regular expressions interfaces are compiled in
  */
-#if @WITH_REGEXPS@
+#if 1
 #define LIBXML_REGEXP_ENABLED
 #endif
 
@@ -285,7 +285,7 @@
  *
  * Whether the automata interfaces are compiled in
  */
-#if @WITH_REGEXPS@
+#if 1
 #define LIBXML_AUTOMATA_ENABLED
 #endif
 
@@ -294,7 +294,7 @@
  *
  * Whether the Schemas validation interfaces are compiled in
  */
-#if @WITH_SCHEMAS@
+#if 1
 #define LIBXML_SCHEMAS_ENABLED
 #endif
 
@@ -303,7 +303,7 @@
  *
  * Whether the Schematron validation interfaces are compiled in
  */
-#if @WITH_SCHEMATRON@
+#if 1
 #define LIBXML_SCHEMATRON_ENABLED
 #endif
 
@@ -312,14 +312,14 @@
  *
  * Whether the module interfaces are compiled in
  */
-#if @WITH_MODULES@
+#if 1
 #define LIBXML_MODULES_ENABLED
 /**
  * LIBXML_MODULE_EXTENSION:
  *
  * the string suffix used by dynamic modules (usually shared libraries)
  */
-#define LIBXML_MODULE_EXTENSION "@MODULE_EXTENSION@" 
+#define LIBXML_MODULE_EXTENSION ".dylib" 
 #endif
 
 /**
@@ -327,7 +327,7 @@
  *
  * Whether the Zlib support is compiled in
  */
-#if @WITH_ZLIB@
+#if 0
 #define LIBXML_ZLIB_ENABLED
 #endif
 
@@ -336,7 +336,7 @@
  *
  * Whether the Lzma support is compiled in
  */
-#if @WITH_LZMA@
+#if 0
 #define LIBXML_LZMA_ENABLED
 #endif
 
