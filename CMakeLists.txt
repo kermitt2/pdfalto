@@ -32,18 +32,19 @@ set(PNG_SUBDIR ${CMAKE_CURRENT_SOURCE_DIR}/libs/image/png)
 
 set(ZLIB_SUBDIR ${CMAKE_CURRENT_SOURCE_DIR}/libs/image/zlib)
 
-set(ICU_LIB_SUBDIR ${CMAKE_CURRENT_SOURCE_DIR}/libs/icu)
+set(ICU_SUBDIR ${CMAKE_CURRENT_SOURCE_DIR}/libs/icu)
 
-set(XML_LIB_SUBDIR ${CMAKE_CURRENT_SOURCE_DIR}/libs/libxml)
+set(LIBXML_SUBDIR ${CMAKE_CURRENT_SOURCE_DIR}/libs/libxml)
 
-set(FREETYPE_INCLUDE_DIR_ft2build ${CMAKE_CURRENT_SOURCE_DIR}/libs/freetype/include)
-set(FREETYPE_INCLUDE_DIR_freetype_freetype ${CMAKE_CURRENT_SOURCE_DIR}/libs/freetype/include)
+set(FREETYPE_SUBDIR ${CMAKE_CURRENT_SOURCE_DIR}/libs/freetype)
 
-include_directories("${ZLIB_SUBDIR}/include")
+set(FREETYPE_INCLUDE_DIR_ft2build ${FREETYPE_SUBDIR}/include)
+set(FREETYPE_INCLUDE_DIR_freetype_freetype ${FREETYPE_SUBDIR}/include)
+set(FREETYPE_INCLUDE_DIR ${FREETYPE_SUBDIR}/include)
+
+set(ZLIB_INCLUDE_DIRS ${ZLIB_SUBDIR}/include)
 set(PNG_INCLUDE_DIRS ${PNG_SUBDIR}/include)
 set(PNG_FOUND TRUE)
-
-set(ICU_PATH ${CMAKE_CURRENT_SOURCE_DIR}/libs/icu)
 
 if (APPLE)
     message("Using macos settings.")
@@ -99,12 +100,12 @@ endif ()
 
 MESSAGE("Final os/arch: " ${OSSUFFIX}/${ARCHSUFFIX})
 
-set(XML_LIBRARY ${XML_LIB_SUBDIR}/${OSSUFFIX}/${ARCHSUFFIX}/libxml2.a)
-set(PNG_LIBRARIES ${PNG_SUBDIR}/${OSSUFFIX}/${ARCHSUFFIX}/libpng.a)
+set(XML_LIBRARY ${LIBXML_SUBDIR}/${OSSUFFIX}/${ARCHSUFFIX}/libxml2.a)
+set(PNG_LIBRARY ${PNG_SUBDIR}/${OSSUFFIX}/${ARCHSUFFIX}/libpng.a)
 set(ZLIB_LIBRARY ${ZLIB_SUBDIR}/${OSSUFFIX}/${ARCHSUFFIX}/libz.a)
-set(FREETYPE_LIBRARY ${CMAKE_CURRENT_SOURCE_DIR}/libs/freetype/${OSSUFFIX}/${ARCHSUFFIX}/libfreetype.a)
-set(ICUUC_LIB ${CMAKE_CURRENT_SOURCE_DIR}/libs/icu/${OSSUFFIX}/${ARCHSUFFIX}/libicuuc.a)
-set(ICUDATA_LIB ${CMAKE_CURRENT_SOURCE_DIR}/libs/icu/${OSSUFFIX}/${ARCHSUFFIX}/libicudata.a)
+set(FREETYPE_LIBRARY ${FREETYPE_SUBDIR}/${OSSUFFIX}/${ARCHSUFFIX}/libfreetype.a)
+set(ICUUC_LIBRARY ${ICU_SUBDIR}/${OSSUFFIX}/${ARCHSUFFIX}/libicuuc.a)
+set(ICUDATA_LIBRARY ${ICU_SUBDIR}/${OSSUFFIX}/${ARCHSUFFIX}/libicudata.a)
 
 
 set(XPDF_BUILD_DIR ${XPDF_SUBDIR}/build)
@@ -133,27 +134,28 @@ add_executable(pdfalto ${SOURCE_FILES})
 
 if (HAVE_PAPER_H)
     if (HAVE_FONTCONFIG)
-        target_link_libraries(pdfalto ${PNG_LIBRARIES} ${ZLIB_LIBRARY} ${XML_LIBRARY} splash xpdf goo fofi ${ICUUC_LIB} ${ICUDATA_LIB} ${FREETYPE_LIBRARY} dl ${PAPER_LIBRARY} ${FONTCONFIG_LIBRARY})
+        target_link_libraries(pdfalto ${PNG_LIBRARY} ${ZLIB_LIBRARY} ${XML_LIBRARY} splash xpdf goo fofi ${ICUUC_LIBRARY} ${ICUDATA_LIBRARY} ${FREETYPE_LIBRARY} dl ${PAPER_LIBRARY} ${FONTCONFIG_LIBRARY})
     else ()
-        target_link_libraries(pdfalto ${PNG_LIBRARIES} ${ZLIB_LIBRARY} ${XML_LIBRARY} splash xpdf goo fofi ${ICUUC_LIB} ${ICUDATA_LIB} ${FREETYPE_LIBRARY} dl ${PAPER_LIBRARY})
+        target_link_libraries(pdfalto ${PNG_LIBRARY} ${ZLIB_LIBRARY} ${XML_LIBRARY} splash xpdf goo fofi ${ICUUC_LIBRARY} ${ICUDATA_LIBRARY} ${FREETYPE_LIBRARY} dl ${PAPER_LIBRARY})
     endif ()
 else ()
     if (HAVE_FONTCONFIG)
-        target_link_libraries(pdfalto ${PNG_LIBRARIES} ${ZLIB_LIBRARY} ${XML_LIBRARY} splash xpdf goo fofi ${ICUUC_LIB} ${ICUDATA_LIB} ${FREETYPE_LIBRARY} dl ${FONTCONFIG_LIBRARY})
+        target_link_libraries(pdfalto ${PNG_LIBRARY} ${ZLIB_LIBRARY} ${XML_LIBRARY} splash xpdf goo fofi ${ICUUC_LIBRARY} ${ICUDATA_LIBRARY} ${FREETYPE_LIBRARY} dl ${FONTCONFIG_LIBRARY})
     else ()
-        target_link_libraries(pdfalto ${PNG_LIBRARIES} ${ZLIB_LIBRARY} ${XML_LIBRARY} splash xpdf goo fofi ${ICUUC_LIB} ${ICUDATA_LIB} ${FREETYPE_LIBRARY} dl)
+        target_link_libraries(pdfalto ${PNG_LIBRARY} ${ZLIB_LIBRARY} ${XML_LIBRARY} splash xpdf goo fofi ${ICUUC_LIBRARY} ${ICUDATA_LIBRARY} ${FREETYPE_LIBRARY} dl)
     endif ()
 endif ()
 
-target_include_directories(pdfalto
-        PUBLIC ${XML_LIB_SUBDIR}/include
-        PUBLIC ${FREETYPE_INCLUDE_DIR_ft2build}
+target_include_directories(
+        pdfalto
+        PUBLIC ${LIBXML_SUBDIR}/include
+        PUBLIC ${FREETYPE_INCLUDE_DIR}
         PUBLIC ${PNG_INCLUDE_DIRS}
-        PUBLIC ${ZLIB_SUBDIR}/include
+        PUBLIC ${ZLIB_INCLUDE_DIRS}
         PUBLIC ${XPDF_SUBDIR}
         PUBLIC ${XPDF_SUBDIR}/goo
         PUBLIC ${XPDF_SUBDIR}/fofi
         PUBLIC ${XPDF_SUBDIR}/xpdf
         PUBLIC ${XPDF_BUILD_DIR}
-        PUBLIC ${ICU_PATH}/common
+        PUBLIC ${ICU_SUBDIR}/common
 )
