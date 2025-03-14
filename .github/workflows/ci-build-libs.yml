@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
   push:
     branches:
-      - feature/update-external-libraries
+      - feature/update-external-libraries-test
       - main
 
 
