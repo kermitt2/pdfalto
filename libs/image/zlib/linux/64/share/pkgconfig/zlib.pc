@@ -1,0 +1,13 @@
+prefix=/home/runner/work/pdfalto/pdfalto/libs/image/zlib/src/output/image/zlib/linux/64
+exec_prefix=/home/runner/work/pdfalto/pdfalto/libs/image/zlib/src/output/image/zlib/linux/64
+libdir=/home/runner/work/pdfalto/pdfalto/libs/image/zlib/src/output/image/zlib/linux/64/lib
+sharedlibdir=/home/runner/work/pdfalto/pdfalto/libs/image/zlib/src/output/image/zlib/linux/64/lib
+includedir=/home/runner/work/pdfalto/pdfalto/libs/image/zlib/src/output/image/zlib/linux/64/include
+
+Name: zlib
+Description: zlib compression library
+Version: 1.3.1
+
+Requires:
+Libs: -L${libdir} -L${sharedlibdir} -lz
+Cflags: -I${includedir}

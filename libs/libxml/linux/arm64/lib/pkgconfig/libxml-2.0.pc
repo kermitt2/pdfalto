@@ -1,0 +1,12 @@
+prefix=/home/runner/work/pdfalto/pdfalto/libs/libxml/src/output/libxml/linux/arm64
+exec_prefix=${prefix}
+libdir=${prefix}/lib
+includedir=${prefix}/include
+modules=1
+
+Name: libXML
+Version: 2.13.6
+Description: libXML library version2.
+Requires: 
+Libs: -L${libdir} -lxml2    -lm   
+Cflags: -I${includedir}/libxml2 -DLIBXML_STATIC
