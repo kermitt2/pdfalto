@@ -158,5 +158,5 @@ target_include_directories(
         PUBLIC ${XPDF_SUBDIR}/fofi
         PUBLIC ${XPDF_SUBDIR}/xpdf
         PUBLIC ${XPDF_BUILD_DIR}
-        PUBLIC ${ICU_SUBDIR}/common
+        PUBLIC ${ICU_SUBDIR}/include
 )
