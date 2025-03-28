@@ -59,7 +59,8 @@ jobs:
           cd ..
           mkdir -p output/libxml/$OS/$ARCH
           cp build/output/lib/libxml2.a output/libxml/$OS/$ARCH
-          cp -r build/output/include output/libxml
+          cp -r build/output/include/libxml2 output/libxml
+          mv output/libxml/libxml2 output/libxml/include
           
 
       - name: Save specific file
@@ -117,7 +118,8 @@ jobs:
           cd ..          
           mkdir -p output/freetype/$OS/$ARCH
           cp build/output/lib/libfreetype.a output/freetype/$OS/$ARCH/
-          cp -r build/output/include output/freetype
+          cp -r build/output/include/freetype2 output/freetype/
+          mv output/freetype/freetype2 output/freetype/include
 
       - name: Save specific file
         uses: actions/upload-artifact@v4
