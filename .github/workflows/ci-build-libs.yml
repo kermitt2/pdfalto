@@ -51,12 +51,16 @@ jobs:
       - name: Build source
         run: |
           cd libs/libxml/src
-          mkdir -p build
-          mkdir -p output/libxml/$OS/$ARCH
+          mkdir -p build/output
           cd build          
-          cmake -DCMAKE_INSTALL_PREFIX=$(pwd)/../output/libxml/$OS/$ARCH -G "Unix Makefiles" .. -D LIBXML2_WITH_LZMA=OFF -D LIBXML2_WITH_ICONV=OFF -D LIBXML2_WITH_ZLIB=OFF -DBUILD_SHARED_LIBS=OFF
+          cmake -DCMAKE_INSTALL_PREFIX=$(pwd)/output -G "Unix Makefiles" .. -D LIBXML2_WITH_LZMA=OFF -D LIBXML2_WITH_ICONV=OFF -D LIBXML2_WITH_ZLIB=OFF -DBUILD_SHARED_LIBS=OFF
           make
           make install
+          cd ..
+          mkdir -p output/libxml/$OS/$ARCH
+          cp build/output/lib/libxml2.a output/libxml/$OS/$ARCH
+          cp -r build/output/include output/libxml
+          
 
       - name: Save specific file
         uses: actions/upload-artifact@v4
@@ -105,12 +109,15 @@ jobs:
       - name: Build source
         run: |
           cd libs/freetype/src
-          mkdir build
-          mkdir -p output/freetype/$OS/$ARCH
+          mkdir -p build/output
           cd build
-          cmake -DCMAKE_INSTALL_PREFIX=$(pwd)/../output/freetype/$OS/$ARCH -G "Unix Makefiles" .. -D FT_DISABLE_BROTLI=TRUE -D FT_DISABLE_HARFBUZZ=TRUE -D FT_DISABLE_ZLIB=TRUE -D FT_DISABLE_BZIP2=TRUE -D FT_DISABLE_PNG=TRUE
+          cmake .. -DCMAKE_INSTALL_PREFIX=$(pwd)/output -G "Unix Makefiles" -D FT_DISABLE_BROTLI=TRUE -D FT_DISABLE_HARFBUZZ=TRUE -D FT_DISABLE_ZLIB=TRUE -D FT_DISABLE_BZIP2=TRUE -D FT_DISABLE_PNG=TRUE
           make
           make install
+          cd ..          
+          mkdir -p output/freetype/$OS/$ARCH
+          cp build/output/lib/libfreetype.a output/freetype/$OS/$ARCH/
+          cp -r build/output/include output/freetype
 
       - name: Save specific file
         uses: actions/upload-artifact@v4
@@ -158,12 +165,18 @@ jobs:
       - name: Build source
         run: |
           cd libs/image/png/src
-          mkdir build
-          mkdir -p output/image/png/$OS/$ARCH
+          mkdir -p build/output
           cd build
-          cmake .. -DCMAKE_INSTALL_PREFIX=$(pwd)/../output/image/png/$OS/$ARCH -DBUILD_SHARED_LIBS=OFF
+          cmake .. -DCMAKE_INSTALL_PREFIX=$(pwd)/output -DBUILD_SHARED_LIBS=OFF
           make
           make install
+          cd ..
+          mkdir -p output/image/png/$OS/$ARCH
+          cp build/output/lib/libpng.a output/image/png/$OS/$ARCH
+          cp build/output/lib/libpng16.a output/image/png/$OS/$ARCH
+          cp -r build/output/include output/image/png
+          cp pngstruct.h output/image/png/include/libpng16
+          cp pngpriv.h output/image/png/include/libpng16
 
 
       - name: Save specific file
@@ -212,12 +225,16 @@ jobs:
       - name: Build source
         run: |
           cd libs/image/zlib/src
-          mkdir build
-          mkdir -p output/image/zlib/$OS/$ARCH
+          mkdir -p build/output
           cd build
-          cmake .. -DCMAKE_INSTALL_PREFIX=$(pwd)/../output/image/zlib/$OS/$ARCH -DBUILD_SHARED_LIBS=OFF
+          cmake .. -DCMAKE_INSTALL_PREFIX=$(pwd)/output -DBUILD_SHARED_LIBS=OFF
           make
           make install 
+          cd .. 
+          mkdir -p output/image/zlib/$OS/$ARCH
+          cp build/output/lib/libz.a output/image/zlib/$OS/$ARCH
+          cp -r build/output/include output/image/zlib
+          
 
       - name: Save specific file
         uses: actions/upload-artifact@v4
@@ -264,12 +281,15 @@ jobs:
 
       - name: Build source
         run: |
-          mkdir -p libs/icu/src/output/icu/$OS/$ARCH
-          OUTPUT=$(pwd)/libs/icu/src/output/icu/$OS/$ARCH
           cd libs/icu/src/icu4c/source
-          ./runConfigureICU Linux --enable-static --disable-shared --prefix=$OUTPUT
+          mkdir output
+          ./runConfigureICU Linux --enable-static --disable-shared --prefix=$(pwd)/output
           make -j8
-          make install 
+          make install
+          cd ../../
+          mkdir -p output/icu/$OS/$ARCH
+          cp icu4c/source/output/lib/*.a output/icu/$OS/$ARCH
+          cp -r icu4c/source/output/include output/icu/
 
       - name: Save specific file
         uses: actions/upload-artifact@v4
