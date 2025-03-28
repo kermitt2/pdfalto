@@ -178,9 +178,11 @@ jobs:
           cp build/output/lib/libpng16.a output/image/png/$OS/$ARCH
           cp -r build/output/include output/image/png
           cp pngstruct.h output/image/png/include
+          cp pnginfo.h output/image/png/include
           cp pngpriv.h output/image/png/include
           cp pngstruct.h output/image/png/include/libpng16
           cp pngpriv.h output/image/png/include/libpng16
+          cp pnginfo.h output/image/png/include/libpng16
 
 
       - name: Save specific file
