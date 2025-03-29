@@ -52,8 +52,8 @@ jobs:
       - name: Set env variables for macOS x64
         if: runner.os == 'macOS' && runner.arch == 'X64'
         run: |
-          echo "C_INCLUDE_PATH=/opt/local/include" >> $GITHUB_ENV
-          echo "CPLUS_INCLUDE_PATH=/opt/local/include" >> $GITHUB_ENV
+          echo "C_INCLUDE_PATH=/usr/local/include" >> $GITHUB_ENV
+          echo "CPLUS_INCLUDE_PATH=/usr/local/include" >> $GITHUB_ENV
 
       - name: Set env variables for macOS ARM64
         if: runner.os == 'macOS' && runner.arch == 'ARM64'
@@ -68,7 +68,7 @@ jobs:
           make
         
 
-      - name: Build
+      - name: Build on Linux
         if: runner.os == 'Linux'
         run: |
           cmake ./
