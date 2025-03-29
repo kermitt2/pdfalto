@@ -119,8 +119,13 @@ jobs:
         shell: bash
       - name: Display structure of downloaded files
         run: ls -R
+      - name: Get the revision ID
+        id: extract_rev_id
+        run: |
+          SHORT_COMMIT_ID=$(echo "${{ github.sha }}" | cut -c1-7)
+          echo "short_commit_id=${SHORT_COMMIT_ID}" >> $GITHUB_OUTPUT
       - name: Save artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: pdfalto-bin-all
+          name: pdfalto-bin-all-${{ steps.extract_rev_id.outputs.short_commit_id }}
           path: output
