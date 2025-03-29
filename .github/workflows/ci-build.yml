@@ -39,7 +39,7 @@ jobs:
           gcc -v
           g++ -v
           cmake --version          
-          /opt/homebrew/Cellar/ucon64/*/bin/ucon64 -v
+          eval $(brew --cellar)/ucon64/*/bin/ucon64 -v
 
       - name: Display versions Linux
         if: runner.os == 'Linux'
