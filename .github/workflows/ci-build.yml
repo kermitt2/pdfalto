@@ -19,6 +19,12 @@ jobs:
         with:
           submodules: true
 
+      - name: Set OS and ARCH variables
+        run: |
+          echo "OS=${{ runner.os == 'Linux' && 'linux' || 'mac' }}" >> $GITHUB_ENV
+          echo "ARCH=${{ runner.arch == 'X64' && '64' || 'arm64' }}" >> $GITHUB_ENV
+        shell: bash
+
       - name: Set up dependencies for Linux
         if: runner.os == 'Linux'
         run: |
@@ -54,22 +60,67 @@ jobs:
         run: |
           echo "C_INCLUDE_PATH=/usr/local/include" >> $GITHUB_ENV
           echo "CPLUS_INCLUDE_PATH=/usr/local/include" >> $GITHUB_ENV
+#          echo "OS_GROBID='mac'" >> $GITHUB_ENV
+#          echo "ARCH_GROBID='64'" >> $GITHUB_ENV
+        shell: bash
 
       - name: Set env variables for macOS ARM64
         if: runner.os == 'macOS' && runner.arch == 'ARM64'
         run: |
           echo "C_INCLUDE_PATH=/opt/homebrew/include" >> $GITHUB_ENV
           echo "CPLUS_INCLUDE_PATH=/opt/homebrew/include" >> $GITHUB_ENV
+#          echo "OS_GROBID='mac'" >> $GITHUB_ENV
+#          echo "ARCH_GROBID='arm64'" >> $GITHUB_ENV
+        shell: bash
 
       - name: Build for macOS
         if: runner.os == 'macOS'
         run: |
           cmake ./
           make
-        
 
       - name: Build on Linux
         if: runner.os == 'Linux'
         run: |
           cmake ./
           make
+
+      - name: Copy pdfalto executable
+        run: |
+          mkdir -p output/pdfalto/${{ env.OS }}/${{ env.ARCH }}
+          cp pdfalto output/pdfalto/${{ env.OS }}/${{ env.ARCH }}
+
+      - name: Save pdfalto executable
+        uses: actions/upload-artifact@v4
+        with:
+          name: pdfalto-bin-${{ env.OS }}-${{ env.ARCH }}
+          path: output
+
+  assemble-artifact:
+    needs: [ build ]
+    runs-on: ubuntu-24.04
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Download artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: output
+      - name: Move contents to output directory
+        run: |
+          for dir in output/*; do
+            if [ -d "$dir" ]; then
+              rsync -a "$dir"/* output/
+              rm -rf "$dir"
+            fi
+          done
+        shell: bash
+      - name: Display structure of downloaded files
+        run: ls -R
+      - name: Save artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: pdfalto-bin-all
+          path: output
