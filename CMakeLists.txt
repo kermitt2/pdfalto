@@ -53,13 +53,13 @@ if (APPLE)
     set(OSSUFFIX "mac")
 
     include(CheckCCompilerFlag)
-    set(CMAKE_REQUIRED_LINK_OPTIONS "-arch;arm64")
     check_c_compiler_flag("-arch arm64" arm64Supported)
     message("arm64Supported=${arm64Supported}")
 
 
     IF (${arm64Supported} MATCHES 1)
         set(ARCHSUFFIX "arm64")
+        set(CMAKE_REQUIRED_LINK_OPTIONS "-arch;arm64")
         MESSAGE(STATUS "Check if the building for macOS ARM - TRUE")
     ELSE ()
         set(ARCHSUFFIX "64")
