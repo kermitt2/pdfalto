@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
   push:
     branches:
-      - feature/update-external-libraries
+      - feature/update-external-libraries-ubuntu16
       - main
 
 
@@ -12,7 +12,7 @@ jobs:
   build-libxml2:
     strategy:
       matrix:
-        os: [ ubuntu-22.04, ubuntu-24.04-arm, macos-latest, macos-13 ]
+        os: [ ubuntu-20.04, ubuntu-24.04-arm, macos-latest, macos-13 ]
 
       fail-fast: false
 
@@ -54,7 +54,7 @@ jobs:
           mkdir -p build/output
           cd build          
           cmake -DCMAKE_INSTALL_PREFIX=$(pwd)/output -G "Unix Makefiles" .. -D LIBXML2_WITH_LZMA=OFF -D LIBXML2_WITH_ICONV=OFF -D LIBXML2_WITH_ZLIB=OFF -DBUILD_SHARED_LIBS=OFF
-          make
+          make -j8
           make install
           cd ..
           mkdir -p output/libxml/$OS/$ARCH
@@ -73,7 +73,7 @@ jobs:
   build-freetype:
     strategy:
       matrix:
-        os: [ ubuntu-22.04, ubuntu-24.04-arm, macos-latest, macos-13 ]
+        os: [ ubuntu-20.04, ubuntu-24.04-arm, macos-latest, macos-13 ]
 
       fail-fast: false
 
@@ -113,7 +113,7 @@ jobs:
           mkdir -p build/output
           cd build
           cmake .. -DCMAKE_INSTALL_PREFIX=$(pwd)/output -G "Unix Makefiles" -D FT_DISABLE_BROTLI=TRUE -D FT_DISABLE_HARFBUZZ=TRUE -D FT_DISABLE_ZLIB=TRUE -D FT_DISABLE_BZIP2=TRUE -D FT_DISABLE_PNG=TRUE
-          make
+          make -j8
           make install
           cd ..          
           mkdir -p output/freetype/$OS/$ARCH
@@ -130,7 +130,7 @@ jobs:
   build-libpng:
     strategy:
       matrix:
-        os: [ ubuntu-22.04, ubuntu-24.04-arm, macos-latest, macos-13 ]
+        os: [ ubuntu-20.04, ubuntu-24.04-arm, macos-latest, macos-13 ]
 
       fail-fast: false
 
@@ -170,7 +170,7 @@ jobs:
           mkdir -p build/output
           cd build
           cmake .. -DCMAKE_INSTALL_PREFIX=$(pwd)/output -DBUILD_SHARED_LIBS=OFF
-          make
+          make -j8
           make install
           cd ..
           mkdir -p output/image/png/$OS/$ARCH
@@ -194,7 +194,7 @@ jobs:
   build-zlib:
     strategy:
       matrix:
-        os: [ ubuntu-22.04, ubuntu-24.04-arm, macos-latest, macos-13 ]
+        os: [ ubuntu-20.04, ubuntu-24.04-arm, macos-latest, macos-13 ]
 
       fail-fast: false
 
@@ -234,7 +234,7 @@ jobs:
           mkdir -p build/output
           cd build
           cmake .. -DCMAKE_INSTALL_PREFIX=$(pwd)/output -DBUILD_SHARED_LIBS=OFF
-          make
+          make -j8
           make install 
           cd .. 
           mkdir -p output/image/zlib/$OS/$ARCH
