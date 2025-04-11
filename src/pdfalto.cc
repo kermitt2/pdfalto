@@ -362,7 +362,7 @@ int main(int argc, char *argv[]) {
     }
     if (firstPage != 1) {
         char *temp = (char *) malloc(10 * sizeof(char));
-        sprintf(temp, "%d", firstPage);
+        snprintf(temp, sizeof(temp), "%d", firstPage);
         cmd->append("-f ")->append(temp)->append(" ");
         free(temp);
     }
@@ -373,7 +373,7 @@ int main(int argc, char *argv[]) {
             last = doc->getNumPages();
         }
         char *temp = (char *) malloc(10 * sizeof(char));
-        sprintf(temp, "%d", last);
+        snprintf(temp, sizeof(temp), "%d", last);
         cmd->append("-l ")->append(temp)->append(" ");
         free(temp);
     }

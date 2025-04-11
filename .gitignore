@@ -1,9 +1,5 @@
-*.o
 *.obj
 *.lo
-*.so
-*.dll
-*.dylib
 *.la
 *.exe
 .idea

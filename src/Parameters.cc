@@ -1,5 +1,5 @@
 #include "Parameters.h"
-#include <stdio.h>
+#include <cstdlib>
 
 #if MULTITHREADED
 #  define lockGlobalParams            gLockMutex(&mutex)
@@ -120,7 +120,7 @@ void Parameters::saveToXML(const char *fileName,int firstPage,int lastPage){
 	xmlNewProp(param,(const xmlChar*)"default",(const xmlChar*)"1");
 	xmlNewProp(param,(const xmlChar*)"type",(const xmlChar*)"int");
 	xmlNewProp(param,(const xmlChar*)"help",(const xmlChar*)"first page to convert");
-	sprintf(tmp,"%d",firstPage);
+	snprintf(tmp, sizeof(tmp), "%d", firstPage);
 	xmlNodeSetContent(param,(const xmlChar*)tmp);
 	xmlAddChild(confNode,param);
 
@@ -131,7 +131,7 @@ void Parameters::saveToXML(const char *fileName,int firstPage,int lastPage){
 	xmlNewProp(param,(const xmlChar*)"type",(const xmlChar*)"int");
 	xmlNewProp(param,(const xmlChar*)"help",(const xmlChar*)"last page to convert");
 	if (lastPage == 0){lastPage=10000;}
-	sprintf(tmp,"%d",lastPage);
+	snprintf(tmp, sizeof(tmp), "%d", lastPage);
 	xmlNodeSetContent(param,(const xmlChar*)tmp);
 	xmlAddChild(confNode,param);
 
@@ -140,8 +140,8 @@ void Parameters::saveToXML(const char *fileName,int firstPage,int lastPage){
 	xmlNewProp(param,(const xmlChar*)"form",(const xmlChar*)"-noText");
 	xmlNewProp(param,(const xmlChar*)"default",(const xmlChar*)"False");
 	xmlNewProp(param,(const xmlChar*)"help",(const xmlChar*)"do not extract text");
-	if (!getDisplayText()){sprintf(tmp,"True");}
-	else {sprintf(tmp,"False");}
+	if (!getDisplayText()){snprintf(tmp, sizeof(tmp), "True");}
+	else {snprintf(tmp, sizeof(tmp), "False");}
 	xmlNodeSetContent(param,(const xmlChar*)tmp);
 	xmlAddChild(confNode,param);
 
@@ -150,8 +150,8 @@ void Parameters::saveToXML(const char *fileName,int firstPage,int lastPage){
 	xmlNewProp(param,(const xmlChar*)"form",(const xmlChar*)"-noImage");
 	xmlNewProp(param,(const xmlChar*)"default",(const xmlChar*)"False");
 	xmlNewProp(param,(const xmlChar*)"help",(const xmlChar*)"do not extract images");
-	if (!getDisplayImage()){sprintf(tmp,"True");}
-	else  {sprintf(tmp,"False");}
+	if (!getDisplayImage()){snprintf(tmp, sizeof(tmp), "True");}
+	else  {snprintf(tmp, sizeof(tmp), "False");}
 	xmlNodeSetContent(param,(const xmlChar*)tmp);
 	xmlAddChild(confNode,param);
 

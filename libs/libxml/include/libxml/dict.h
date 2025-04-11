@@ -11,73 +11,69 @@
 #ifndef __XML_DICT_H__
 #define __XML_DICT_H__
 
-#ifdef __cplusplus
-#define __XML_EXTERNC	extern "C"
-#else
-#define __XML_EXTERNC
-#endif
-
-/*
- * The dictionary.
- */
-__XML_EXTERNC typedef struct _xmlDict xmlDict;
-__XML_EXTERNC typedef xmlDict *xmlDictPtr;
-
-#include <limits.h>
+#include <stddef.h>
 #include <libxml/xmlversion.h>
-#include <libxml/tree.h>
+#include <libxml/xmlstring.h>
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
 /*
+ * The dictionary.
+ */
+typedef struct _xmlDict xmlDict;
+typedef xmlDict *xmlDictPtr;
+
+/*
  * Initializer
  */
-XMLPUBFUN int XMLCALL  xmlInitializeDict(void);
+XML_DEPRECATED
+XMLPUBFUN int  xmlInitializeDict(void);
 
 /*
  * Constructor and destructor.
  */
-XMLPUBFUN xmlDictPtr XMLCALL
+XMLPUBFUN xmlDictPtr
 			xmlDictCreate	(void);
-XMLPUBFUN size_t XMLCALL
+XMLPUBFUN size_t
 			xmlDictSetLimit	(xmlDictPtr dict,
                                          size_t limit);
-XMLPUBFUN size_t XMLCALL
+XMLPUBFUN size_t
 			xmlDictGetUsage (xmlDictPtr dict);
-XMLPUBFUN xmlDictPtr XMLCALL
+XMLPUBFUN xmlDictPtr
 			xmlDictCreateSub(xmlDictPtr sub);
-XMLPUBFUN int XMLCALL
+XMLPUBFUN int
 			xmlDictReference(xmlDictPtr dict);
-XMLPUBFUN void XMLCALL
+XMLPUBFUN void
 			xmlDictFree	(xmlDictPtr dict);
 
 /*
  * Lookup of entry in the dictionary.
  */
-XMLPUBFUN const xmlChar * XMLCALL
+XMLPUBFUN const xmlChar *
 			xmlDictLookup	(xmlDictPtr dict,
 		                         const xmlChar *name,
 		                         int len);
-XMLPUBFUN const xmlChar * XMLCALL
+XMLPUBFUN const xmlChar *
 			xmlDictExists	(xmlDictPtr dict,
 		                         const xmlChar *name,
 		                         int len);
-XMLPUBFUN const xmlChar * XMLCALL
+XMLPUBFUN const xmlChar *
 			xmlDictQLookup	(xmlDictPtr dict,
 		                         const xmlChar *prefix,
 		                         const xmlChar *name);
-XMLPUBFUN int XMLCALL
+XMLPUBFUN int
 			xmlDictOwns	(xmlDictPtr dict,
 					 const xmlChar *str);
-XMLPUBFUN int XMLCALL
+XMLPUBFUN int
 			xmlDictSize	(xmlDictPtr dict);
 
 /*
  * Cleanup function
  */
-XMLPUBFUN void XMLCALL
+XML_DEPRECATED
+XMLPUBFUN void
                         xmlDictCleanup  (void);
 
 #ifdef __cplusplus
