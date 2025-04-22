@@ -141,8 +141,8 @@ private:
     double ascent, descent;
 //#endif
 
-    friend class TextLine;
-    friend class TextWord;
+//    friend class TextLine;
+//    friend class TextWord;
     friend class TextRawWord;
     friend class TextPage;
 };
@@ -326,7 +326,7 @@ private:
     /** The path current image */
     GString* hrefImage;
 
-    friend class TextWord;
+//    friend class TextWord;
     friend class TextRawWord;
     friend class TextPage;
 };
@@ -451,7 +451,7 @@ private:
 
     GBool isInline;
 
-    friend class TextWord;
+//    friend class TextWord;
     friend class TextRawWord;
     friend class TextPage;
 };
@@ -654,6 +654,7 @@ public:
     GBool containNonUnicodeGlyph(){return isNonUnicodeGlyph;};
 };
 
+#if 0
 //------------------------------------------------------------------------
 // TextWord
 //------------------------------------------------------------------------
@@ -701,6 +702,7 @@ private:
     friend class TextLine;
     friend class TextPage;
 };
+#endif
 
 //------------------------------------------------------------------------
 // TextRawWord
@@ -780,15 +782,15 @@ class TextLine {
 
 public:
     TextLine();
-    TextLine(GList *wordsA, double xMinA, double yMinA,
-             double xMaxA, double yMaxA, double fontSizeA);
+    //TextLine(GList *wordsA, double xMinA, double yMinA,
+    //         double xMaxA, double yMaxA, double fontSizeA);
     ~TextLine();
 
     double getXMin() { return xMin; }
     double getYMin() { return yMin; }
     double getXMax() { return xMax; }
     double getYMax() { return yMax; }
-    double getBaseline();
+    //double getBaseline();
     int getRotation() { return rot; }
     GList *getWords() { return words; }
     int getLength() { return len; }
@@ -997,11 +999,11 @@ public:
     /** Dump contents of the current page following the reading order.
      * @param blocks To know if the blocks option is selected
      * @param fullFontName To know if the fullFontName option is selected */
-    void dumpInReadingOrder(GBool blocks, GBool fullFontName);
+    //void dumpInReadingOrder(GBool blocks, GBool fullFontName);
 
     int rotateChars(GList *charsA);
 
-    void unrotateChars(GList *wordsA, int rot);
+    //void unrotateChars(GList *wordsA, int rot);
 
     GBool checkPrimaryLR(GList *charsA);
 
@@ -1030,11 +1032,11 @@ public:
 
     void tagBlock(TextBlock *blk);
 
-    GList *buildColumns(TextBlock *tree, GBool primaryLR);
+    //GList *buildColumns(TextBlock *tree, GBool primaryLR);
 
-    void buildColumns2(TextBlock *blk, GList *columns, GBool primaryLR);
+    //void buildColumns2(TextBlock *blk, GList *columns, GBool primaryLR);
 
-    TextColumn *buildColumn(TextBlock *blk);
+    //TextColumn *buildColumn(TextBlock *blk);
 
     double getLineIndent(TextLine *line, TextBlock *blk);
 
@@ -1042,9 +1044,9 @@ public:
 
     double getLineSpacing(TextLine *line0, TextLine *line1);
 
-    void buildLines(TextBlock *blk, GList *lines);
+    //void buildLines(TextBlock *blk, GList *lines);
 
-    TextLine *buildLine(TextBlock *blk);
+    //TextLine *buildLine(TextBlock *blk);
 
     void getLineChars(TextBlock *blk, GList *charsA);
 
@@ -1074,7 +1076,9 @@ public:
 
     void insertLargeWordsInFirstLeaf(GList *largeWords, TextBlock *blk);
 
+#if 0
     void insertLargeWordInLeaf(TextWord *ch, TextBlock *blk);
+#endif
 
     /** PL: insert a block in the page's list of block nodes according to the top-down position
      * @param nodeblock the block node to be inserted
