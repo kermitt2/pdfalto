@@ -481,6 +481,7 @@ int TextChar::cmpY(const void *p1, const void *p2) {
 }
 
 
+#if 0
 //------------------------------------------------------------------------
 // TextWord
 //------------------------------------------------------------------------
@@ -812,6 +813,7 @@ TextWord::~TextWord() {
     gfree(edge);
     gfree(charPos);
 }
+#endif
 
 //------------------------------------------------------------------------
 // TextRawWord
@@ -1428,6 +1430,7 @@ TextLine::TextLine() {
     xMin = yMin = xMax = yMax = 0;
 }
 
+#if 0
 TextLine::TextLine(GList *wordsA, double xMinA, double yMinA,
                    double xMaxA, double yMaxA, double fontSizeA) {
     TextWord *word;
@@ -1475,9 +1478,10 @@ TextLine::TextLine(GList *wordsA, double xMinA, double yMinA,
     //~ need to check for other Unicode chars used as hyphens
     hyphenated = text[len - 1] == (Unicode) '-';
 }
+#endif
 
 TextLine::~TextLine() {
-    deleteGList(words, TextWord);
+    deleteGList(words, TextRawWord);
     gfree(text);
     gfree(edge);
 }
@@ -3367,6 +3371,7 @@ int TextPage::rotateChars(GList *charsA) {
     return rot;
 }
 
+#if 0
 // Undo the coordinate transform performed by rotateChars().
 void TextPage::unrotateChars(GList *wordsA, int rot) {
     //TextChar *ch;
@@ -3429,6 +3434,7 @@ void TextPage::unrotateChars(GList *wordsA, int rot) {
             break;
     }
 }
+#endif
 
 // Determine the primary text direction (LR vs RL).  Returns true for
 // LR, false for RL.
@@ -4158,6 +4164,7 @@ void TextPage::tagBlock(TextBlock *blk) {
     }
 }
 
+#if 0
 // Convert the tree of TextBlocks into a list of TextColumns.
 GList *TextPage::buildColumns(TextBlock *tree, GBool primaryLR) {
     GList *columns;
@@ -4326,6 +4333,7 @@ TextColumn *TextPage::buildColumn(TextBlock *blk) {
     return new TextColumn(paragraphs, blk->xMin, blk->yMin,
                           blk->xMax, blk->yMax);
 }
+#endif
 
 double TextPage::getLineIndent(TextLine *line, TextBlock *blk) {
     double indent;
@@ -4391,6 +4399,7 @@ double TextPage::getLineSpacing(TextLine *line0, TextLine *line1) {
     return sp;
 }
 
+#if 0
 // recusive call to column block until blkTagLine is matched
 void TextPage::buildLines(TextBlock *blk, GList *lines) {
     TextLine *line;
@@ -4488,6 +4497,7 @@ TextLine *TextPage::buildLine(TextBlock *blk) {
     return new TextLine(words, blk->xMin, blk->yMin, blk->xMax, blk->yMax,
                         lineFontSize);
 }
+#endif
 
 void TextPage::getLineChars(TextBlock *blk, GList *charsA) {
     int i;
@@ -4695,6 +4705,7 @@ void TextPage::insertColumnIntoTree(TextBlock *column, TextBlock *tree) {
     tree->tag = blkTagMulticolumn;
 }
 
+#if 0
 // PL: this is not used
 void TextPage::dumpInReadingOrder(GBool noLineNumbers, GBool fullFontName) {
     TextBlock *tree;
@@ -5010,6 +5021,7 @@ void TextPage::dumpInReadingOrder(GBool noLineNumbers, GBool fullFontName) {
         free(tmp);
     }
 }
+#endif
 
 bool is_digit(Unicode u) {
     // simply match Unicode for ASCII digit... should we add more unicode variants of numbers?
@@ -5028,7 +5040,7 @@ bool is_digit(Unicode u) {
         return false;
 }
 
-bool is_number(TextWord *word) {
+bool is_number(TextRawWord *word) {
     Unicode *text = NULL;
     text = (Unicode *) grealloc(text, word->len * sizeof(Unicode));
     for (int i = 0; i < word->len; i++) {
@@ -5085,12 +5097,12 @@ bool TextPage::markLineNumber() {
     int parIdx, lineIdx, wordI, n;
     TextParagraph *par;
     TextLine *line1;
-    TextWord *word;
-    TextWord *nextWord;
-    TextWord *previousWord;
+    TextRawWord *word;
+    TextRawWord *nextWord;
+    TextRawWord *previousWord;
 
-    vector<TextWord*> lineNumberWords;
-    vector<TextWord*> textWords;
+    vector<TextRawWord*> lineNumberWords;
+    vector<TextRawWord*> textWords;
 
     int rightMostBoundary = 0;
     int leftMostBoundary = 999990;
@@ -5108,14 +5120,14 @@ bool TextPage::markLineNumber() {
             totalNumberOfLines++;
 
             for (wordI = 0; wordI < line1->words->getLength(); wordI++) {
-                word = (TextWord *) line1->words->get(wordI);
+                word = (TextRawWord *) line1->words->get(wordI);
                 word->setLineNumber(false);
                 if (wordI < line1->words->getLength() - 1)
-                    nextWord = (TextWord *) line1->words->get(wordI + 1);
+                    nextWord = (TextRawWord *) line1->words->get(wordI + 1);
                 else 
                     nextWord = NULL;
                 if (wordId != 0)
-                    previousWord = (TextWord *) words->get(wordId - 1);
+                    previousWord = (TextRawWord *) words->get(wordId - 1);
                 else 
                     previousWord = NULL;
 
@@ -5987,8 +5999,8 @@ void TextPage::dump(GBool noLineNumbers, GBool fullFontName, vector<bool> lineNu
 
     TextParagraph *par;
     TextLine *line1;
-    TextWord *word;
-    TextWord *nextWord;
+    TextRawWord *word;
+    TextRawWord *nextWord;
 
     int parIdx, lineIdx, wordI, n;
 
@@ -6016,7 +6028,7 @@ void TextPage::dump(GBool noLineNumbers, GBool fullFontName, vector<bool> lineNu
                 line1 = (TextLine *) par->lines->get(lineIdx);
 
                 for(wordI = 0; wordI < line1->words->getLength(); wordI++) {
-                    word = (TextWord *) line1->words->get(wordI);
+                    word = (TextRawWord *) line1->words->get(wordI);
 
                     if (word->getLineNumber()) {
                         lineNumberWords->append(word);
@@ -6034,7 +6046,7 @@ void TextPage::dump(GBool noLineNumbers, GBool fullFontName, vector<bool> lineNu
             double blockYMax = 0;
 
             for(wordI = 0; wordI < lineNumberWords->getLength(); wordI++) {
-                word = (TextWord *) lineNumberWords->get(wordI);
+                word = (TextRawWord *) lineNumberWords->get(wordI);
 
                 if (word->xMin < blockXMin)
                     blockXMin = word->xMin;
@@ -6070,7 +6082,7 @@ void TextPage::dump(GBool noLineNumbers, GBool fullFontName, vector<bool> lineNu
             free(tmp);
 
             for(wordI = 0; wordI < lineNumberWords->getLength(); wordI++) {
-                word = (TextWord *) lineNumberWords->get(wordI);
+                word = (TextRawWord *) lineNumberWords->get(wordI);
                 
                 // create lines with one number
                 nodeline = xmlNewNode(NULL, (const xmlChar *) TAG_TEXT);
@@ -6185,9 +6197,9 @@ void TextPage::dump(GBool noLineNumbers, GBool fullFontName, vector<bool> lineNu
 
             bool nonEmptyLine = false;
             for (wordI = 0; wordI < line1->words->getLength(); wordI++) {
-                word = (TextWord *) line1->words->get(wordI);
+                word = (TextRawWord *) line1->words->get(wordI);
                 if (wordI < line1->words->getLength() - 1)
-                    nextWord = (TextWord *) line1->words->get(wordI + 1);
+                    nextWord = (TextRawWord *) line1->words->get(wordI + 1);
                 else
                     nextWord = NULL;
 
