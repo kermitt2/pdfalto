@@ -7,7 +7,7 @@ jobs:
   build:
     strategy:
       matrix:
-        os: [ubuntu-latest, macos-latest]
+        os: [ ubuntu-22.04, macos-latest, ubuntu-24.04-arm, macos-13 ]
 
       fail-fast: false
 
@@ -19,11 +19,17 @@ jobs:
         with:
           submodules: true
 
+      - name: Set OS and ARCH variables
+        run: |
+          echo "OS=${{ runner.os == 'Linux' && 'linux' || 'mac' }}" >> $GITHUB_ENV
+          echo "ARCH=${{ runner.arch == 'X64' && '64' || 'arm64' }}" >> $GITHUB_ENV
+        shell: bash
+
       - name: Set up dependencies for Linux
         if: runner.os == 'Linux'
         run: |
           sudo apt-get update -qq
-          sudo apt-get install -qq cmake build-essential clang
+          sudo apt-get install -qq cmake build-essential clang icu-devtools
 
       - name: Set up dependencies for macOS
         if: runner.os == 'macOS'
@@ -31,29 +37,95 @@ jobs:
           brew update
           brew upgrade cmake 
           brew install automake autoconf fontconfig
+          brew install icu4c ucon64
 
-      - name: Display versions
+      - name: Display versions macOs
+        if: runner.os == 'macOS'
         run: |
           gcc -v
           g++ -v
-          cmake --version
+          cmake --version          
+          eval $(brew --cellar)/ucon64/*/bin/ucon64 -v
 
-      - name: set env variables
-        if: runner.os == 'macOS'
+      - name: Display versions Linux
+        if: runner.os == 'Linux'
         run: |
-          echo "" >> $GITHUB_ENV
-          echo "" >> $GITHUB_ENV
-      - name: Build
+          gcc -v
+          g++ -v
+          cmake --version          
+          uconv -v
+
+      - name: Set env variables for macOS x64
+        if: runner.os == 'macOS' && runner.arch == 'X64'
+        run: |
+          echo "C_INCLUDE_PATH=/usr/local/include" >> $GITHUB_ENV
+          echo "CPLUS_INCLUDE_PATH=/usr/local/include" >> $GITHUB_ENV
+#          echo "OS_GROBID='mac'" >> $GITHUB_ENV
+#          echo "ARCH_GROBID='64'" >> $GITHUB_ENV
+        shell: bash
+
+      - name: Set env variables for macOS ARM64
+        if: runner.os == 'macOS' && runner.arch == 'ARM64'
+        run: |
+          echo "C_INCLUDE_PATH=/opt/homebrew/include" >> $GITHUB_ENV
+          echo "CPLUS_INCLUDE_PATH=/opt/homebrew/include" >> $GITHUB_ENV
+#          echo "OS_GROBID='mac'" >> $GITHUB_ENV
+#          echo "ARCH_GROBID='arm64'" >> $GITHUB_ENV
+        shell: bash
+
+      - name: Build for macOS
         if: runner.os == 'macOS'
-        env:
-          C_INCLUDE_PATH: '/opt/homebrew/include'
-          CPLUS_INCLUDE_PATH: '/opt/homebrew/include'
         run: |
           cmake ./
           make
 
-      - name: Build
+      - name: Build on Linux
         if: runner.os == 'Linux'
         run: |
           cmake ./
           make
+
+      - name: Copy pdfalto executable
+        run: |
+          mkdir -p output/pdfalto/${{ env.OS }}/${{ env.ARCH }}
+          cp pdfalto output/pdfalto/${{ env.OS }}/${{ env.ARCH }}
+
+      - name: Save pdfalto executable
+        uses: actions/upload-artifact@v4
+        with:
+          name: pdfalto-bin-${{ env.OS }}-${{ env.ARCH }}
+          path: output
+
+  assemble-artifact:
+    needs: [ build ]
+    runs-on: ubuntu-24.04
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Download artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: output
+      - name: Move contents to output directory
+        run: |
+          for dir in output/*; do
+            if [ -d "$dir" ]; then
+              rsync -a "$dir"/* output/
+              rm -rf "$dir"
+            fi
+          done
+        shell: bash
+      - name: Display structure of downloaded files
+        run: ls -R
+      - name: Get the revision ID
+        id: extract_rev_id
+        run: |
+          SHORT_COMMIT_ID=$(echo "${{ github.sha }}" | cut -c1-7)
+          echo "short_commit_id=${SHORT_COMMIT_ID}" >> $GITHUB_OUTPUT
+      - name: Save artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: pdfalto-bin-all-${{ steps.extract_rev_id.outputs.short_commit_id }}
+          path: output

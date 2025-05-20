@@ -1,49 +1,51 @@
 cmake_minimum_required(VERSION 3.10+)
 project(pdfalto)
 
-set(CMAKE_CXX_STANDARD 11)
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_EXE_LINKER_FLAGS "-no-pie")
 set(CMAKE_BUILD_TYPE "Release")
 
 #--- look for fontconfig
 if (NOT NO_FONTCONFIG)
-  find_library(FONTCONFIG_LIBRARY
-               NAMES fontconfig libfontconfig
-               PATH_SUFFIXES lib64 lib
-  )
-  if (FONTCONFIG_LIBRARY)
-    set(HAVE_FONTCONFIG TRUE)
-    message(STATUS "Found fontconfig")
-  else ()
+    find_library(FONTCONFIG_LIBRARY
+            NAMES fontconfig libfontconfig
+            PATH_SUFFIXES lib64 lib
+    )
+    if (FONTCONFIG_LIBRARY)
+        set(HAVE_FONTCONFIG TRUE)
+        message(STATUS "Found fontconfig at ${FONTCONFIG_LIBRARY}")
+    else ()
+        set(HAVE_FONTCONFIG FALSE)
+        set(FONTCONFIG_LIBRARY "")
+    endif ()
+else ()
     set(HAVE_FONTCONFIG FALSE)
     set(FONTCONFIG_LIBRARY "")
-  endif ()
-else ()
-  set(HAVE_FONTCONFIG FALSE)
-  set(FONTCONFIG_LIBRARY "")
 endif ()
 
 #build xpdf
-set ( XPDF_SUBDIR ${CMAKE_CURRENT_SOURCE_DIR}/xpdf-4.03)
+set(XPDF_SUBDIR ${CMAKE_CURRENT_SOURCE_DIR}/xpdf-4.03)
 
-set ( IMAGE_SUBDIR ${CMAKE_CURRENT_SOURCE_DIR}/libs/image)
+set(IMAGE_SUBDIR ${CMAKE_CURRENT_SOURCE_DIR}/libs/image)
 
-set ( PNG_SUBDIR ${CMAKE_CURRENT_SOURCE_DIR}/libs/image/png)
+set(PNG_SUBDIR ${CMAKE_CURRENT_SOURCE_DIR}/libs/image/png)
 
-set ( ZLIB_SUBDIR ${CMAKE_CURRENT_SOURCE_DIR}/libs/image/zlib)
+set(ZLIB_SUBDIR ${CMAKE_CURRENT_SOURCE_DIR}/libs/image/zlib)
 
-set ( ICU_LIB_SUBDIR ${CMAKE_CURRENT_SOURCE_DIR}/libs/icu)
+set(ICU_SUBDIR ${CMAKE_CURRENT_SOURCE_DIR}/libs/icu)
 
-set ( XML_LIB_SUBDIR ${CMAKE_CURRENT_SOURCE_DIR}/libs/libxml)
+set(LIBXML_SUBDIR ${CMAKE_CURRENT_SOURCE_DIR}/libs/libxml)
 
-set(FREETYPE_INCLUDE_DIR_ft2build ${CMAKE_CURRENT_SOURCE_DIR}/libs/freetype/include)
-set(FREETYPE_INCLUDE_DIR_freetype_freetype ${CMAKE_CURRENT_SOURCE_DIR}/libs/freetype/include)
+set(FREETYPE_SUBDIR ${CMAKE_CURRENT_SOURCE_DIR}/libs/freetype)
 
-include_directories("${ZLIB_SUBDIR}/src")
-set(PNG_INCLUDE_DIRS ${PNG_SUBDIR}/src)
+set(FREETYPE_INCLUDE_DIR_ft2build ${FREETYPE_SUBDIR}/include)
+set(FREETYPE_INCLUDE_DIR_freetype_freetype ${FREETYPE_SUBDIR}/include)
+set(FREETYPE_INCLUDE_DIR ${FREETYPE_SUBDIR}/include)
+
+set(ZLIB_INCLUDE_DIRS ${ZLIB_SUBDIR}/include)
+set(PNG_INCLUDE_DIRS ${PNG_SUBDIR}/include)
 set(PNG_FOUND TRUE)
-
-set ( ICU_PATH ${CMAKE_CURRENT_SOURCE_DIR}/libs/icu)
 
 if (APPLE)
     message("Using macos settings.")
@@ -51,18 +53,20 @@ if (APPLE)
     set(OSSUFFIX "mac")
 
     include(CheckCCompilerFlag)
-    set(CMAKE_REQUIRED_LINK_OPTIONS "-arch;arm64")
     check_c_compiler_flag("-arch arm64" arm64Supported)
     message("arm64Supported=${arm64Supported}")
 
 
-    IF( ${arm64Supported} MATCHES 1 )
+    IF (${arm64Supported} MATCHES 1)
         set(ARCHSUFFIX "arm64")
-        MESSAGE( STATUS "Check if the building for macOS ARM - TRUE" )
-    ELSE()
+        set(CMAKE_REQUIRED_LINK_OPTIONS "-arch;arm64")
+        MESSAGE(STATUS "Check if the building for MacOS ARM64")
+    ELSE ()
         set(ARCHSUFFIX "64")
-        MESSAGE( STATUS "Check if the building for macOS ARM - FALSE" )
-    ENDIF( )
+        set(C_INCLUDE_PATH "/usr/local/include")
+        set(CPLUS_INCLUDE_PATH "/usr/local/include")
+        MESSAGE(STATUS "Check if the building for MacOS X86_64")
+    ENDIF ()
 
 elseif (CYGWIN OR MSVC OR WIN32 OR MINGW)
     message("Using windows settings.")
@@ -74,22 +78,37 @@ elseif (UNIX)
     set(OSSUFFIX "linux")
 endif ()
 
-if ( ${OSSUFFIX} MATCHES "windows" OR ${OSSUFFIX} MATCHES "linux" )
-    if("${CMAKE_SIZEOF_VOID_P}" EQUAL "8")
-        MESSAGE("++ 64 bit architecture")
-        set(ARCHSUFFIX "64")
-    else()
+if (${OSSUFFIX} MATCHES "windows" OR ${OSSUFFIX} MATCHES "linux")
+    if (CMAKE_SYSTEM_PROCESSOR MATCHES "aarch64" OR CMAKE_SYSTEM_PROCESSOR MATCHES "arm64")
+        set(ARM64 TRUE)
+    else ()
+        set(ARM64 FALSE)
+    endif ()
+
+    if ("${CMAKE_SIZEOF_VOID_P}" EQUAL "8")
+        if(ARM64)
+            MESSAGE("++ 64 bit ARM architecture")
+            set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -march=armv8-a")
+            set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -march=armv8-a")
+            set(ARCHSUFFIX "arm64")
+        else()
+            MESSAGE("++ 64 bit architecture")
+            set(ARCHSUFFIX "64")
+        endif()
+    else ()
         MESSAGE("++ 32 bit architecture")
         set(ARCHSUFFIX "32")
-    endif()
-endif()
+    endif ()
+endif ()
 
-set ( XML_LIBRARY ${XML_LIB_SUBDIR}/${OSSUFFIX}/${ARCHSUFFIX}/libxml2.a)
-set ( PNG_LIBRARIES ${PNG_SUBDIR}/${OSSUFFIX}/${ARCHSUFFIX}/libpng.a)
-set ( ZLIB_LIBRARY ${ZLIB_SUBDIR}/${OSSUFFIX}/${ARCHSUFFIX}/libzlib.a)
-set ( FREETYPE_LIBRARY ${CMAKE_CURRENT_SOURCE_DIR}/libs/freetype/${OSSUFFIX}/${ARCHSUFFIX}/libfreetype.a)
-set ( ICUUC_LIB ${CMAKE_CURRENT_SOURCE_DIR}/libs/icu/${OSSUFFIX}/${ARCHSUFFIX}/libicuuc.a)
-set ( ICUDATA_LIB ${CMAKE_CURRENT_SOURCE_DIR}/libs/icu/${OSSUFFIX}/${ARCHSUFFIX}/libicudata.a)
+MESSAGE("Final os/arch: " ${OSSUFFIX}/${ARCHSUFFIX})
+
+set(XML_LIBRARY ${LIBXML_SUBDIR}/${OSSUFFIX}/${ARCHSUFFIX}/libxml2.a)
+set(PNG_LIBRARY ${PNG_SUBDIR}/${OSSUFFIX}/${ARCHSUFFIX}/libpng.a)
+set(ZLIB_LIBRARY ${ZLIB_SUBDIR}/${OSSUFFIX}/${ARCHSUFFIX}/libz.a)
+set(FREETYPE_LIBRARY ${FREETYPE_SUBDIR}/${OSSUFFIX}/${ARCHSUFFIX}/libfreetype.a)
+set(ICUUC_LIBRARY ${ICU_SUBDIR}/${OSSUFFIX}/${ARCHSUFFIX}/libicuuc.a)
+set(ICUDATA_LIBRARY ${ICU_SUBDIR}/${OSSUFFIX}/${ARCHSUFFIX}/libicudata.a)
 
 
 set(XPDF_BUILD_DIR ${XPDF_SUBDIR}/build)
@@ -112,33 +131,34 @@ set(SOURCE_FILES
         src/pdfalto.cc
         src/XmlAltoOutputDev.cc
         src/XmlAltoOutputDev.h
-        )
+)
 
 add_executable(pdfalto ${SOURCE_FILES})
 
-if(HAVE_PAPER_H)
-    if(HAVE_FONTCONFIG)
-        target_link_libraries(pdfalto ${PNG_LIBRARIES} ${ZLIB_LIBRARY} ${XML_LIBRARY} splash xpdf goo fofi ${ICUUC_LIB} ${ICUDATA_LIB} ${FREETYPE_LIBRARY} dl ${PAPER_LIBRARY} ${FONTCONFIG_LIBRARY})
-    else()
-        target_link_libraries(pdfalto ${PNG_LIBRARIES} ${ZLIB_LIBRARY} ${XML_LIBRARY} splash xpdf goo fofi ${ICUUC_LIB} ${ICUDATA_LIB} ${FREETYPE_LIBRARY} dl ${PAPER_LIBRARY})
-    endif()
-else()
-    if(HAVE_FONTCONFIG)
-        target_link_libraries(pdfalto ${PNG_LIBRARIES} ${ZLIB_LIBRARY} ${XML_LIBRARY} splash xpdf goo fofi ${ICUUC_LIB} ${ICUDATA_LIB} ${FREETYPE_LIBRARY} dl ${FONTCONFIG_LIBRARY})
-    else()
-        target_link_libraries(pdfalto ${PNG_LIBRARIES} ${ZLIB_LIBRARY} ${XML_LIBRARY} splash xpdf goo fofi ${ICUUC_LIB} ${ICUDATA_LIB} ${FREETYPE_LIBRARY} dl)
-    endif()
-endif()
+if (HAVE_PAPER_H)
+    if (HAVE_FONTCONFIG)
+        target_link_libraries(pdfalto ${PNG_LIBRARY} ${ZLIB_LIBRARY} ${XML_LIBRARY} splash xpdf goo fofi ${ICUUC_LIBRARY} ${ICUDATA_LIBRARY} ${FREETYPE_LIBRARY} dl ${PAPER_LIBRARY} ${FONTCONFIG_LIBRARY} pthread)
+    else ()
+        target_link_libraries(pdfalto ${PNG_LIBRARY} ${ZLIB_LIBRARY} ${XML_LIBRARY} splash xpdf goo fofi ${ICUUC_LIBRARY} ${ICUDATA_LIBRARY} ${FREETYPE_LIBRARY} dl ${PAPER_LIBRARY} pthread)
+    endif ()
+else ()
+    if (HAVE_FONTCONFIG)
+        target_link_libraries(pdfalto ${PNG_LIBRARY} ${ZLIB_LIBRARY} ${XML_LIBRARY} splash xpdf goo fofi ${ICUUC_LIBRARY} ${ICUDATA_LIBRARY} ${FREETYPE_LIBRARY} dl ${FONTCONFIG_LIBRARY} pthread)
+    else ()
+        target_link_libraries(pdfalto ${PNG_LIBRARY} ${ZLIB_LIBRARY} ${XML_LIBRARY} splash xpdf goo fofi ${ICUUC_LIBRARY} ${ICUDATA_LIBRARY} ${FREETYPE_LIBRARY} dl pthread)
+    endif ()
+endif ()
 
-target_include_directories(pdfalto
-        PUBLIC ${XML_LIB_SUBDIR}/include
-        PUBLIC ${FREETYPE_INCLUDE_DIR_ft2build}
+target_include_directories(
+        pdfalto
+        PUBLIC ${LIBXML_SUBDIR}/include
+        PUBLIC ${FREETYPE_INCLUDE_DIR}
         PUBLIC ${PNG_INCLUDE_DIRS}
-        PUBLIC ${ZLIB_SUBDIR}/src
+        PUBLIC ${ZLIB_INCLUDE_DIRS}
         PUBLIC ${XPDF_SUBDIR}
         PUBLIC ${XPDF_SUBDIR}/goo
         PUBLIC ${XPDF_SUBDIR}/fofi
         PUBLIC ${XPDF_SUBDIR}/xpdf
         PUBLIC ${XPDF_BUILD_DIR}
-        PUBLIC ${ICU_PATH}/common
-        )
+        PUBLIC ${ICU_SUBDIR}/include
+)
