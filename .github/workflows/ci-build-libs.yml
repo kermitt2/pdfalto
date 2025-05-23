@@ -7,6 +7,11 @@ on:
       - feature/update-external-libraries-ubuntu16
       - main
 
+env:
+  LIBXML2_VERSION: 2.13.6
+  FREETYPE2_VERSION: 2.13.3
+  LIBPNG16_VERSION: 1.6.47
+  ZLIB_VERSION: 1.3.1
 
 jobs:
   build-libxml2:
@@ -44,7 +49,7 @@ jobs:
       - name: Download source
         run: |
           pushd libs/libxml
-          wget -O source.tar.gz https://gitlab.gnome.org/GNOME/libxml2/-/archive/v2.13.6/libxml2-v2.13.6.tar.gz
+          wget -O source.tar.gz https://gitlab.gnome.org/GNOME/libxml2/-/archive/v${{ env.LIBXML2_VERSION}}/libxml2-v${{ env.LIBXML2_VERSION}}.tar.gz
           tar -xzf source.tar.gz
           mv libxml2-* src
 
@@ -103,7 +108,7 @@ jobs:
       - name: Download source
         run: |
           cd libs/freetype
-          wget -O source.tar.gz https://sourceforge.net/projects/freetype/files/freetype2/2.13.3/freetype-2.13.3.tar.gz/download
+          wget -O source.tar.gz https://sourceforge.net/projects/freetype/files/freetype2/${{ env.FREETYPE2_VERSION }}/freetype-${{ env.FREETYPE2_VERSION }}.tar.gz/download
           tar -zxf source.tar.gz
           mv freetype-* src
 
@@ -160,7 +165,7 @@ jobs:
       - name: Download source
         run: |
           cd libs/image/png
-          wget -O source.tar.gz https://sourceforge.net/projects/libpng/files/libpng16/1.6.47/libpng-1.6.47.tar.gz/download
+          wget -O source.tar.gz https://sourceforge.net/projects/libpng/files/libpng16/${{ env.LIBPNG16_VERSION }}/libpng-${{ env.LIBPNG16_VERSION }}.tar.gz/download
           tar -zxf source.tar.gz
           mv libpng* src
 
@@ -224,7 +229,7 @@ jobs:
       - name: Download source
         run: |
           cd libs/image/zlib
-          wget -O source.tar.gz https://zlib.net/zlib-1.3.1.tar.gz
+          wget -O source.tar.gz https://zlib.net/zlib-${{ env.ZLIB_VERSION }}.tar.gz
           tar -zxf source.tar.gz
           mv zlib-* src
 
