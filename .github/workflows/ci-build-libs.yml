@@ -1,0 +1,339 @@
+name: Manual build static libraries
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - feature/update-external-libraries-ubuntu16
+      - main
+
+env:
+  LIBXML2_VERSION: 2.13.6
+  FREETYPE2_VERSION: 2.13.3
+  LIBPNG16_VERSION: 1.6.47
+  ZLIB_VERSION: 1.3.1
+
+jobs:
+  build-libxml2:
+    strategy:
+      matrix:
+        os: [ ubuntu-22.04, ubuntu-24.04-arm, macos-latest, macos-13 ]
+
+      fail-fast: false
+
+    runs-on: ${{ matrix.os }}
+    env:
+      JOB_VAR: "job_value"
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up dependencies Linux
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y wget cmake autoconf automake
+
+      - name: Set up dependencies Macos
+        if: runner.os == 'macOS'
+        run: |
+          brew install wget cmake autoconf automake
+
+      - name: Set OS and ARCH variables
+        run: |
+          echo "OS=${{ runner.os == 'Linux' && 'linux' || 'mac' }}" >> $GITHUB_ENV
+          echo "ARCH=${{ runner.arch == 'X64' && '64' || 'arm64' }}" >> $GITHUB_ENV
+        shell: bash
+
+      - name: Download source
+        run: |
+          pushd libs/libxml
+          wget -O source.tar.gz https://gitlab.gnome.org/GNOME/libxml2/-/archive/v${{ env.LIBXML2_VERSION}}/libxml2-v${{ env.LIBXML2_VERSION}}.tar.gz
+          tar -xzf source.tar.gz
+          mv libxml2-* src
+
+      - name: Build source
+        run: |
+          cd libs/libxml/src
+          mkdir -p build/output
+          cd build          
+          cmake -DCMAKE_INSTALL_PREFIX=$(pwd)/output -G "Unix Makefiles" .. -D LIBXML2_WITH_LZMA=OFF -D LIBXML2_WITH_ICONV=OFF -D LIBXML2_WITH_ZLIB=OFF -DBUILD_SHARED_LIBS=OFF
+          make -j8
+          make install
+          cd ..
+          mkdir -p output/libxml/$OS/$ARCH
+          cp build/output/lib/libxml2.a output/libxml/$OS/$ARCH
+          cp -r build/output/include/libxml2 output/libxml
+          mv output/libxml/libxml2 output/libxml/include
+          
+
+      - name: Save specific file
+        uses: actions/upload-artifact@v4
+        with:
+          name: libxml2-binary-${{ env.OS }}-${{ env.ARCH }}
+          path: libs/libxml/src/output
+
+
+  build-freetype:
+    strategy:
+      matrix:
+        os: [ ubuntu-20.04, ubuntu-24.04-arm, macos-latest, macos-13 ]
+
+      fail-fast: false
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up dependencies Linux
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y wget cmake autoconf automake
+
+      - name: Set up dependencies Macos
+        if: runner.os == 'macOS'
+        run: |
+          brew install wget cmake autoconf automake
+
+      - name: Set OS and ARCH variables
+        run: |
+          echo "OS=${{ runner.os == 'Linux' && 'linux' || 'mac' }}" >> $GITHUB_ENV
+          echo "ARCH=${{ runner.arch == 'X64' && '64' || 'arm64' }}" >> $GITHUB_ENV
+        shell: bash
+
+      - name: Download source
+        run: |
+          cd libs/freetype
+          wget -O source.tar.gz https://sourceforge.net/projects/freetype/files/freetype2/${{ env.FREETYPE2_VERSION }}/freetype-${{ env.FREETYPE2_VERSION }}.tar.gz/download
+          tar -zxf source.tar.gz
+          mv freetype-* src
+
+      - name: Build source
+        run: |
+          cd libs/freetype/src
+          mkdir -p build/output
+          cd build
+          cmake .. -DCMAKE_INSTALL_PREFIX=$(pwd)/output -G "Unix Makefiles" -D FT_DISABLE_BROTLI=TRUE -D FT_DISABLE_HARFBUZZ=TRUE -D FT_DISABLE_ZLIB=TRUE -D FT_DISABLE_BZIP2=TRUE -D FT_DISABLE_PNG=TRUE
+          make -j8
+          make install
+          cd ..          
+          mkdir -p output/freetype/$OS/$ARCH
+          cp build/output/lib/libfreetype.a output/freetype/$OS/$ARCH/
+          cp -r build/output/include/freetype2 output/freetype/
+          mv output/freetype/freetype2 output/freetype/include
+
+      - name: Save specific file
+        uses: actions/upload-artifact@v4
+        with:
+          name: freetype-binary-${{ env.OS }}-${{ env.ARCH }}
+          path: libs/freetype/src/output
+
+  build-libpng:
+    strategy:
+      matrix:
+        os: [ ubuntu-20.04, ubuntu-24.04-arm, macos-latest, macos-13 ]
+
+      fail-fast: false
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up dependencies Linux
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y wget cmake autoconf automake
+
+      - name: Set up dependencies Macos
+        if: runner.os == 'macOS'
+        run: |
+          brew install wget cmake autoconf automake
+
+      - name: Set OS and ARCH variables
+        run: |
+          echo "OS=${{ runner.os == 'Linux' && 'linux' || 'mac' }}" >> $GITHUB_ENV
+          echo "ARCH=${{ runner.arch == 'X64' && '64' || 'arm64' }}" >> $GITHUB_ENV
+        shell: bash
+
+      - name: Download source
+        run: |
+          cd libs/image/png
+          wget -O source.tar.gz https://sourceforge.net/projects/libpng/files/libpng16/${{ env.LIBPNG16_VERSION }}/libpng-${{ env.LIBPNG16_VERSION }}.tar.gz/download
+          tar -zxf source.tar.gz
+          mv libpng* src
+
+      - name: Build source
+        run: |
+          cd libs/image/png/src
+          mkdir -p build/output
+          cd build
+          cmake .. -DCMAKE_INSTALL_PREFIX=$(pwd)/output -DBUILD_SHARED_LIBS=OFF
+          make -j8
+          make install
+          cd ..
+          mkdir -p output/image/png/$OS/$ARCH
+          cp build/output/lib/libpng.a output/image/png/$OS/$ARCH
+          cp build/output/lib/libpng16.a output/image/png/$OS/$ARCH
+          cp -r build/output/include output/image/png
+          cp pngstruct.h output/image/png/include
+          cp pnginfo.h output/image/png/include
+          cp pngpriv.h output/image/png/include
+          cp pngstruct.h output/image/png/include/libpng16
+          cp pngpriv.h output/image/png/include/libpng16
+          cp pnginfo.h output/image/png/include/libpng16
+
+
+      - name: Save specific file
+        uses: actions/upload-artifact@v4
+        with:
+          name: libpng-binary-${{ env.OS }}-${{ env.ARCH }}
+          path: libs/image/png/src/output
+
+  build-zlib:
+    strategy:
+      matrix:
+        os: [ ubuntu-20.04, ubuntu-24.04-arm, macos-latest, macos-13 ]
+
+      fail-fast: false
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up dependencies Linux
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y wget cmake autoconf automake
+
+      - name: Set up dependencies Macos
+        if: runner.os == 'macOS'
+        run: |
+          brew install wget cmake autoconf automake
+
+      - name: Set OS and ARCH variables
+        run: |
+          echo "OS=${{ runner.os == 'Linux' && 'linux' || 'mac' }}" >> $GITHUB_ENV
+          echo "ARCH=${{ runner.arch == 'X64' && '64' || 'arm64' }}" >> $GITHUB_ENV
+        shell: bash
+
+      - name: Download source
+        run: |
+          cd libs/image/zlib
+          wget -O source.tar.gz https://zlib.net/zlib-${{ env.ZLIB_VERSION }}.tar.gz
+          tar -zxf source.tar.gz
+          mv zlib-* src
+
+      - name: Build source
+        run: |
+          cd libs/image/zlib/src
+          mkdir -p build/output
+          cd build
+          cmake .. -DCMAKE_INSTALL_PREFIX=$(pwd)/output -DBUILD_SHARED_LIBS=OFF
+          make -j8
+          make install 
+          cd .. 
+          mkdir -p output/image/zlib/$OS/$ARCH
+          cp build/output/lib/libz.a output/image/zlib/$OS/$ARCH
+          cp -r build/output/include output/image/zlib
+          
+
+      - name: Save specific file
+        uses: actions/upload-artifact@v4
+        with:
+          name: libzlib-binary-${{ env.OS }}-${{ env.ARCH }}
+          path: libs/image/zlib/src/output
+
+  build-icu:
+    strategy:
+      matrix:
+        os: [ ubuntu-22.04, ubuntu-24.04-arm, macos-latest, macos-13 ]
+
+      fail-fast: false
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up dependencies Linux
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y wget cmake autoconf automake
+
+      - name: Set up dependencies Macos
+        if: runner.os == 'macOS'
+        run: |
+          brew install wget cmake autoconf automake
+
+      - name: Set OS and ARCH variables
+        run: |
+          echo "OS=${{ runner.os == 'Linux' && 'linux' || 'mac' }}" >> $GITHUB_ENV
+          echo "ARCH=${{ runner.arch == 'X64' && '64' || 'arm64' }}" >> $GITHUB_ENV
+        shell: bash
+
+      - name: Download source
+        run: |
+          cd libs/icu
+          wget -O source.tar.gz https://github.com/unicode-org/icu/archive/refs/tags/release-76-1.tar.gz
+          tar -zxf source.tar.gz
+          mv icu-release-* src
+
+      - name: Build source
+        run: |
+          cd libs/icu/src/icu4c/source
+          mkdir output
+          ./runConfigureICU Linux --enable-static --disable-shared --prefix=$(pwd)/output
+          make -j8
+          make install
+          cd ../../
+          mkdir -p output/icu/$OS/$ARCH
+          cp icu4c/source/output/lib/*.a output/icu/$OS/$ARCH
+          cp -r icu4c/source/output/include output/icu/
+
+      - name: Save specific file
+        uses: actions/upload-artifact@v4
+        with:
+          name: icu-binary-${{ env.OS }}-${{ env.ARCH }}
+          path: libs/icu/src/output
+
+
+  assemble-artifact:
+    needs: [ build-libxml2, build-freetype, build-libpng, build-zlib, build-icu ]
+    runs-on: ubuntu-24.04
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Download artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: output
+      - name: Move contents to output directory
+        run: |
+          for dir in output/*; do
+            if [ -d "$dir" ]; then
+              rsync -a "$dir"/* output/
+              rm -rf "$dir"
+            fi
+          done
+        shell: bash
+      - name: Display structure of downloaded files
+        run: ls -R
+      - name: Save artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: all-binaries
+          path: output

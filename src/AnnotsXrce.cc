@@ -50,7 +50,7 @@ AnnotsXrce::AnnotsXrce(Object &objA, xmlNodePtr docrootA, Catalog *catalog, doub
         if (kid.isDict()) {
             Dict *dict;
             dict = kid.getDict();
-            char *tmpor = (char *) malloc(100 * sizeof(char));
+            char tmpor[100];
             // Get the annotation's type
             if (dict->lookup("Subtype", &objSubtype)->isName()) {
                 // It can be 'Highlight' or 'Underline' or 'Link' (Subtype 'Squiggly' or 'StrikeOut' are not supported)
@@ -62,9 +62,8 @@ AnnotsXrce::AnnotsXrce(Object &objA, xmlNodePtr docrootA, Catalog *catalog, doub
                     xmlNewProp(nodeAnnot, (const xmlChar *) ATTR_SUBTYPE, (const xmlChar *) objSubtype.getName());
                     xmlAddChild(docrootA, nodeAnnot);
                     current = gTrue;
-                    sprintf(tmpor, "%d", pageNumA);
+                    snprintf(tmpor, sizeof(tmpor), "%d", pageNumA);
                     xmlNewProp(nodeAnnot, (const xmlChar *) ATTR_PAGENUM, (const xmlChar *) tmpor);
-                    free(tmpor);
                     isLink = gFalse;
                 }
                 if (!strcmp(objSubtype.getName(), "Link")) {
@@ -175,13 +174,13 @@ AnnotsXrce::AnnotsXrce(Object &objA, xmlNodePtr docrootA, Catalog *catalog, doub
                                             // TODO FH 25/01/2006 apply transform matrix of destination page, not current page
                                             double x, y;
                                             transform(link_dest->getLeft(), link_dest->getTop(), &x, &y, ctmA);
-                                            char *tmp = (char *) malloc(10 * sizeof(char));
-                                            sprintf(tmp, "%d", page);
+                                            char tmp[10];
+                                            snprintf(tmp, sizeof(tmp), "%d", page);
                                             //printf("link %d %g %g\n",page,x,y);
                                             xmlNewProp(nodeActionDEST, (const xmlChar *) ATTR_ANNOTS_PAGE, (const xmlChar *) tmp);
-                                            sprintf(tmp, "%g", x);
+                                            snprintf(tmp, sizeof(tmp), "%g", x);
                                             xmlNewProp(nodeActionDEST, (const xmlChar *) ATTR_ANNOTS_X, (const xmlChar *) tmp);
-                                            sprintf(tmp, "%g", y);
+                                            snprintf(tmp, sizeof(tmp), "%g", y);
                                             xmlNewProp(nodeActionDEST, (const xmlChar *) ATTR_ANNOTS_Y, (const xmlChar *) tmp);
                                             //}
                                         }
@@ -195,8 +194,8 @@ AnnotsXrce::AnnotsXrce(Object &objA, xmlNodePtr docrootA, Catalog *catalog, doub
                                         case destFitB:
                                         case destFitBH:
                                         case destFitBV:
-                                            char *tmp = (char *) malloc(10 * sizeof(char));
-                                            sprintf(tmp, "%d", page);
+                                            char tmp[10];
+                                            snprintf(tmp, sizeof(tmp), "%d", page);
                                             xmlNewProp(nodeActionDEST, (const xmlChar *) ATTR_ANNOTS_PAGE, (const xmlChar *) tmp);
                                             xmlNewProp(nodeActionDEST, (const xmlChar *) ATTR_ANNOTS_X, (const xmlChar *) "0");
                                             xmlNewProp(nodeActionDEST, (const xmlChar *) ATTR_ANNOTS_Y, (const xmlChar *) "0");
@@ -277,41 +276,39 @@ AnnotsXrce::AnnotsXrce(Object &objA, xmlNodePtr docrootA, Catalog *catalog, doub
                                 nodeQuadrilR->type = XML_ELEMENT_NODE;
                                 xmlAddChild(nodeQuadR, nodeQuadrilR);
 
-                                char *t = (char *) malloc(10 * sizeof(char));
+                                char t[10];
 
                                 nodePointsR1 = xmlNewNode(NULL, (const xmlChar *) TAG_POINT);
                                 nodePointsR1->type = XML_ELEMENT_NODE;
                                 xmlAddChild(nodeQuadrilR, nodePointsR1);
-                                sprintf(t, "%lg", xMinT);
+                                snprintf(t, sizeof(t), "%lg", xMinT);
                                 xmlNewProp(nodePointsR1, (const xmlChar *) ATTR_X, (const xmlChar *) t);
-                                sprintf(t, "%lg", yMinT);
+                                snprintf(t, sizeof(t), "%lg", yMinT);
                                 xmlNewProp(nodePointsR1, (const xmlChar *) ATTR_Y, (const xmlChar *) t);
 
                                 nodePointsR1 = xmlNewNode(NULL, (const xmlChar *) TAG_POINT);
                                 nodePointsR1->type = XML_ELEMENT_NODE;
                                 xmlAddChild(nodeQuadrilR, nodePointsR1);
-                                sprintf(t, "%lg", xMinT);
+                                snprintf(t, sizeof(t), "%lg", xMinT);
                                 xmlNewProp(nodePointsR1, (const xmlChar *) ATTR_X, (const xmlChar *) t);
-                                sprintf(t, "%lg", yMaxT);
+                                snprintf(t, sizeof(t), "%lg", yMaxT);
                                 xmlNewProp(nodePointsR1, (const xmlChar *) ATTR_Y, (const xmlChar *) t);
 
                                 nodePointsR1 = xmlNewNode(NULL, (const xmlChar *) TAG_POINT);
                                 nodePointsR1->type = XML_ELEMENT_NODE;
                                 xmlAddChild(nodeQuadrilR, nodePointsR1);
-                                sprintf(t, "%lg", xMaxT);
+                                snprintf(t, sizeof(t), "%lg", xMaxT);
                                 xmlNewProp(nodePointsR1, (const xmlChar *) ATTR_X, (const xmlChar *) t);
-                                sprintf(t, "%lg", yMinT);
+                                snprintf(t, sizeof(t), "%lg", yMinT);
                                 xmlNewProp(nodePointsR1, (const xmlChar *) ATTR_Y, (const xmlChar *) t);
 
                                 nodePointsR1 = xmlNewNode(NULL, (const xmlChar *) TAG_POINT);
                                 nodePointsR1->type = XML_ELEMENT_NODE;
                                 xmlAddChild(nodeQuadrilR, nodePointsR1);
-                                sprintf(t, "%lg", xMaxT);
+                                snprintf(t, sizeof(t), "%lg", xMaxT);
                                 xmlNewProp(nodePointsR1, (const xmlChar *) ATTR_X, (const xmlChar *) t);
-                                sprintf(t, "%lg", yMaxT);
+                                snprintf(t, sizeof(t), "%lg", yMaxT);
                                 xmlNewProp(nodePointsR1, (const xmlChar *) ATTR_Y, (const xmlChar *) t);
-
-                                free(t);
                             }
                         }
                         rectPoint.free();
@@ -322,16 +319,15 @@ AnnotsXrce::AnnotsXrce(Object &objA, xmlNodePtr docrootA, Catalog *catalog, doub
 
             // Add the id attribut into the annotation tag : format is 'p<pageNumber>_a<annotationNumber>
             if (nodeAnnot && current) {
-                char *tmp = (char *) malloc(10 * sizeof(char));
+                char tmp[10];
                 GString *idValue;
                 idValue = new GString("p");
-                sprintf(tmp, "%d", pageNumA);
+                snprintf(tmp, sizeof(tmp), "%d", pageNumA);
                 idValue->append(tmp);
                 idValue->append("_a");
-                sprintf(tmp, "%d", idAnnot);
+                snprintf(tmp, sizeof(tmp), "%d", idAnnot);
                 idValue->append(tmp);
                 xmlNewProp(nodeAnnot, (const xmlChar *) "id", (const xmlChar *) idValue->getCString());
-                free(tmp);
                 delete idValue;
                 idAnnot++;
                 current = gFalse;
@@ -416,7 +412,7 @@ AnnotsXrce::AnnotsXrce(Object &objA, xmlNodePtr docrootA, Catalog *catalog, doub
                     xmlAddChild(nodeAnnot, nodeQuad);
                 }
                 Object point;
-                char *temp = (char *) malloc(10 * sizeof(char));
+                char temp[10];
                 double xx = 0;
                 double yy = 0;
                 for (int j = 0; j < objQuadPoints.arrayGetLength(); ++j) {
@@ -441,16 +437,15 @@ AnnotsXrce::AnnotsXrce(Object &objA, xmlNodePtr docrootA, Catalog *catalog, doub
                             if (xx != 0) {
                                 transform(xx, yy, &x, &y, ctmA);
                             }
-                            sprintf(temp, "%lg", x);
+                            snprintf(temp, sizeof(temp), "%lg", x);
                             xmlNewProp(nodePoints, (const xmlChar *) ATTR_X, (const xmlChar *) temp);
-                            sprintf(temp, "%lg", y);
+                            snprintf(temp, sizeof(temp), "%lg", y);
                             xmlNewProp(nodePoints, (const xmlChar *) ATTR_Y, (const xmlChar *) temp);
                             xx = 0;
                         }
                     }
                     point.free();
                 }
-                free(temp);
             }
             objQuadPoints.free();
 

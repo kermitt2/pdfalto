@@ -21,6 +21,7 @@
 #include <libxml/xmlregexp.h>
 #include <libxml/hash.h>
 #include <libxml/dict.h>
+#include <libxml/tree.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -321,13 +322,13 @@ struct _xmlSchemaWildcard {
 /**
  * XML_SCHEMAS_ATTRGROUP_WILDCARD_BUILDED:
  *
- * The attribute wildcard has been already builded.
+ * The attribute wildcard has been built.
  */
 #define XML_SCHEMAS_ATTRGROUP_WILDCARD_BUILDED 1 << 0
 /**
  * XML_SCHEMAS_ATTRGROUP_GLOBAL:
  *
- * The attribute wildcard has been already builded.
+ * The attribute group has been defined.
  */
 #define XML_SCHEMAS_ATTRGROUP_GLOBAL 1 << 1
 /**
@@ -725,7 +726,7 @@ struct _xmlSchemaType {
 /**
  * XML_SCHEMAS_ELEM_BLOCK_SUBSTITUTION:
  *
- * disallowed substitutions: "substituion"
+ * disallowed substitutions: "substitution"
  */
 #define XML_SCHEMAS_ELEM_BLOCK_SUBSTITUTION        1 << 13
 /**
@@ -789,7 +790,7 @@ struct _xmlSchemaElement {
     xmlRegexpPtr contModel; /* Obsolete for WXS, maybe used for RelaxNG */
     xmlSchemaContentType contentType;
     const xmlChar *refPrefix; /* Deprecated; not used */
-    xmlSchemaValPtr defVal; /* The compiled value contraint. */
+    xmlSchemaValPtr defVal; /* The compiled value constraint. */
     void *idcs; /* The identity-constraint defs */
 };
 
@@ -881,7 +882,7 @@ struct _xmlSchemaNotation {
 /**
  * XML_SCHEMAS_FINAL_DEFAULT_LIST:
  *
- * the cshema has "list" in the set of finalDefault.
+ * the schema has "list" in the set of finalDefault.
  */
 #define XML_SCHEMAS_FINAL_DEFAULT_LIST            1 << 4
 /**
@@ -942,13 +943,13 @@ struct _xmlSchema {
     xmlDictPtr      dict;
     void *includes;     /* the includes, this is opaque for now */
     int preserve;        /* whether to free the document */
-    int counter; /* used to give ononymous components unique names */
+    int counter; /* used to give anonymous components unique names */
     xmlHashTablePtr idcDef; /* All identity-constraint defs. */
     void *volatiles; /* Obsolete */
 };
 
-XMLPUBFUN void XMLCALL         xmlSchemaFreeType        (xmlSchemaTypePtr type);
-XMLPUBFUN void XMLCALL         xmlSchemaFreeWildcard(xmlSchemaWildcardPtr wildcard);
+XMLPUBFUN void         xmlSchemaFreeType        (xmlSchemaTypePtr type);
+XMLPUBFUN void         xmlSchemaFreeWildcard(xmlSchemaWildcardPtr wildcard);
 
 #ifdef __cplusplus
 }

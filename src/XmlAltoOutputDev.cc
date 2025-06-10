@@ -78,6 +78,8 @@ using namespace icu;
 
 // PNG lib
 #include "png.h"
+#include "pngstruct.h"
+#include "pnginfo.h"
 
 #include "CharCodeToUnicode.h"
 
@@ -712,15 +714,15 @@ TextWord::TextWord(GList *charsA, int start, int lenA,
                 if (rightClass != NOT_A_MODIFIER) {
                     if (leftClass == NOT_A_MODIFIER) {
                         diactritic = getCombiningDiacritic(rightClass);
-                        baseChar = new UnicodeString(wchar_t(getStandardBaseChar(chPrev->c)));
+                        baseChar = new UnicodeString(UChar32(getStandardBaseChar(chPrev->c)));
                     }
                 } else if (leftClass != NOT_A_MODIFIER) {
                     diactritic = getCombiningDiacritic(leftClass);
-                    baseChar = new UnicodeString(wchar_t(getStandardBaseChar(ch->c)));
+                    baseChar = new UnicodeString(UChar32(getStandardBaseChar(ch->c)));
                 }
 
                 if (diactritic != 0) {
-                    diacriticChar = new UnicodeString(wchar_t(diactritic));
+                    diacriticChar = new UnicodeString(UChar32(diactritic));
                     UErrorCode errorCode = U_ZERO_ERROR;
                     const Normalizer2 *nfkc = Normalizer2::getNFKCInstance(errorCode);
                     if (!nfkc->isNormalized(*baseChar, errorCode)) {
@@ -1091,7 +1093,7 @@ void TextRawWord::addChar(GfxState *state, double x, double y, double dx,
             if (leftClass != NOT_A_MODIFIER) {
                 if (rightClass == NOT_A_MODIFIER) {
                     diactritic = getCombiningDiacritic(leftClass);
-                    baseChar = new UnicodeString(wchar_t(getStandardBaseChar(u)));
+                    baseChar = new UnicodeString(UChar32(getStandardBaseChar(u)));
                 }
                 // note that in this case we have to be careful with the word coordinates, as the first
                 // character of the word might be a modifier, we should use the base char instead
@@ -1099,11 +1101,11 @@ void TextRawWord::addChar(GfxState *state, double x, double y, double dx,
                 // to shift from the base line
             } else if (rightClass != NOT_A_MODIFIER) {
                 diactritic = getCombiningDiacritic(rightClass);
-                baseChar = new UnicodeString(wchar_t(getStandardBaseChar(prvChar)));
+                baseChar = new UnicodeString(UChar32(getStandardBaseChar(prvChar)));
             }
 
             if (diactritic != 0) {
-                diacriticChar = new UnicodeString(wchar_t(diactritic));
+                diacriticChar = new UnicodeString(UChar32(diactritic));
                 UErrorCode errorCode = U_ZERO_ERROR;
                 const Normalizer2 *nfkc = Normalizer2::getNFKCInstance(errorCode);
                 if (!nfkc->isNormalized(*baseChar, errorCode)) {
@@ -1850,7 +1852,7 @@ bool TextPage::getLineNumber() {
 void TextPage::startPage(int pageNum, GfxState *state, GBool cut) {
     clear();
     words = new GList();
-    char *tmp;
+    char tmp[20];
     cutter = cut;
     num = pageNum;
     numToken = 1;
@@ -1875,9 +1877,7 @@ void TextPage::startPage(int pageNum, GfxState *state, GBool cut) {
     }
     curstate = state;
 
-    tmp = (char *) malloc(20 * sizeof(char));
-
-    sprintf(tmp, "%d", pageNum);
+    snprintf(tmp, sizeof(tmp), "%d", pageNum);
 
     GString *id;
     id = new GString("Page");
@@ -1962,8 +1962,6 @@ void TextPage::startPage(int pageNum, GfxState *state, GBool cut) {
         }
     }
     objAnnot.free();
-
-    free(tmp);
 }
 
 void TextPage::configuration() {
@@ -2966,8 +2964,7 @@ void TextPage::addAttributsNodeVerbose(xmlNodePtr node, char *tmp,
 
 void TextPage::addAttributsNode(xmlNodePtr node, IWord *word, TextFontStyleInfo *fontStyleInfo, UnicodeMap *uMap,
                                 GBool fullFontName) {
-    char *tmp;
-    tmp = (char *) malloc(10 * sizeof(char));
+    char tmp[10];
 
     GString *id;
     GString *stringTemp;
@@ -3059,10 +3056,8 @@ void TextPage::addAttributsNode(xmlNodePtr node, IWord *word, TextFontStyleInfo 
 
     // PL: this should be present only of !contain ???
     // otherwise duplicated fonts
-    sprintf(tmp, "font%d", fontStyleInfo->getId());
+    snprintf(tmp, sizeof(tmp), "font%d", fontStyleInfo->getId());
     xmlNewProp(node, (const xmlChar *) ATTR_STYLEREFS, (const xmlChar *) tmp);
-
-    free(tmp);
 }
 
 /*
@@ -3079,8 +3074,7 @@ void TextPage::testLinkedText(xmlNodePtr node, double xMin, double yMin, double 
     Link *link;
     LinkAction *action;
 
-    char *tmp;
-    tmp = (char *) malloc(50 * sizeof(char));
+    char tmp[50];
 
     for (int j = 0; j < pageLinks->getNumLinks(); ++j) {
 //		printf("link num:%d\n",j);
@@ -3149,7 +3143,6 @@ void TextPage::testLinkedText(xmlNodePtr node, double xMin, double yMin, double 
                                             snprintf(tmp, sizeof(tmp), "p-%d %g %g", page, x, y);
                                             xmlNewProp(node, (const xmlChar *) ATTR_GOTOLINK, (const xmlChar *) tmp);
 //												printf("link %d %g %g\n",page,x,y);
-                                            free(tmp); // PL
                                             return;
                                             //}
                                         }
@@ -3163,9 +3156,8 @@ void TextPage::testLinkedText(xmlNodePtr node, double xMin, double yMin, double 
                                         case destFitB:
                                         case destFitBH:
                                         case destFitBV:
-                                            sprintf(tmp, "p-%d", page);
+                                            snprintf(tmp, sizeof(tmp), "p-%d", page);
                                             xmlNewProp(node, (const xmlChar *) ATTR_GOTOLINK, (const xmlChar *) tmp);
-                                            free(tmp); // PL
                                             return;
                                     }
 
@@ -3176,7 +3168,7 @@ void TextPage::testLinkedText(xmlNodePtr node, double xMin, double yMin, double 
                             }
                             break;
 //							//pagenum
-//							sprintf(tmp, "p-%d ",
+//							snprintf(tmp, sizeof(tmp), "p-%d ",
 //													num]->getXPositionImage());
 //							//zone x1,x1,h,w
 //							//sprintf()
@@ -4816,7 +4808,7 @@ void TextPage::dumpInReadingOrder(GBool noLineNumbers, GBool fullFontName) {
                     if (wordI < line->words->getLength() - 1)
                         nextWord = (TextWord *) line->words->get(wordI + 1);
                     else
-                        nextWord == NULL;
+                        nextWord = NULL;
 
                     char *tmp;
 
@@ -6084,8 +6076,7 @@ void TextPage::dump(GBool noLineNumbers, GBool fullFontName, vector<bool> lineNu
             delete id;
             numBlock = numBlock + 1;
 
-            char *tmp;
-            tmp = (char *) malloc(10 * sizeof(char));
+            char tmp[10];
             snprintf(tmp, sizeof(tmp),ATTR_NUMFORMAT, blockXMin);
             xmlNewProp(nodeblocks, (const xmlChar*)ATTR_X, (const xmlChar*)tmp);
             snprintf(tmp, sizeof(tmp),ATTR_NUMFORMAT, blockYMin);
@@ -6094,7 +6085,6 @@ void TextPage::dump(GBool noLineNumbers, GBool fullFontName, vector<bool> lineNu
             xmlNewProp(nodeblocks, (const xmlChar*)ATTR_HEIGHT, (const xmlChar*)tmp);
             snprintf(tmp, sizeof(tmp),ATTR_NUMFORMAT, blockXMax - blockXMin);
             xmlNewProp(nodeblocks, (const xmlChar*)ATTR_WIDTH, (const xmlChar*)tmp);
-            free(tmp);
 
             for(wordI = 0; wordI < lineNumberWords->getLength(); wordI++) {
                 word = (TextRawWord *) lineNumberWords->get(wordI);
@@ -6109,8 +6099,6 @@ void TextPage::dump(GBool noLineNumbers, GBool fullFontName, vector<bool> lineNu
                 delete id;
                 numText = numText + 1;
 
-                char *tmp;
-                tmp = (char *) malloc(10 * sizeof(char));
                 snprintf(tmp, sizeof(tmp),ATTR_NUMFORMAT, word->xMax - word->xMin);
                 xmlNewProp(nodeline, (const xmlChar*)ATTR_WIDTH, (const xmlChar*)tmp);
                 snprintf(tmp, sizeof(tmp),ATTR_NUMFORMAT, word->yMax - word->yMin);
@@ -6119,7 +6107,6 @@ void TextPage::dump(GBool noLineNumbers, GBool fullFontName, vector<bool> lineNu
                 xmlNewProp(nodeline, (const xmlChar*)ATTR_X, (const xmlChar*)tmp);
                 snprintf(tmp, sizeof(tmp),ATTR_NUMFORMAT, word->yMin);
                 xmlNewProp(nodeline, (const xmlChar*)ATTR_Y, (const xmlChar*)tmp);
-                free(tmp);
 
                 // create the number token
                 node = xmlNewNode(NULL, (const xmlChar *) TAG_TOKEN);
@@ -6127,15 +6114,12 @@ void TextPage::dump(GBool noLineNumbers, GBool fullFontName, vector<bool> lineNu
 
                 fontStyleInfo = new TextFontStyleInfo;
 
-                tmp = (char *) malloc(10 * sizeof(char));
-
                 // if option verbose is selected
                 if (verbose) {
                     addAttributsNodeVerbose(node, tmp, word);
                 }
                 addAttributsNode(node, word, fontStyleInfo, uMap, fullFontName);
                 addAttributTypeReadingOrder(node, tmp, word);    
-                free(tmp);
 
                 xmlAddChild(nodeline, node);
                 xmlAddChild(nodeblocks, nodeline);
@@ -6159,8 +6143,7 @@ void TextPage::dump(GBool noLineNumbers, GBool fullFontName, vector<bool> lineNu
         delete id;
         numBlock = numBlock + 1;
 
-        char *tmp;
-        tmp = (char *) malloc(10 * sizeof(char));
+        char tmp[10];
         snprintf(tmp, sizeof(tmp),ATTR_NUMFORMAT, par->getXMin());
         xmlNewProp(nodeblocks, (const xmlChar*)ATTR_X, (const xmlChar*)tmp);
         snprintf(tmp, sizeof(tmp),ATTR_NUMFORMAT, par->getYMin());
@@ -6169,7 +6152,6 @@ void TextPage::dump(GBool noLineNumbers, GBool fullFontName, vector<bool> lineNu
         xmlNewProp(nodeblocks, (const xmlChar*)ATTR_HEIGHT, (const xmlChar*)tmp);
         snprintf(tmp, sizeof(tmp),ATTR_NUMFORMAT, par->getXMax() - par->getXMin());
         xmlNewProp(nodeblocks, (const xmlChar*)ATTR_WIDTH, (const xmlChar*)tmp);
-        free(tmp);
 
         for (lineIdx = 0; lineIdx < par->lines->getLength(); lineIdx++) {
             line1 = (TextLine *) par->lines->get(lineIdx);
@@ -6179,10 +6161,6 @@ void TextPage::dump(GBool noLineNumbers, GBool fullFontName, vector<bool> lineNu
 
             nodeline = xmlNewNode(NULL, (const xmlChar *) TAG_TEXT);
             nodeline->type = XML_ELEMENT_NODE;
-
-            char *tmp;
-
-            tmp = (char *) malloc(10 * sizeof(char));
 
             snprintf(tmp, sizeof(tmp),ATTR_NUMFORMAT, line1->getXMax() - line1->getXMin());
             xmlNewProp(nodeline, (const xmlChar*)ATTR_WIDTH, (const xmlChar*)tmp);
@@ -6202,8 +6180,6 @@ void TextPage::dump(GBool noLineNumbers, GBool fullFontName, vector<bool> lineNu
             snprintf(tmp, sizeof(tmp),ATTR_NUMFORMAT, line1->getYMin());
             xmlNewProp(nodeline, (const xmlChar*)ATTR_Y, (const xmlChar*)tmp);
 
-            free(tmp);
-
             /*n = line1->len;
             if (line1->hyphenated && lineIdx + 1 < par->lines->getLength()) {
                 --n;
@@ -6217,10 +6193,6 @@ void TextPage::dump(GBool noLineNumbers, GBool fullFontName, vector<bool> lineNu
                     nextWord = (TextRawWord *) line1->words->get(wordI + 1);
                 else
                     nextWord = NULL;
-
-                char *tmp;
-
-                tmp = (char *) malloc(10 * sizeof(char));
 
                 fontStyleInfo = new TextFontStyleInfo;
 
@@ -6383,8 +6355,6 @@ void TextPage::dump(GBool noLineNumbers, GBool fullFontName, vector<bool> lineNu
                 previousWordBaseLine = word->base;
                 previousWordYmin = word->yMin;
                 previousWordYmax = word->yMax;
-
-                free(tmp);
             }
 
             if (nonEmptyLine)
@@ -6397,8 +6367,7 @@ void TextPage::dump(GBool noLineNumbers, GBool fullFontName, vector<bool> lineNu
 
     int imageCount = listeImages.size();
     for (int i = 0; i < imageCount; ++i) {
-        char *tmp;
-        tmp = (char *) malloc(10 * sizeof(char));
+        char tmp[10];
 
         node = xmlNewNode(NULL, (const xmlChar *) TAG_IMAGE);
         xmlNewProp(node, (const xmlChar *) ATTR_ID, (const xmlChar *) listeImages[i]->getImageId()->getCString());
@@ -6439,7 +6408,6 @@ void TextPage::dump(GBool noLineNumbers, GBool fullFontName, vector<bool> lineNu
                        (const xmlChar *) listeImages[i]->getClipZone()->getCString());
         }*/
         xmlAddChild(printSpace, node);
-        free(tmp);
     }
 
 
@@ -6449,9 +6417,7 @@ void TextPage::dump(GBool noLineNumbers, GBool fullFontName, vector<bool> lineNu
         //GBool isInline = false;
         sid = buildSID(getPageNumber(), getIdx(), sid);
 
-        char *tmp;
-
-        tmp = (char *) malloc(10 * sizeof(char));
+        char tmp[10];
 
         node = xmlNewNode(NULL, (const xmlChar *) TAG_IMAGE);
         xmlNewProp(node, (const xmlChar *) ATTR_ID,
@@ -6497,7 +6463,6 @@ void TextPage::dump(GBool noLineNumbers, GBool fullFontName, vector<bool> lineNu
         
         xmlNewProp(node, (const xmlChar *) ATTR_TYPE, (const xmlChar *) "svg");
         xmlAddChild(printSpace, node);
-        free(tmp);
 
         xmlFreeDoc(vecdoc);
     }
@@ -6984,68 +6949,62 @@ bool TextPage::detectReadingOrderIssue(vector<TextParagraph*> originalBlocks) {
 }*/
 
 GString *TextPage::buildIdImage(int pageNum, int imageNum, GString *id) {
-    char *tmp = (char *) malloc(10 * sizeof(char));
-    sprintf(tmp, "%d", pageNum);
+    char tmp[10];
+    snprintf(tmp, sizeof(tmp), "%d", pageNum);
     id->append(tmp);
     id->append("_i");
-    sprintf(tmp, "%d", imageNum);
+    snprintf(tmp, sizeof(tmp), "%d", imageNum);
     id->append(tmp);
-    free(tmp);
     return id;
 }
 
 GString *TextPage::buildSID(int pageNum, int sid, GString *id) {
-    char *tmp = (char *) malloc(10 * sizeof(char));
-    sprintf(tmp, "%d", pageNum);
+    char tmp[10];
+    snprintf(tmp, sizeof(tmp), "%d", pageNum);
     id->append(tmp);
     id->append("_s");
-    sprintf(tmp, "%d", sid);
+    snprintf(tmp, sizeof(tmp), "%d", sid);
     id->append(tmp);
-    free(tmp);
     return id;
 }
 
 GString *TextPage::buildIdText(int pageNum, int textNum, GString *id) {
-    char *tmp = (char *) malloc(10 * sizeof(char));
-    sprintf(tmp, "%d", pageNum);
+    char tmp[10];
+    snprintf(tmp, sizeof(tmp), "%d", pageNum);
     id->append(tmp);
     id->append("_t");
-    sprintf(tmp, "%d", textNum);
+    snprintf(tmp, sizeof(tmp), "%d", textNum);
     id->append(tmp);
-    free(tmp);
     return id;
 }
 
 GString *TextPage::buildIdToken(int pageNum, int tokenNum, GString *id) {
-    char *tmp = (char *) malloc(10 * sizeof(char));
-    sprintf(tmp, "%d", pageNum);
+    char tmp[10];
+    snprintf(tmp, sizeof(tmp), "%d", pageNum);
     id->append(tmp);
     id->append("_w");
-    sprintf(tmp, "%d", tokenNum);
+    snprintf(tmp, sizeof(tmp), "%d", tokenNum);
     id->append(tmp);
-    free(tmp);
     return id;
 }
 
 GString *TextPage::buildIdBlock(int pageNum, int blockNum, GString *id) {
-    char *tmp = (char *) malloc(10 * sizeof(char));
-    sprintf(tmp, "%d", pageNum);
+    char tmp[10];
+    snprintf(tmp, sizeof(tmp), "%d", pageNum);
     id->append(tmp);
     id->append("_b");
-    sprintf(tmp, "%d", blockNum);
+    snprintf(tmp, sizeof(tmp), "%d", blockNum);
     id->append(tmp);
-    free(tmp);
     return id;
 }
 
 GString *TextPage::buildIdClipZone(int pageNum, int clipZoneNum, GString *id) {
-    char *tmp = (char *) malloc(10 * sizeof(char));
-    sprintf(tmp, "%d", pageNum);
+    char tmp[10];
+    snprintf(tmp, sizeof(tmp), "%d", pageNum);
     id->append(tmp);
     id->append("_c");
-    sprintf(tmp, "%d", clipZoneNum);
+    snprintf(tmp, sizeof(tmp), "%d", clipZoneNum);
     id->append(tmp);
-    free(tmp);
     return id;
 }
 
@@ -7222,7 +7181,7 @@ void TextPage::createPath(GfxPath *path, GfxState *state, xmlNodePtr groupNode) 
     //char *tmp;
     //tmp = (char *) malloc(500 * sizeof(*tmp));
     static int SVG_VALUE_BUFFER_SIZE = 500;
-    char *tmp = (char *)malloc(SVG_VALUE_BUFFER_SIZE * sizeof(*tmp));
+    char tmp[SVG_VALUE_BUFFER_SIZE];
 
     GString *d;
     xmlNodePtr pathnode = NULL;
@@ -7244,7 +7203,7 @@ void TextPage::createPath(GfxPath *path, GfxState *state, xmlNodePtr groupNode) 
 
         d = new GString(tmp);
 
-//        sprintf(tmp, ATTR_NUMFORMAT, y0);
+//        snprintf(tmp, sizeof(tmp), ATTR_NUMFORMAT, y0);
 //        xmlNewProp(pathnode, (const xmlChar*)ATTR_Y, (const xmlChar*)tmp);
 
         j = 1;
@@ -7311,10 +7270,10 @@ void TextPage::createPath(GfxPath *path, GfxState *state, xmlNodePtr groupNode) 
 
                 // L tag : lineto
 //                pathnode=xmlNewNode(NULL, (const xmlChar*)TAG_L);
-//                sprintf(tmp, ATTR_NUMFORMAT, x1);
+//                (tmp, ATTR_NUMFORMAT, x1);
 //                xmlNewProp(pathnode, (const xmlChar*)ATTR_X,
 //                           (const xmlChar*)tmp);
-//                sprintf(tmp, ATTR_NUMFORMAT, y1);
+//                snprintf(tmp, sizeof(tmp), ATTR_NUMFORMAT, y1);
 //                xmlNewProp(pathnode, (const xmlChar*)ATTR_Y,
 //                           (const xmlChar*)tmp);
 //                xmlAddChild(groupNode, pathnode);
@@ -7384,7 +7343,6 @@ void TextPage::createPath(GfxPath *path, GfxState *state, xmlNodePtr groupNode) 
     }
     // https://github.com/kermitt2/pdfalto/issues/63
     //delete d;
-    free(tmp);
 }
 
 void TextPage::clip(GfxState *state) {
@@ -7601,14 +7559,14 @@ void TextPage::clipToStrokePath(GfxState *state) {
 //        xmlNewProp(node, (const xmlChar*)ATTR_SID, (const xmlChar*)buildSID(num, getIdx(), id)->getCString());
 //        delete id;
 //
-//        sprintf(tmp, ATTR_NUMFORMAT, x0);
+//        snprintf(tmp, sizeof(tmp), ATTR_NUMFORMAT, x0);
 //        xmlNewProp(node, (const xmlChar*)ATTR_X, (const xmlChar*)tmp);
-//        sprintf(tmp, ATTR_NUMFORMAT, y0);
+//        snprintf(tmp, sizeof(tmp), ATTR_NUMFORMAT, y0);
 //
 //        xmlNewProp(node, (const xmlChar*)ATTR_Y, (const xmlChar*)tmp);
-//        sprintf(tmp, ATTR_NUMFORMAT, w0);
+//        snprintf(tmp, sizeof(tmp), ATTR_NUMFORMAT, w0);
 //        xmlNewProp(node, (const xmlChar*)ATTR_WIDTH, (const xmlChar*)tmp);
-//        sprintf(tmp, ATTR_NUMFORMAT, h0);
+//        snprintf(tmp, sizeof(tmp), ATTR_NUMFORMAT, h0);
 //        xmlNewProp(node, (const xmlChar*)ATTR_HEIGHT, (const xmlChar*)tmp);
 //        if (inlineImg) {
 //            xmlNewProp(node, (const xmlChar*)ATTR_INLINE, (const xmlChar*)sTRUE);
@@ -7982,7 +7940,7 @@ bool TextPage::save_png(GString *file_name,
         return false;
     }
 
-    if (setjmp(png_ptr->jmpbuf)) {
+    if (setjmp(png_ptr->jmp_buf_local)) {
         png_destroy_write_struct(&png_ptr, (png_infopp) &info_ptr);
         fclose(file);
         return false;
@@ -8415,22 +8373,21 @@ void XmlAltoOutputDev::addStyles() {
     for (int j = 0; j < getText()->fontStyles.size(); ++j) {
         xmlNodePtr textStyleNode = xmlNewNode(NULL, (const xmlChar *) TAG_TEXTSTYLE);
 
-        char *tmp;
-        tmp = (char *) malloc(100 * sizeof(char));
+        char tmp[100];
 
         TextFontStyleInfo *fontStyleInfo = getText()->fontStyles[j];
         textStyleNode->type = XML_ELEMENT_NODE;
 
         xmlAddChild(nodeSourceImageInfo, textStyleNode);
 
-        sprintf(tmp, "font%d", fontStyleInfo->getId());
+        snprintf(tmp, sizeof(tmp), "font%d", fontStyleInfo->getId());
         xmlNewProp(textStyleNode, (const xmlChar *) ATTR_ID, (const xmlChar *) tmp);
 
         // https://github.com/kermitt2/pdfalto/issues/66
         // warning if the font name is very long, this can lead to buffer overflow, so we
         // truncate by default everything over 100 char
         GString *truncatedFontNameCS = new GString(fontStyleInfo->getFontNameCS()->getCString(), 99);
-        sprintf(tmp, "%s", truncatedFontNameCS->getCString());
+        snprintf(tmp, sizeof(tmp), "%s", truncatedFontNameCS->getCString());
         xmlNewProp(textStyleNode, (const xmlChar *) ATTR_FONTFAMILY, (const xmlChar *) tmp);
         delete truncatedFontNameCS;
         delete fontStyleInfo->getFontNameCS();
@@ -8438,13 +8395,13 @@ void XmlAltoOutputDev::addStyles() {
         snprintf(tmp, sizeof(tmp), "%.3f", fontStyleInfo->getFontSize());
         xmlNewProp(textStyleNode, (const xmlChar *) ATTR_FONTSIZE, (const xmlChar *) tmp);
 
-        sprintf(tmp, "%s", fontStyleInfo->getFontType() ? "serif" : "sans-serif");
+        snprintf(tmp, sizeof(tmp), "%s", fontStyleInfo->getFontType() ? "serif" : "sans-serif");
         xmlNewProp(textStyleNode, (const xmlChar *) ATTR_FONTTYPE, (const xmlChar *) tmp);
 
-        sprintf(tmp, "%s", fontStyleInfo->getFontWidth() ? "fixed" : "proportional");
+        snprintf(tmp, sizeof(tmp), "%s", fontStyleInfo->getFontWidth() ? "fixed" : "proportional");
         xmlNewProp(textStyleNode, (const xmlChar *) ATTR_FONTWIDTH, (const xmlChar *) tmp);
 
-        sprintf(tmp, "%s", fontStyleInfo->getFontColor()->getCString());
+        snprintf(tmp, sizeof(tmp), "%s", fontStyleInfo->getFontColor()->getCString());
         xmlNewProp(textStyleNode, (const xmlChar *) ATTR_FONTCOLOR, (const xmlChar *) (tmp+1));
 
         delete fontStyleInfo->getFontColor();
@@ -8473,13 +8430,11 @@ void XmlAltoOutputDev::addStyles() {
             else fontStyle->append("superscript");
         }
 
-        sprintf(tmp, "%s", fontStyle->getCString());
+        snprintf(tmp, sizeof(tmp), "%s", fontStyle->getCString());
         if ( strcmp(tmp, "") )
             xmlNewProp(textStyleNode, (const xmlChar *) ATTR_FONTSTYLE, (const xmlChar *) tmp);
 
         delete fontStyle;
-
-        free(tmp);
     }
 }
 
@@ -9457,7 +9412,7 @@ void XmlAltoOutputDev::stroke(GfxState *state) {
     // The stroke attribute : the stroke color value
     state->getStrokeRGB(&rgb);
     GString *hexColor = colortoString(rgb);
-    sprintf(tmp, "stroke: %s;", hexColor->getCString());
+    snprintf(tmp, sizeof(tmp), "stroke: %s;", hexColor->getCString());
     attr->append(tmp);
     delete hexColor;
 
@@ -9482,7 +9437,7 @@ void XmlAltoOutputDev::stroke(GfxState *state) {
             snprintf(tmp, sizeof(tmp), ATTR_NUMFORMAT, state->transformWidth(dash[i]) == 0 ? 1
                                                                    : state->transformWidth(dash[i]));
             attr->append(tmp);
-            sprintf(tmp, "%s", (i == length - 1) ? "" : ", ");
+            snprintf(tmp, sizeof(tmp), "%s", (i == length - 1) ? "" : ", ");
             attr->append(tmp);
         }
         attr->append(";");
@@ -9548,7 +9503,7 @@ void XmlAltoOutputDev::fill(GfxState *state) {
     // The fill attribute which give color value
     state->getFillRGB(&rgb);
     GString *hexColor = colortoString(rgb);
-    sprintf(tmp, "fill: %s;", hexColor->getCString());
+    snprintf(tmp, sizeof(tmp), "fill: %s;", hexColor->getCString());
     attr->append(tmp);
     delete hexColor;
 
@@ -9568,7 +9523,7 @@ void XmlAltoOutputDev::eoFill(GfxState *state) {
     // The fill attribute which give color value
     state->getFillRGB(&rgb);
     GString *hexColor = colortoString(rgb);
-    sprintf(tmp, "fill: %s;", hexColor->getCString());
+    snprintf(tmp, sizeof(tmp), "fill: %s;", hexColor->getCString());
     attr->append(tmp);
     delete hexColor;
 
@@ -9619,16 +9574,13 @@ void XmlAltoOutputDev::restoreState(GfxState *state) {
 
 // Return the hexadecimal value of the color of string
 GString *XmlAltoOutputDev::colortoString(GfxRGB rgb) const {
-    char *temp;
-    temp = (char *) malloc(10 * sizeof(char));
-    sprintf(temp, "#%02X%02X%02X",
+    char temp[10];
+    snprintf(temp, sizeof(temp), "#%02X%02X%02X",
             static_cast<int>(255 * colToDbl(rgb.r)),
             static_cast<int>(255 * colToDbl(rgb.g)),
             static_cast<int>(255 * colToDbl(rgb.b)));
 
     GString *tmp = new GString(temp);
-
-    free(temp);
 
     return tmp;
 }
@@ -9837,11 +9789,11 @@ void XmlAltoOutputDev::drawImageMask(GfxState *state, Object *ref, Stream *str,
 }
 
 void XmlAltoOutputDev::initOutline(int nbPage) {
-    char *tmp = (char *) malloc(10 * sizeof(char));
+    char tmp[10];
     docOutline = xmlNewDoc((const xmlChar *) VERSION);
     globalParams->setTextEncoding((char *) ENCODING_UTF8);
     docOutlineRoot = xmlNewNode(NULL, (const xmlChar *) TAG_TOCITEMS);
-    sprintf(tmp, "%d", nbPage);
+    snprintf(tmp, sizeof(tmp), "%d", nbPage);
     xmlNewProp(docOutlineRoot, (const xmlChar *) ATTR_NB_PAGES, (const xmlChar *) tmp);
     xmlDocSetRootElement(docOutline, docOutlineRoot);
 }
@@ -9956,7 +9908,7 @@ GBool XmlAltoOutputDev::dumpOutline(xmlNodePtr parentNode, GList *itemsA, PDFDoc
 
     GBool atLeastOne = gFalse;
 
-    char *tmp = (char *) malloc(10 * sizeof(char));
+    char tmp[10];
 
     //    UnicodeMap *uMap;
 
@@ -9968,11 +9920,11 @@ GBool XmlAltoOutputDev::dumpOutline(xmlNodePtr parentNode, GList *itemsA, PDFDoc
     //GString *title;
 
     nodeTocItem = xmlNewNode(NULL, (const xmlChar *) TAG_TOCITEMLIST);
-    sprintf(tmp, "%d", levelA);
+    snprintf(tmp, sizeof(tmp), "%d", levelA);
     xmlNewProp(nodeTocItem, (const xmlChar *) ATTR_LEVEL, (const xmlChar *) tmp);
 
     if (levelA != 0) {
-        sprintf(tmp, "%d", idItemTocParentA);
+        snprintf(tmp, sizeof(tmp), "%d", idItemTocParentA);
         xmlNewProp(nodeTocItem, (const xmlChar *) ATTR_ID_ITEM_PARENT,
                    (const xmlChar *) tmp);
     }
@@ -10097,7 +10049,7 @@ GBool XmlAltoOutputDev::dumpOutline(xmlNodePtr parentNode, GList *itemsA, PDFDoc
         // ITEM node
         nodeItem = xmlNewNode(NULL, (const xmlChar *) TAG_ITEM);
         nodeItem->type = XML_ELEMENT_NODE;
-        sprintf(tmp, "%d", idItemToc);
+        snprintf(tmp, sizeof(tmp), "%d", idItemToc);
         xmlNewProp(nodeItem, (const xmlChar *) ATTR_ID, (const xmlChar *) tmp);
         xmlAddChild(nodeTocItem, nodeItem);
 
@@ -10116,7 +10068,7 @@ GBool XmlAltoOutputDev::dumpOutline(xmlNodePtr parentNode, GList *itemsA, PDFDoc
             nodeLink = xmlNewNode(NULL, (const xmlChar *) TAG_LINK);
             nodeLink->type = XML_ELEMENT_NODE;
 
-            sprintf(tmp, "%d", page);
+            snprintf(tmp, sizeof(tmp), "%d", page);
             xmlNewProp(nodeLink, (const xmlChar *) ATTR_PAGE, (const xmlChar *) tmp);
             snprintf(tmp, sizeof(tmp), ATTR_NUMFORMAT, y2);
             xmlNewProp(nodeLink, (const xmlChar *) ATTR_TOP, (const xmlChar *) tmp);
