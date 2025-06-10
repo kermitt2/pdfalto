@@ -89,9 +89,8 @@ void Parameters::setNoLineNumbers(GBool noLineNumberAttrs) {
 }
 
 void Parameters::saveToXML(const char *fileName,int firstPage,int lastPage){
-	char* tmp;
-  	tmp=(char*)malloc(10*sizeof(char));
-  	
+	char tmp[10];
+
   	xmlNodePtr confNode = NULL;
   	xmlNodePtr tool = NULL;
   	xmlNodePtr name = NULL;
@@ -99,8 +98,8 @@ void Parameters::saveToXML(const char *fileName,int firstPage,int lastPage){
   	xmlNodePtr desc = NULL;
   	xmlNodePtr param = NULL;
   	xmlDocPtr confDoc =NULL;
-  	
-  	
+
+
 	confDoc = xmlNewDoc((const xmlChar*)VERSION);
 	confNode = xmlNewNode(NULL,(const xmlChar*)TAG_PAR_CONF);
 	tool = xmlNewNode(NULL,(const xmlChar*)TAG_PAR_TOOL);
@@ -165,5 +164,4 @@ void Parameters::saveToXML(const char *fileName,int firstPage,int lastPage){
 	
 	xmlSaveFile(fileName,confDoc);
   	xmlFreeDoc(confDoc);
-	free(tmp);
 }
