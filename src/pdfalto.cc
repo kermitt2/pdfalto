@@ -361,10 +361,9 @@ int main(int argc, char *argv[]) {
         firstPage = 1;
     }
     if (firstPage != 1) {
-        char *temp = (char *) malloc(10 * sizeof(char));
+        char temp[10];
         snprintf(temp, sizeof(temp), "%d", firstPage);
         cmd->append("-f ")->append(temp)->append(" ");
-        free(temp);
     }
 
     if (lastPage != 0) {
@@ -372,10 +371,9 @@ int main(int argc, char *argv[]) {
         if (lastPage > doc->getNumPages()) {
             last = doc->getNumPages();
         }
-        char *temp = (char *) malloc(10 * sizeof(char));
+        char temp[10];
         snprintf(temp, sizeof(temp), "%d", last);
         cmd->append("-l ")->append(temp)->append(" ");
-        free(temp);
     }
     if (lastPage < 1 || lastPage > doc->getNumPages()) {
         lastPage = doc->getNumPages();
