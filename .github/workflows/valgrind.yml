@@ -31,4 +31,4 @@ jobs:
         - name: Valgrind Checker
           uses: Ximaz/valgrind-action@1.2.1
           with:
-            binary_path: '.'
+            binary_path: './pdfalto'
