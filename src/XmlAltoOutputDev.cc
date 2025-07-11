@@ -1054,6 +1054,7 @@ TextRawWord::TextRawWord(GfxState *state, double x0, double y0,
 TextRawWord::~TextRawWord() {
     //gfree(text);
     gfree(edge);
+    deleteGList(chars, TextChar);
 }
 
 void TextRawWord::setLineNumber(bool theBool) {
@@ -1819,23 +1820,26 @@ TextPage::TextPage(GBool verboseA, Catalog *catalog, xmlNodePtr node,
 
     //if (parameters->getDisplayImage()) 
     {
-        GString *cp;
-        cp = dir->copy();
-        for (int i = 0; i < cp->getLength(); i++) {
-            if (cp->getChar(i) == ' ') {
-                cp->del(i);
-                cp->insert(i, "%20");
+        dataDirectory = dir->copy();
+        for (int i = 0; i < dataDirectory->getLength(); i++) {
+            if (dataDirectory->getChar(i) == ' ') {
+                dataDirectory->del(i);
+                dataDirectory->insert(i, "%20");
             }
         }
-        dataDirectory = new GString(cp);
     }
 }
 
 TextPage::~TextPage() {
     clear();
-    delete fonts;
+    deleteGList(chars, TextChar);
+    deleteGList(words, TextRawWord);
+    deleteGList(fonts, TextFontInfo);
     if (namespaceURI) {
         delete namespaceURI;
+    }
+    if (dataDirectory) {
+        delete dataDirectory;
     }
 }
 
@@ -2654,7 +2658,7 @@ void TextPage::addCharToRawWord(GfxState *state, double x, double y, double dx,
                                 GBool isNonUnicodeGlyph) {
     //cout << "addCharToRawWord" << endl;
     double x1, y1, w1, h1, dx2, dy2, base, sp, delta;
-    GBool overlap;
+    GBool overlap = gFalse;
     int uBufLen, i;
 
     if (uLen == 0) {
@@ -7132,14 +7136,10 @@ void TextPage::doPathForClip(GfxPath *path, GfxState *state,
     double width = xMax - xMin;
 
     if(height < pageHeight && width < pageWidth) {
-        char *tmp;
-        tmp = (char *) malloc(500 * sizeof(char));
-
         // Increment the absolute object index
         idx++;
 
         createPath(path, state, currentNode);
-        free(tmp);
     }
 }
 
@@ -7160,13 +7160,15 @@ void TextPage::doPath(GfxPath *path, GfxState *state, GString *gattributes) {
         xmlNewProp(groupNode, (const xmlChar *) ATTR_STYLE,
                    (const xmlChar *) gattributes->getCString());
 
-        GString *id = new GString("p"), *sid = new GString("p");//, *clipZone = new GString("p");
+        //GString *id = new GString("p");
+        GString sid("p");
+        //, *clipZone = new GString("p");
         GBool isInline = false;
-        id = buildIdImage(getPageNumber(), numImage, id);
-        sid = buildSID(getPageNumber(), getIdx(), sid);
+        //id = buildIdImage(getPageNumber(), numImage, id);
+        buildSID(getPageNumber(), getIdx(), &sid);
         //clipZone = buildIdClipZone(getPageNumber(), idCur, clipZone);
 
-        xmlNewProp(groupNode, (const xmlChar *) ATTR_SVGID, (const xmlChar *) sid->getCString());
+        xmlNewProp(groupNode, (const xmlChar *) ATTR_SVGID, (const xmlChar *) sid.getCString());
         //xmlNewProp(groupNode, (const xmlChar *) ATTR_IDCLIPZONE, (const xmlChar *) clipZone->getCString());
         createPath(path, state, groupNode);
     }
@@ -7183,7 +7185,6 @@ void TextPage::createPath(GfxPath *path, GfxState *state, xmlNodePtr groupNode) 
     static int SVG_VALUE_BUFFER_SIZE = 500;
     char tmp[SVG_VALUE_BUFFER_SIZE];
 
-    GString *d;
     xmlNodePtr pathnode = NULL;
 
     n = path->getNumSubpaths();
@@ -7201,7 +7202,7 @@ void TextPage::createPath(GfxPath *path, GfxState *state, xmlNodePtr groupNode) 
         //snprintf(tmp, SVG_VALUE_BUFFER_SIZE, "M%g,%g", x0, y0);
         snprintf(tmp, SVG_VALUE_BUFFER_SIZE, "M%1.4f,%1.4f", x0, y0);
 
-        d = new GString(tmp);
+        GString dd(tmp);
 
 //        snprintf(tmp, sizeof(tmp), ATTR_NUMFORMAT, y0);
 //        xmlNewProp(pathnode, (const xmlChar*)ATTR_Y, (const xmlChar*)tmp);
@@ -7227,7 +7228,7 @@ void TextPage::createPath(GfxPath *path, GfxState *state, xmlNodePtr groupNode) 
                 // C tag  : curveto
 //                pathnode=xmlNewNode(NULL, (const xmlChar*)TAG_C);
                 snprintf(tmp, SVG_VALUE_BUFFER_SIZE, " C%1.4f,%1.4f %1.4f,%1.4f %1.4f,%1.4f", x1, y1, x2, y2, x3, y3);
-                d->append(tmp);
+                dd.append(tmp);
                 if(xmax==0) {
                     double list_double[] = {x0, x1, x2, x3};
                     xmax = *std::max_element(list_double, list_double +4);
@@ -7278,7 +7279,7 @@ void TextPage::createPath(GfxPath *path, GfxState *state, xmlNodePtr groupNode) 
 //                           (const xmlChar*)tmp);
 //                xmlAddChild(groupNode, pathnode);
                 snprintf(tmp, SVG_VALUE_BUFFER_SIZE," L%1.4f,%1.4f", x1, y1);
-                d->append(tmp);
+                dd.append(tmp);
                 if (xmax == 0) {
                     double list_double[] = {x0, x1};
                     xmax = *std::max_element(list_double, list_double+2);
@@ -7319,7 +7320,7 @@ void TextPage::createPath(GfxPath *path, GfxState *state, xmlNodePtr groupNode) 
 //                xmlNewProp(groupNode, (const xmlChar*)ATTR_CLOSED,
 //                           (const xmlChar*)sTRUE);
 //            }
-            d->append(" Z");
+            dd.append(" Z");
         }
 
         if(svg_xmax == 0 && svg_ymin == 0 && svg_ymax == 0 && svg_xmin == 0){
@@ -7338,7 +7339,7 @@ void TextPage::createPath(GfxPath *path, GfxState *state, xmlNodePtr groupNode) 
                 svg_ymax = ymax;
         }
 
-        xmlNewProp(pathnode, (const xmlChar *) ATTR_D, (const xmlChar *) d->getCString());
+        xmlNewProp(pathnode, (const xmlChar *) ATTR_D, (const xmlChar *) dd.getCString());
         xmlAddChild(groupNode, pathnode);
     }
     // https://github.com/kermitt2/pdfalto/issues/63
@@ -7364,13 +7365,15 @@ void TextPage::clip(GfxState *state) {
         gnode = xmlNewNode(NULL, (const xmlChar *) TAG_CLIPPATH);
         xmlAddChild(vecroot, gnode);
 
-        GString *id = new GString("p"), *sid = new GString("p");//, *clipZone = new GString("p");
+        //GString id("p");
+        GString sid("p");
+        //, *clipZone = new GString("p");
         GBool isInline = false;
-        id = buildIdImage(getPageNumber(), numImage, id);
-        sid = buildSID(getPageNumber(), getIdx(), sid);
+        //buildIdImage(getPageNumber(), numImage, &id);
+        buildSID(getPageNumber(), getIdx(), &sid);
         //clipZone = buildIdClipZone(getPageNumber(), idCur, clipZone);
 
-        xmlNewProp(gnode, (const xmlChar *) ATTR_SVGID, (const xmlChar *) sid->getCString());
+        xmlNewProp(gnode, (const xmlChar *) ATTR_SVGID, (const xmlChar *) sid.getCString());
         //xmlNewProp(gnode, (const xmlChar *) ATTR_IDCLIPZONE, (const xmlChar *) clipZone->getCString());
         //   	free(tmp);
         doPathForClip(state->getPath(), state, gnode);
@@ -8381,15 +8384,15 @@ void XmlAltoOutputDev::addStyles() {
         xmlAddChild(nodeSourceImageInfo, textStyleNode);
 
         snprintf(tmp, sizeof(tmp), "font%d", fontStyleInfo->getId());
+        tmp[sizeof(tmp)-1] = '\0';
         xmlNewProp(textStyleNode, (const xmlChar *) ATTR_ID, (const xmlChar *) tmp);
 
         // https://github.com/kermitt2/pdfalto/issues/66
         // warning if the font name is very long, this can lead to buffer overflow, so we
         // truncate by default everything over 100 char
-        GString *truncatedFontNameCS = new GString(fontStyleInfo->getFontNameCS()->getCString(), 99);
-        snprintf(tmp, sizeof(tmp), "%s", truncatedFontNameCS->getCString());
+        strncpy(tmp, fontStyleInfo->getFontNameCS()->getCString(), sizeof(tmp));
+        tmp[sizeof(tmp)-1] = '\0';
         xmlNewProp(textStyleNode, (const xmlChar *) ATTR_FONTFAMILY, (const xmlChar *) tmp);
-        delete truncatedFontNameCS;
         delete fontStyleInfo->getFontNameCS();
 
         snprintf(tmp, sizeof(tmp), "%.3f", fontStyleInfo->getFontSize());
@@ -9496,7 +9499,7 @@ void XmlAltoOutputDev::stroke(GfxState *state) {
 }
 
 void XmlAltoOutputDev::fill(GfxState *state) {
-    GString *attr = new GString();
+    GString attr;
     char tmp[100];
     GfxRGB rgb;
 
@@ -9504,19 +9507,19 @@ void XmlAltoOutputDev::fill(GfxState *state) {
     state->getFillRGB(&rgb);
     GString *hexColor = colortoString(rgb);
     snprintf(tmp, sizeof(tmp), "fill: %s;", hexColor->getCString());
-    attr->append(tmp);
+    attr.append(tmp);
     delete hexColor;
 
     // The fill-opacity attribute
     double fo = state->getFillOpacity();
     snprintf(tmp, sizeof(tmp), "fill-opacity: %g;", fo);
-    attr->append(tmp);
+    attr.append(tmp);
 
-    doPath(state->getPath(), state, attr);
+    doPath(state->getPath(), state, &attr);
 }
 
 void XmlAltoOutputDev::eoFill(GfxState *state) {
-    GString *attr = new GString();
+    GString attr;
     char tmp[100];
     GfxRGB rgb;
 
@@ -9524,18 +9527,18 @@ void XmlAltoOutputDev::eoFill(GfxState *state) {
     state->getFillRGB(&rgb);
     GString *hexColor = colortoString(rgb);
     snprintf(tmp, sizeof(tmp), "fill: %s;", hexColor->getCString());
-    attr->append(tmp);
+    attr.append(tmp);
     delete hexColor;
 
     // The fill-rule attribute with evenodd value
-    attr->append("fill-rule: evenodd;");
+    attr.append("fill-rule: evenodd;");
 
     // The fill-opacity attribute
     double fo = state->getFillOpacity();
     snprintf(tmp, sizeof(tmp), "fill-opacity: %g;", fo);
-    attr->append(tmp);
+    attr.append(tmp);
 
-    doPath(state->getPath(), state, attr);
+    doPath(state->getPath(), state, &attr);
 }
 
 void XmlAltoOutputDev::clip(GfxState *state) {
