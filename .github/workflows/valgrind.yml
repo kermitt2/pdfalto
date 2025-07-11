@@ -20,11 +20,11 @@ jobs:
         - name: Set up dependencies for Linux
           run: |
             sudo apt-get update -qq
-            sudo apt-get install -qq cmake build-essential clang icu-devtools
-
+            sudo apt-get install -qq cmake build-essential clang icu-devtools   
 
         - name: Build on Linux
           run: |
+            sed -i 's/set(CMAKE_BUILD_TYPE *"Release")/set(CMAKE_BUILD_TYPE "Debug")/' CMakeLists.txt
             cmake ./
             make
 
