@@ -6,6 +6,9 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_EXE_LINKER_FLAGS "-no-pie")
 set(CMAKE_BUILD_TYPE "Release")
 
+# Set the SDK path
+set(CMAKE_OSX_SYSROOT /Library/Developer/CommandLineTools/SDKs/MacOSX.sdk)
+
 #--- look for fontconfig
 if (NOT NO_FONTCONFIG)
     find_library(FONTCONFIG_LIBRARY
@@ -25,7 +28,7 @@ else ()
 endif ()
 
 #build xpdf
-set(XPDF_SUBDIR ${CMAKE_CURRENT_SOURCE_DIR}/xpdf-4.03)
+set ( XPDF_SUBDIR ${CMAKE_CURRENT_SOURCE_DIR}/xpdf-4.05)
 
 set(IMAGE_SUBDIR ${CMAKE_CURRENT_SOURCE_DIR}/libs/image)
 
