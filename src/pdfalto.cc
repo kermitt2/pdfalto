@@ -239,11 +239,15 @@ int main(int argc, char *argv[]) {
     if (readingOrder) {
         parameters->setReadingOrder(gTrue);
         cmd->append("-readingOrder ");
+    } else {
+        parameters->setReadingOrder(gFalse);
     }
 
     if (charReadingOrderAttr) {
         parameters->setCharReadingOrderAttr(gTrue);
         cmd->append("-charReadingOrderAttr ");
+    } else {
+        parameters->setCharReadingOrderAttr(gFalse);
     }
 
     if (ocr) {
@@ -252,6 +256,7 @@ int main(int argc, char *argv[]) {
         //we avoid using heuristic mapping (not reliable)
         globalParams->setMapNumericCharNames(gFalse);
     } else {
+        parameters->setOcr(gFalse);
         globalParams->setMapNumericCharNames(gTrue);
     }
 
