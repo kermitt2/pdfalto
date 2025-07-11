@@ -28,7 +28,12 @@ jobs:
             cmake ./
             make
 
+        - name: Download PDF
+          run: |
+            wget 'https://hal.science/hal-01594930v1/document' -O document.pdf
+
         - name: Valgrind Checker
           uses: Ximaz/valgrind-action@1.2.1
           with:
             binary_path: './pdfalto'
+            binary_args: 'document.pdf'
