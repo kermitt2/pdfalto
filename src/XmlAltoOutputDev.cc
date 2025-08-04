@@ -1820,6 +1820,9 @@ TextPage::TextPage(GBool verboseA, Catalog *catalog, xmlNodePtr node,
 
     //if (parameters->getDisplayImage()) 
     {
+        if (dataDirectory) {
+            delete dataDirectory;
+        }
         dataDirectory = dir->copy();
         for (int i = 0; i < dataDirectory->getLength(); i++) {
             if (dataDirectory->getChar(i) == ' ') {
