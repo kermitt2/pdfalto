@@ -1616,7 +1616,7 @@ public:
     /** Return the hexadecimal value of the color of string
      * @param rgb The color in RGB value
      * @return The hexadecimal value color in a string value*/
-    GString *colortoString(GfxRGB rgb) const;
+    void colortoString(char *buf, size_t buflen, GfxRGB rgb) const;
 
 
     /** Draw the image mask
