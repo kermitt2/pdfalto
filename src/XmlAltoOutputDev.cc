@@ -8390,7 +8390,7 @@ void XmlAltoOutputDev::addStyles() {
         // https://github.com/kermitt2/pdfalto/issues/66
         // warning if the font name is very long, this can lead to buffer overflow, so we
         // truncate by default everything over 100 char
-        strncpy(tmp, fontStyleInfo->getFontNameCS()->getCString(), sizeof(tmp));
+        strncpy(tmp, fontStyleInfo->getFontNameCS()->getCString(), sizeof(tmp)-1);
         tmp[sizeof(tmp)-1] = '\0';
         xmlNewProp(textStyleNode, (const xmlChar *) ATTR_FONTFAMILY, (const xmlChar *) tmp);
         delete fontStyleInfo->getFontNameCS();
