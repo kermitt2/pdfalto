@@ -9411,22 +9411,21 @@ void XmlAltoOutputDev::setupScreenParams(double hDPI, double vDPI) {
 }
 
 void XmlAltoOutputDev::stroke(GfxState *state) {
-    GString *attr = new GString();
-    char tmp[100];
+    char tmp[100] = "stroke: ";
+    GString attr(tmp);
     GfxRGB rgb;
 
     // The stroke attribute : the stroke color value
     state->getStrokeRGB(&rgb);
-    GString *hexColor = colortoString(rgb);
-    snprintf(tmp, sizeof(tmp), "stroke: %s;", hexColor->getCString());
-    attr->append(tmp);
-    delete hexColor;
+    colortoString(tmp, sizeof(tmp), rgb);
+    attr.append(tmp);
+    attr.append(";");
 
     // The stroke-opacity attribute
     double fo = state->getStrokeOpacity();
     if (fo != 1) {
         snprintf(tmp, sizeof(tmp), "stroke-opacity: %g;", fo);
-        attr->append(tmp);
+        attr.append(tmp);
     }
 
     // The stroke-dasharray attribute : line dasharray information
@@ -9438,19 +9437,19 @@ void XmlAltoOutputDev::stroke(GfxState *state) {
     state->getLineDash(&dash, &length, &start);
     // IF there is information about line dash
     if (length != 0) {
-        attr->append("stroke-dasharray:");
+        attr.append("stroke-dasharray:");
         for (i = 0; i < length; i++) {
             snprintf(tmp, sizeof(tmp), ATTR_NUMFORMAT, state->transformWidth(dash[i]) == 0 ? 1
                                                                    : state->transformWidth(dash[i]));
-            attr->append(tmp);
+            attr.append(tmp);
             snprintf(tmp, sizeof(tmp), "%s", (i == length - 1) ? "" : ", ");
-            attr->append(tmp);
+            attr.append(tmp);
         }
-        attr->append(";");
+        attr.append(";");
     }
 
     // The fill attribute : none value
-    attr->append("fill:none;");
+    attr.append("fill:none;");
 
     // The stroke-width attribute
     // Change the line width value with the CTM value
@@ -9461,19 +9460,19 @@ void XmlAltoOutputDev::stroke(GfxState *state) {
         lineWidth2 = lineWidth2 + 0.5;
     }
     snprintf(tmp, sizeof(tmp), "stroke-width: %g;", lineWidth2);
-    attr->append(tmp);
+    attr.append(tmp);
 
     // The stroke-linejoin attribute
     int lineJoin = state->getLineJoin();
     switch (lineJoin) {
         case 0:
-            attr->append("stroke-linejoin:miter;");
+            attr.append("stroke-linejoin:miter;");
             break;
         case 1:
-            attr->append("stroke-linejoin:round;");
+            attr.append("stroke-linejoin:round;");
             break;
         case 2:
-            attr->append("stroke-linejoin:bevel;");
+            attr.append("stroke-linejoin:bevel;");
             break;
     }
 
@@ -9481,13 +9480,13 @@ void XmlAltoOutputDev::stroke(GfxState *state) {
     int lineCap = state->getLineCap();
     switch (lineCap) {
         case 0:
-            attr->append("stroke-linecap:butt;");
+            attr.append("stroke-linecap:butt;");
             break;
         case 1:
-            attr->append("stroke-linecap:round;");
+            attr.append("stroke-linecap:round;");
             break;
         case 2:
-            attr->append("stroke-linecap:square;");
+            attr.append("stroke-linecap:square;");
             break;
     }
 
@@ -9496,22 +9495,21 @@ void XmlAltoOutputDev::stroke(GfxState *state) {
     if (miter != 4) {
         snprintf(tmp, sizeof(tmp), "stroke-miterlimit: %g;", miter);
     }
-    attr->append(tmp);
+    attr.append(tmp);
 
-    doPath(state->getPath(), state, attr);
+    doPath(state->getPath(), state, &attr);
 }
 
 void XmlAltoOutputDev::fill(GfxState *state) {
-    GString attr;
-    char tmp[100];
+    char tmp[100] = "fill: ";
+    GString attr(tmp, sizeof(tmp));
     GfxRGB rgb;
 
     // The fill attribute which give color value
     state->getFillRGB(&rgb);
-    GString *hexColor = colortoString(rgb);
-    snprintf(tmp, sizeof(tmp), "fill: %s;", hexColor->getCString());
+    colortoString(tmp, sizeof(tmp), rgb);
     attr.append(tmp);
-    delete hexColor;
+    attr.append(";");
 
     // The fill-opacity attribute
     double fo = state->getFillOpacity();
@@ -9522,16 +9520,15 @@ void XmlAltoOutputDev::fill(GfxState *state) {
 }
 
 void XmlAltoOutputDev::eoFill(GfxState *state) {
-    GString attr;
-    char tmp[100];
+    char tmp[100] = "fill: ";
+    GString attr(tmp, sizeof(tmp));
     GfxRGB rgb;
 
     // The fill attribute which give color value
     state->getFillRGB(&rgb);
-    GString *hexColor = colortoString(rgb);
-    snprintf(tmp, sizeof(tmp), "fill: %s;", hexColor->getCString());
+    colortoString(tmp, sizeof(tmp), rgb);
     attr.append(tmp);
-    delete hexColor;
+    attr.append(";");
 
     // The fill-rule attribute with evenodd value
     attr.append("fill-rule: evenodd;");
@@ -9579,16 +9576,11 @@ void XmlAltoOutputDev::restoreState(GfxState *state) {
 }
 
 // Return the hexadecimal value of the color of string
-GString *XmlAltoOutputDev::colortoString(GfxRGB rgb) const {
-    char temp[10];
-    snprintf(temp, sizeof(temp), "#%02X%02X%02X",
+void XmlAltoOutputDev::colortoString(char *buf, size_t buflen, GfxRGB rgb) const {
+    snprintf(buf, buflen, "#%02X%02X%02X",
             static_cast<int>(255 * colToDbl(rgb.r)),
             static_cast<int>(255 * colToDbl(rgb.g)),
             static_cast<int>(255 * colToDbl(rgb.b)));
-
-    GString *tmp = new GString(temp);
-
-    return tmp;
 }
 
 GString *XmlAltoOutputDev::convtoX(unsigned int xcol) const {
