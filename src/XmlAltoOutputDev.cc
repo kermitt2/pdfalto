@@ -1,4 +1,5 @@
 #include <aconf.h>
+#include <set>
 
 #ifdef USE_GCC_PRAGMAS
 #pragma implementation
@@ -286,7 +287,7 @@ static GBool isUnicodeSpace(Unicode u) {
         return gTrue;
     }
     // Common Unicode space characters, with code point comments
-    static const std::set<Unicode> unicodeSpaces = {
+    static const set<Unicode> unicodeSpaces = {
         0x20,    // SPACE
         0x09,    // CHARACTER TABULATION
         0x0A,    // LINE FEED
