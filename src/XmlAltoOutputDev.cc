@@ -1054,7 +1054,11 @@ TextRawWord::TextRawWord(GfxState *state, double x0, double y0,
 TextRawWord::~TextRawWord() {
     //gfree(text);
     gfree(edge);
-    deleteGList(chars, TextChar);
+    // deleteGList(chars, TextChar);
+    if (chars) {
+        delete chars;    // Delete the list itself
+        chars = nullptr;
+    }
 }
 
 void TextRawWord::setLineNumber(bool theBool) {
