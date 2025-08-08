@@ -1,4 +1,5 @@
 #include <aconf.h>
+#include <set>
 
 #ifdef USE_GCC_PRAGMAS
 #pragma implementation
@@ -270,6 +271,49 @@ using namespace icu;
 // This value is used as the ascent when computing selection
 // rectangles, in order to work around flakey ascent values in fonts.
 #define selectionAscent 0.8
+
+//------------------------------------------------------------------------
+// Static methods
+//------------------------------------------------------------------------
+
+static GBool isUnicodeSpace(Unicode u) {
+    // Common space characters
+    if (u == 0x20 || u == 0x09 || u == 0x0A || u == 0x0D || u == 0x0C ||
+        u == 0xA0 || u == 0x1680 || u == 0x2000 || u == 0x2001 ||
+        u == 0x2002 || u == 0x2003 || u == 0x2004 || u == 0x2005 ||
+        u == 0x2006 || u == 0x2007 || u == 0x2008 || u == 0x2009 ||
+        u == 0x200A || u == 0x2028 || u == 0x2029 || u == 0x202F ||
+        u == 0x205F || u == 0x3000) {
+        return gTrue;
+    }
+    // Common Unicode space characters, with code point comments
+    static const set<Unicode> unicodeSpaces = {
+        0x20,    // SPACE
+        0x09,    // CHARACTER TABULATION
+        0x0A,    // LINE FEED
+        0x0D,    // CARRIAGE RETURN
+        0x0C,    // FORM FEED
+        0xA0,    // NO-BREAK SPACE
+        0x1680,  // OGHAM SPACE MARK
+        0x2000,  // EN QUAD
+        0x2001,  // EM QUAD
+        0x2002,  // EN SPACE
+        0x2003,  // EM SPACE
+        0x2004,  // THREE-PER-EM SPACE
+        0x2005,  // FOUR-PER-EM SPACE
+        0x2006,  // SIX-PER-EM SPACE
+        0x2007,  // FIGURE SPACE
+        0x2008,  // PUNCTUATION SPACE
+        0x2009,  // THIN SPACE
+        0x200A,  // HAIR SPACE
+        0x2028,  // LINE SEPARATOR
+        0x2029,  // PARAGRAPH SEPARATOR
+        0x202F,  // NARROW NO-BREAK SPACE
+        0x205F,  // MEDIUM MATHEMATICAL SPACE
+        0x3000   // IDEOGRAPHIC SPACE
+    };
+    return unicodeSpaces.count(u) ? gTrue : gFalse;
+}
 
 //------------------------------------------------------------------------
 // TextFontInfo
@@ -1054,7 +1098,14 @@ TextRawWord::TextRawWord(GfxState *state, double x0, double y0,
 TextRawWord::~TextRawWord() {
     //gfree(text);
     gfree(edge);
-    deleteGList(chars, TextChar);
+
+    // Since chars are not owned by TextRawWord, we avoid deleting them brutally with deleteGList.
+    // Instead, we cleanup the pointer to the list.
+    // deleteGList(chars, TextChar);
+    if (chars) {
+        delete chars;    // Delete the list itself
+        chars = nullptr;
+    }
 }
 
 void TextRawWord::setLineNumber(bool theBool) {
@@ -2493,7 +2544,8 @@ Unicode IWord::getCombiningDiacritic(ModifierClass modifierClass) {
 
 
 void TextPage::addCharToPageChars(GfxState *state, double x, double y, double dx,
-                                  double dy, CharCode c, int nBytes, Unicode *u, int uLen, SplashFont *splashFont,
+                                  double dy, CharCode c, int nBytes,
+                                  Unicode *u, int uLen, SplashFont *splashFont,
                                   GBool isNonUnicodeGlyph) {
     double x1, y1, x2, y2, w1, h1, dx2, dy2, ascent, descent, sp;
     double xMin, yMin, xMax, yMax, xMid, yMid;
@@ -2552,9 +2604,7 @@ void TextPage::addCharToPageChars(GfxState *state, double x, double y, double dx
     }
 
     // skip space, tab, and non-breaking space characters
-    if (uLen == 1 && (u[0] == (Unicode) 0x20 ||
-                      u[0] == (Unicode) 0x09 ||
-                      u[0] == (Unicode) 0xa0)) {
+    if (uLen == 1 && isUnicodeSpace(u[0])) {
         charPos += nBytes;
         if (chars->getLength() > 0) {
             ((TextChar *) chars->get(chars->getLength() - 1))->spaceAfter =
@@ -2700,9 +2750,7 @@ void TextPage::addCharToRawWord(GfxState *state, double x, double y, double dx,
     }
 
     // break words at space character
-    if (uLen == 1 && (u[0] == (Unicode) 0x20 ||
-                      u[0] == (Unicode) 0x09 ||
-                      u[0] == (Unicode) 0xa0)) {
+    if (uLen == 1 && isUnicodeSpace(u[0])) {
         if (curWord) {
             ++curWord->charLen;
             curWord->setSpaceAfter(gTrue);
@@ -2778,7 +2826,7 @@ void TextPage::addCharToRawWord(GfxState *state, double x, double y, double dx,
                                                                            - curWord->base) <
                                                                       dupMaxSecDelta * curWord->fontSize;
 
-        // avoid splitting token when overlaping is surrounded by diacritic
+        // avoid splitting token when overlapping is surrounded by diacritic
         ModifierClass modifierClass = NOT_A_MODIFIER;
         ModifierClass rightClass = NOT_A_MODIFIER;
         ModifierClass leftClass = NOT_A_MODIFIER;
