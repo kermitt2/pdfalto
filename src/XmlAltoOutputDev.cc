@@ -5448,7 +5448,13 @@ bool TextPage::markLineNumber() {
     // 5 by 5 for instance, however number should be growing!
     // to be done if needed...
 
-    // immediate vertigal gap? 
+    // immediate vertigal gap?
+
+    // Check coverage over the vertical axis
+    double coverage = (double)bestCluster.size() / totalNumberOfLines;
+    if (coverage < 0.3) {  // Require at least 30% coverage
+        return false;
+    }
 
     // final marking of TextWord corresponding to line numbers
     for (int i = 0; i < bestCluster.size(); i++) {
