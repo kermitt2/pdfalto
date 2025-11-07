@@ -277,16 +277,6 @@ using namespace icu;
 //------------------------------------------------------------------------
 
 static GBool isUnicodeSpace(Unicode u) {
-    // Common space characters
-    if (u == 0x20 || u == 0x09 || u == 0x0A || u == 0x0D || u == 0x0C ||
-        u == 0xA0 || u == 0x1680 || u == 0x2000 || u == 0x2001 ||
-        u == 0x2002 || u == 0x2003 || u == 0x2004 || u == 0x2005 ||
-        u == 0x2006 || u == 0x2007 || u == 0x2008 || u == 0x2009 ||
-        u == 0x200A || u == 0x2028 || u == 0x2029 || u == 0x202F ||
-        u == 0x205F || u == 0x3000) {
-        return gTrue;
-    }
-    // Common Unicode space characters, with code point comments
     static const set<Unicode> unicodeSpaces = {
         0x20,    // SPACE
         0x09,    // CHARACTER TABULATION
