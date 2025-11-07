@@ -2972,7 +2972,7 @@ void TextPage::addAttributTypeReadingOrder(xmlNodePtr node, char *tmp,
     // IF there is more character where the reading order is left to right
     // then we add the type attribute with a true value
     if (nbRight < nbLeft) {
-        sprintf(tmp, "%d", gTrue);
+        snprintf(tmp, sizeof(tmp), "%d", gTrue);
         xmlNewProp(node, (const xmlChar *) ATTR_TYPE, (const xmlChar *) tmp);
     }
 }
@@ -2982,25 +2982,25 @@ void TextPage::addAttributsNodeVerbose(xmlNodePtr node, char *tmp,
     GString *id = new GString("p");
     xmlNewProp(node, (const xmlChar *) ATTR_SID, (const xmlChar *) buildSID(num, word->getIdx(), id)->getCString());
     delete id;
-    sprintf(tmp, "%d", word->rot);
+    snprintf(tmp, sizeof(tmp), "%d", word->rot);
     xmlNewProp(node, (const xmlChar *) ATTR_ROTATION, (const xmlChar *) tmp);
-    sprintf(tmp, "%d", word->angle);
+    snprintf(tmp, sizeof(tmp), "%d", word->angle);
     xmlNewProp(node, (const xmlChar *) ATTR_ANGLE, (const xmlChar *) tmp);
-    sprintf(tmp, "%d", word->angleSkewing_Y);
+    snprintf(tmp, sizeof(tmp), "%d", word->angleSkewing_Y);
     xmlNewProp(node, (const xmlChar *) ATTR_ANGLE_SKEWING_Y, (const xmlChar *) tmp);
-    sprintf(tmp, "%d", word->angleSkewing_X);
+    snprintf(tmp, sizeof(tmp), "%d", word->angleSkewing_X);
     xmlNewProp(node, (const xmlChar *) ATTR_ANGLE_SKEWING_X, (const xmlChar *) tmp);
-    sprintf(tmp, ATTR_NUMFORMAT, word->leading);
+    snprintf(tmp, sizeof(tmp), ATTR_NUMFORMAT, word->leading);
     xmlNewProp(node, (const xmlChar *) ATTR_LEADING, (const xmlChar *) tmp);
-    sprintf(tmp, ATTR_NUMFORMAT, word->render);
+    snprintf(tmp, sizeof(tmp), ATTR_NUMFORMAT, word->render);
     xmlNewProp(node, (const xmlChar *) ATTR_RENDER, (const xmlChar *) tmp);
-    sprintf(tmp, ATTR_NUMFORMAT, word->rise);
+    snprintf(tmp, sizeof(tmp), ATTR_NUMFORMAT, word->rise);
     xmlNewProp(node, (const xmlChar *) ATTR_RISE, (const xmlChar *) tmp);
-    sprintf(tmp, ATTR_NUMFORMAT, word->horizScaling);
+    snprintf(tmp, sizeof(tmp), ATTR_NUMFORMAT, word->horizScaling);
     xmlNewProp(node, (const xmlChar *) ATTR_HORIZ_SCALING, (const xmlChar *) tmp);
-    sprintf(tmp, ATTR_NUMFORMAT, word->wordSpace);
+    snprintf(tmp, sizeof(tmp), ATTR_NUMFORMAT, word->wordSpace);
     xmlNewProp(node, (const xmlChar *) ATTR_WORD_SPACE, (const xmlChar *) tmp);
-    sprintf(tmp, ATTR_NUMFORMAT, word->charSpace);
+    snprintf(tmp, sizeof(tmp), ATTR_NUMFORMAT, word->charSpace);
     xmlNewProp(node, (const xmlChar *) ATTR_CHAR_SPACE, (const xmlChar *) tmp);
 }
 
