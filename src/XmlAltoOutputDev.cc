@@ -851,6 +851,11 @@ TextWord::~TextWord() {
     //gfree(text);
     gfree(edge);
     gfree(charPos);
+    // Clean up the chars GList to prevent memory leak
+    if (chars) {
+        deleteGList(chars, TextChar);
+        chars = nullptr;
+    }
 }
 #endif
 
@@ -1462,7 +1467,8 @@ const char *IWord::normalizeFontName(char *fontName) {
         name3 = name2;
     }
     cstr = new char[name3.size() + 1];
-    strcpy(cstr, name3.c_str());
+    strncpy(cstr, name3.c_str(), name3.size());
+    cstr[name3.size()] = '\0';
 //        printf("\t%s\t%s\n",fontName,cstr);
     return cstr;
 
