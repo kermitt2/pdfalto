@@ -18,6 +18,8 @@
 #define _USE_MATH_DEFINES
 
 #include <cmath> // PL: for using std::abs
+#include <climits> // For INT_MAX
+#include <cstring> // For strnlen
 
 #include <iostream>
 
@@ -3031,8 +3033,10 @@ void TextPage::addAttributsNode(xmlNodePtr node, IWord *word, TextFontStyleInfo 
 
     gfree(text);
 
-    xmlNewProp(node, (const xmlChar *) ATTR_TOKEN_CONTENT,
-               (const xmlChar *) stringTemp->getCString());
+    // Sanitize XML content to prevent injection
+    xmlChar *encodedContent = xmlEncodeEntitiesReentrant(node->doc, (const xmlChar *) stringTemp->getCString());
+    xmlNewProp(node, (const xmlChar *) ATTR_TOKEN_CONTENT, (const xmlChar *) encodedContent);
+    xmlFree(encodedContent);
     delete stringTemp;
 
     GString *gsFontName = new GString();
@@ -6501,12 +6505,18 @@ void TextPage::dump(GBool noLineNumbers, GBool fullFontName, vector<bool> lineNu
             relname->append(GString::fromInt(num));
             relname->append(EXTENSION_SVG);
 
-            xmlNewProp(node, (const xmlChar *) ATTR_HREF, (const xmlChar *) relname->getCString());
+            // Sanitize file path to prevent XML injection
+            xmlChar *encodedHref = xmlEncodeEntitiesReentrant(node->doc, (const xmlChar *) relname->getCString());
+            xmlNewProp(node, (const xmlChar *) ATTR_HREF, (const xmlChar *) encodedHref);
+            xmlFree(encodedHref);
 
             // Save the file for example with relname 'p_06.xml_data/image-27.vec'
             if (!xmlSaveFile(relname->getCString(), vecdoc)) {
                 //error(errIO,-1, "Couldn't open file '%s'", relname->getCString());
             }
+
+            // Cleanup allocated memory
+            delete relname;
         }
         
         xmlNewProp(node, (const xmlChar *) ATTR_TYPE, (const xmlChar *) "svg");
@@ -7841,6 +7851,8 @@ const char *TextPage::drawImageOrMask(GfxState *state, Object *ref, Stream *str,
                 // Save PNG file
                 save_png(relname, width, height, stride, data, 1, PNG_COLOR_TYPE_PALETTE, palette, 2);
 
+                // Cleanup allocated memory
+                delete[] data;
             }
         }
 
@@ -7895,6 +7907,7 @@ const char *TextPage::drawImageOrMask(GfxState *state, Object *ref, Stream *str,
                             for (int x = 0; x < width; x++) {
                                 GfxRenderingIntent ri;
                                 colorMap->getRGB(p, &rgb, ri);
+
                                 data[k++] = clamp(rgb.r >> 8);
                                 data[k++] = clamp(rgb.g >> 8);
                                 data[k++] = clamp(rgb.b >> 8);
@@ -7910,6 +7923,9 @@ const char *TextPage::drawImageOrMask(GfxState *state, Object *ref, Stream *str,
 
                     // Save PNG file
                     save_png(relname, width, height, width * 3, data, 24, PNG_COLOR_TYPE_RGB, NULL, 0);
+
+                    // Cleanup allocated memory
+                    delete[] data;
                 }
             }
         }
