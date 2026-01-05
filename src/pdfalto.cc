@@ -53,10 +53,12 @@ static char cfgFileName[256] = "";
 static char XMLcfgFileName[256] = "";
 
 static GBool noText = gFalse;
-static GBool noImage = gFalse;
+static GBool noImage = gFalse; // deprecated: use onlyGraphsCoord instead
+static GBool onlyGraphsCoord = gFalse;
+static GBool skipGraphs = gFalse;
 static GBool outline = gFalse;
 static GBool cutPages = gFalse;
-//static GBool blocks = gFalse;
+// static GBool blocks = gFalse;
 static GBool noLineNumbers = gFalse;
 static GBool fullFontName = gFalse;
 
@@ -76,405 +78,409 @@ static GBool printHelp = gFalse;
 static char namespaceUri[256] = "\001";
 
 static ArgDesc argDesc[] = {
-        {"-f",             argInt,    &firstPage,       0,
-                "first page to convert"},
-        {"-l",             argInt,    &lastPage,        0,
-                "last page to convert"},
-        {"-verbose",       argFlag,   &verbose,         0,
-                "display pdf attributes"},
-        {"-noImage",       argFlag,   &noImage,         0,
-                "do not extract Images (Bitmap and Vectorial)"},
-        {"-noImageInline", argFlag,   &noImageInline,   0,
-                "deprecated"},
-        {"-outline",       argFlag,   &outline,         0,
-                "create an outline file xml"},
-        {"-annotation",    argFlag,   &annots,          0,
-                "create an annotations file xml"},
-// PL: code for supporting cut pages need to be put back
-//        {"-cutPages",      argFlag,   &cutPages,        0,
-//                "cut all pages in separately files"},
-//        {"-blocks",        argFlag,   &blocks,          0,
-//                "add blocks informations within the structure"},
-        {"-noLineNumbers",        argFlag,   &noLineNumbers,          0,
-                "do not output line numbers added in manuscript-style textual documents"},
-        {"-readingOrder",  argFlag,   &readingOrder,    0,
-                "blocks follow the reading order"},
-        {"-noText",        argFlag,   &noText,          0,
-                "do not extract textual objects (might be useful, but non-valid ALTO)"},
-        {"-charReadingOrderAttr",  argFlag,   &charReadingOrderAttr,    0,
+    {"-f", argInt, &firstPage, 0, "first page to convert"},
+    {"-l", argInt, &lastPage, 0, "last page to convert"},
+    {"-verbose", argFlag, &verbose, 0, "display pdf attributes"},
+    {"-noImage", argFlag, &noImage, 0,
+     "deprecated: use -onlyGraphsCoord instead"},
+    {"-onlyGraphsCoord", argFlag, &onlyGraphsCoord, 0,
+     "do not extract image files (coordinates only in ALTO)"},
+    {"-skipGraphs", argFlag, &skipGraphs, 0,
+     "completely skip graphics/image processing"},
+    {"-noImageInline", argFlag, &noImageInline, 0, "deprecated"},
+    {"-outline", argFlag, &outline, 0, "create an outline file xml"},
+    {"-annotation", argFlag, &annots, 0, "create an annotations file xml"},
+    // PL: code for supporting cut pages need to be put back
+    //        {"-cutPages",      argFlag,   &cutPages,        0,
+    //                "cut all pages in separately files"},
+    //        {"-blocks",        argFlag,   &blocks,          0,
+    //                "add blocks informations within the structure"},
+    {"-noLineNumbers", argFlag, &noLineNumbers, 0,
+     "do not output line numbers added in manuscript-style textual documents"},
+    {"-readingOrder", argFlag, &readingOrder, 0,
+     "blocks follow the reading order"},
+    {"-noText", argFlag, &noText, 0,
+     "do not extract textual objects (might be useful, but non-valid ALTO)"},
+    {"-charReadingOrderAttr", argFlag, &charReadingOrderAttr, 0,
                 "include TYPE attribute to String elements to indicate right-to-left reading order (might be useful, but non-valid ALTO)"},
-//        {"-ocr",           argFlag,   &ocr,             0,
+    //        {"-ocr",           argFlag,   &ocr,             0,
 //                "recognises all characters that are missing from unicode."},
-        {"-fullFontName",  argFlag,   &fullFontName,    0,
-                "fonts names are not normalized"},
-        {"-nsURI",         argString, namespaceUri,     sizeof(namespaceUri),
-                "add the specified namespace URI"},
-        {"-opw",           argString, ownerPassword,    sizeof(ownerPassword),
-                "owner password (for encrypted files)"},
-        {"-upw",           argString, userPassword,     sizeof(userPassword),
-                "user password (for encrypted files)"},
-        {"-filesLimit",    argInt,    &filesCountLimit, 0,
-                "limit of asset files be extracted"},
-        {"-q",             argFlag,   &quiet,           0,
-                "don't print any messages or errors"},
-        {"-v",             argFlag,   &printVersion,    0,
-                "print version info"},
-        {"-h",             argFlag,   &printHelp,       0,
-                "print usage information"},
-        {"-help",          argFlag,   &printHelp,       0,
-                "print usage information"},
-        {"--help",         argFlag,   &printHelp,       0,
-                "print usage information"},
-        {"-?",             argFlag,   &printHelp,       0,
-                "print usage information"},
+    {"-fullFontName", argFlag, &fullFontName, 0,
+     "fonts names are not normalized"},
+    {"-nsURI", argString, namespaceUri, sizeof(namespaceUri),
+     "add the specified namespace URI"},
+    {"-opw", argString, ownerPassword, sizeof(ownerPassword),
+     "owner password (for encrypted files)"},
+    {"-upw", argString, userPassword, sizeof(userPassword),
+     "user password (for encrypted files)"},
+    {"-filesLimit", argInt, &filesCountLimit, 0,
+     "limit of asset files be extracted"},
+    {"-q", argFlag, &quiet, 0, "don't print any messages or errors"},
+    {"-v", argFlag, &printVersion, 0, "print version info"},
+    {"-h", argFlag, &printHelp, 0, "print usage information"},
+    {"-help", argFlag, &printHelp, 0, "print usage information"},
+    {"--help", argFlag, &printHelp, 0, "print usage information"},
+    {"-?", argFlag, &printHelp, 0, "print usage information"},
 //        {"--saveconf",     argString, XMLcfgFileName,   sizeof(XMLcfgFileName),
 //                "save all command line parameters in the specified XML <file>"},
-//        {"-xpdfrc",          argString, cfgFileName,      sizeof(cfgFileName),
-//                "specific xpdf configuration file to use (xpdfrc)"},
-        {NULL}
-};
+    //        {"-xpdfrc",          argString, cfgFileName, sizeof(cfgFileName),
+    //                "specific xpdf configuration file to use (xpdfrc)"},
+    {NULL}};
 
 /**
-* Main method which execute pdfalto tool <br/>
-*/
+ * Main method which execute pdfalto tool <br/>
+ */
 int main(int argc, char *argv[]) {
-    PDFDocXrce *doc;
+  PDFDocXrce *doc;
 
-    GString *fileName;
-    GString *textFileName;
-    GString *dataDirName;
-    GString *shortFileName;
-    GString *annotationfile;
-    GString *ownerPW, *userPW;
-    GString *nsURI;
-    GString *cmd;
-    XmlAltoOutputDev *xmlAltoOut;
-    GBool ok;
-    char *p;
-    int exitCode;
-    char *temp;
+  GString *fileName;
+  GString *textFileName;
+  GString *dataDirName;
+  GString *shortFileName;
+  GString *annotationfile;
+  GString *ownerPW, *userPW;
+  GString *nsURI;
+  GString *cmd;
+  XmlAltoOutputDev *xmlAltoOut;
+  GBool ok;
+  char *p;
+  int exitCode;
+  char *temp;
 
-    exitCode = 99;
+  exitCode = 99;
 
-    // parse args
-    ok = parseArgs(argDesc, &argc, argv);
+  // parse args
+  ok = parseArgs(argDesc, &argc, argv);
     if (XMLcfgFileName[0]) {}
     else {
-        if (!ok || argc < 2 || argc > 3 || printVersion || printHelp) {
-            fprintf(stderr, "%s", PDFALTO_NAME);
-            fprintf(stderr, " version ");
-            fprintf(stderr, "%s", PDFALTO_VERSION);
-            fprintf(stderr, "\n");
-            if (!printVersion) {
-                printUsage("pdfalto", "<PDF-file> [<xml-file>]", argDesc);
-            }
-            goto err0;
-        }
+    if (!ok || argc < 2 || argc > 3 || printVersion || printHelp) {
+      fprintf(stderr, "%s", PDFALTO_NAME);
+      fprintf(stderr, " version ");
+      fprintf(stderr, "%s", PDFALTO_VERSION);
+      fprintf(stderr, "\n");
+      if (!printVersion) {
+        printUsage("pdfalto", "<PDF-file> [<xml-file>]", argDesc);
+      }
+      goto err0;
     }
-    //fileName = new GString(argv[1]);
-    cmd = new GString();
-    //globalParams = new GlobalParams(cfgFileName);
+  }
+  // fileName = new GString(argv[1]);
+  cmd = new GString();
+  // globalParams = new GlobalParams(cfgFileName);
 
-    // get the full path of the enclosing executable
-    int theLength;
-    theLength = wai_getExecutablePath(NULL, 0, NULL);
-    
-    char* thePath;
-    thePath = (char*)malloc(theLength + 1);
-    int dirname_length;
-    wai_getExecutablePath(thePath, theLength, &dirname_length);
-    thePath[theLength] = '\0';
+  // get the full path of the enclosing executable
+  int theLength;
+  theLength = wai_getExecutablePath(NULL, 0, NULL);
 
-    char *dirname;
-    dirname = (char*)malloc(dirname_length + 1);
-    strncpy(dirname, thePath, dirname_length); 
-    dirname[dirname_length] = '\0';
+  char *thePath;
+  thePath = (char *)malloc(theLength + 1);
+  int dirname_length;
+  wai_getExecutablePath(thePath, theLength, &dirname_length);
+  thePath[theLength] = '\0';
 
-    // set the config file path as alongside the executable
-    char *xpdfrc_path;
-    xpdfrc_path = (char*)malloc(dirname_length + 8); 
-    strcpy(xpdfrc_path, dirname);
-    strcat(xpdfrc_path, "/xpdfrc");
+  char *dirname;
+  dirname = (char *)malloc(dirname_length + 1);
+  strncpy(dirname, thePath, dirname_length);
+  dirname[dirname_length] = '\0';
 
-    globalParams = new GlobalParams(xpdfrc_path, dirname);
+  // set the config file path as alongside the executable
+  char *xpdfrc_path;
+  xpdfrc_path = (char *)malloc(dirname_length + 8);
+  strcpy(xpdfrc_path, dirname);
+  strcat(xpdfrc_path, "/xpdfrc");
 
-    // Parameters specifics to pdfalto
-    parameters = new Parameters();
+  globalParams = new GlobalParams(xpdfrc_path, dirname);
 
-    if (noImage) {
-        parameters->setDisplayImage(gFalse);
-        cmd->append("-noImage ");
+  // Parameters specifics to pdfalto
+  parameters = new Parameters();
+
+  // -onlyGraphsCoord OR deprecated -noImage
+  if (onlyGraphsCoord || noImage) {
+    parameters->setDisplayImage(gFalse);
+    cmd->append("-onlyGraphsCoord ");
+  } else {
+    parameters->setDisplayImage(gTrue);
+  }
+
+  if (skipGraphs) {
+    parameters->setSkipGraphs(gTrue);
+    cmd->append("-skipGraphs ");
+  } else {
+    parameters->setSkipGraphs(gFalse);
+  }
+
+  if (noText) {
+    parameters->setDisplayText(gFalse);
+    cmd->append("-noText ");
+  } else {
+    parameters->setDisplayText(gTrue);
+  }
+
+  if (outline) {
+    parameters->setDisplayOutline(gFalse);
+    cmd->append("-outline ");
+  } else {
+    parameters->setDisplayOutline(gTrue);
+  }
+
+  if (cutPages) {
+    parameters->setCutAllPages(gFalse);
+    cmd->append("-cutPages ");
+  } else {
+    parameters->setCutAllPages(gTrue);
+  }
+
+  if (noLineNumbers) {
+    parameters->setNoLineNumbers(gTrue);
+    cmd->append("-noLineNumbers ");
+  } else {
+    parameters->setNoLineNumbers(gFalse);
+  }
+
+  if (readingOrder) {
+    parameters->setReadingOrder(gTrue);
+    cmd->append("-readingOrder ");
+  } else {
+    parameters->setReadingOrder(gFalse);
+  }
+
+  if (charReadingOrderAttr) {
+    parameters->setCharReadingOrderAttr(gTrue);
+    cmd->append("-charReadingOrderAttr ");
+  } else {
+    parameters->setCharReadingOrderAttr(gFalse);
+  }
+
+  if (ocr) {
+    parameters->setOcr(gTrue);
+    cmd->append("-ocr ");
+    // we avoid using heuristic mapping (not reliable)
+    globalParams->setMapNumericCharNames(gFalse);
+  } else {
+    parameters->setOcr(gFalse);
+    globalParams->setMapNumericCharNames(gTrue);
+  }
+
+  if (fullFontName) {
+    parameters->setFullFontName(gTrue);
+    cmd->append("-fullFontName ");
+  } else {
+    parameters->setFullFontName(gFalse);
+  }
+
+  /*if (noImageInline) {
+      parameters->setImageInline(gTrue);
+      cmd->append("-noImageInline ");
+  } else {
+      parameters->setImageInline(gFalse);
+  }*/
+
+  if (quiet) {
+    globalParams->setErrQuiet(quiet);
+  }
+
+  if (verbose) {
+    globalParams->setPrintCommands(gTrue);
+    cmd->append("-verbose ");
+  }
+
+  // open PDF file
+  if (ownerPassword[0] != '\001') {
+    ownerPW = new GString(ownerPassword);
+  } else {
+    ownerPW = NULL;
+  }
+  if (userPassword[0] != '\001') {
+    userPW = new GString(userPassword);
+  } else {
+    userPW = NULL;
+  }
+
+  if (filesCountLimit > 0) {
+    parameters->setFilesCountLimit(filesCountLimit);
+    cmd->append("--filesLimit ")->append(filesCountLimit)->append(" ");
+  } else
+    parameters->setFilesCountLimit(1000); // this is the previous default limit
+
+  if (namespaceUri[0] != '\001') {
+    nsURI = new GString(namespaceUri);
+    cmd->append("-nsURI ")->append(nsURI)->append(" ");
+  } else {
+    nsURI = NULL;
+  }
+
+  if (argc < 2) {
+    goto err0;
+  }
+
+  fileName = new GString(argv[1]);
+  // Create the object PDF doc
+  doc = new PDFDocXrce(fileName, ownerPW, userPW);
+
+  if (userPW) {
+    delete userPW;
+  }
+  if (ownerPW) {
+    delete ownerPW;
+  }
+  if (!doc->isOk()) {
+    exitCode = 1;
+    goto err2;
+  }
+
+  if (!doc->okToCopy())
+    fprintf(stderr, "\n\nYou are not supposed to copy this document...\n\n");
+
+  // IF output XML file name was given in command line
+  if (argc == 3) {
+    textFileName = new GString(argv[2]);
+    temp = textFileName->getCString() + textFileName->getLength() - 4;
+    if (!strcmp(temp, EXTENSION_XML) || !strcmp(temp, EXTENSION_XML_MAJ)) {
+      shortFileName = new GString(textFileName->getCString(),
+                                  textFileName->getLength() - 4);
     } else {
-        parameters->setDisplayImage(gTrue);
+      shortFileName = new GString(textFileName);
     }
+  } else {
+    // ELSE we build the output XML file name with the PDF file name
+    p = fileName->getCString() + fileName->getLength() - 4;
+    if (!strcmp(p, EXTENSION_PDF) || !strcmp(p, EXTENSION_PDF_MAJ)) {
+      textFileName =
+          new GString(fileName->getCString(), fileName->getLength() - 4);
+      shortFileName = new GString(textFileName);
 
-    if (noText) {
-        parameters->setDisplayText(gFalse);
-        cmd->append("-noText ");
     } else {
-        parameters->setDisplayText(gTrue);
+      textFileName = fileName->copy();
+      shortFileName = new GString(textFileName);
     }
+    textFileName->append(EXTENSION_XML);
+  }
 
-    if (outline) {
-        parameters->setDisplayOutline(gFalse);
-        cmd->append("-outline ");
-    } else {
-        parameters->setDisplayOutline(gTrue);
+  // For the annotations XML file
+  if (annots) {
+    annotationfile = new GString(shortFileName);
+    annotationfile->append("_");
+    annotationfile->append(NAME_ANNOT);
+    annotationfile->append(EXTENSION_XML);
+    cmd->append("-annotation ");
+  }
+
+  // Get page range
+  if (firstPage < 1) {
+    firstPage = 1;
+  }
+  if (firstPage != 1) {
+    char temp[10];
+    snprintf(temp, sizeof(temp), "%d", firstPage);
+    cmd->append("-f ")->append(temp)->append(" ");
+  }
+
+  if (lastPage != 0) {
+    int last = lastPage;
+    if (lastPage > doc->getNumPages()) {
+      last = doc->getNumPages();
     }
+    char temp[10];
+    snprintf(temp, sizeof(temp), "%d", last);
+    cmd->append("-l ")->append(temp)->append(" ");
+  }
+  if (lastPage < 1 || lastPage > doc->getNumPages()) {
+    lastPage = doc->getNumPages();
+  }
 
-    if (cutPages) {
-        parameters->setCutAllPages(gFalse);
-        cmd->append("-cutPages ");
-    } else {
-        parameters->setCutAllPages(gTrue);
-    }
+  // Write xml file
+  //    printf("crop width: %g\n",doc->getPageCropWidth(1));
+  xmlAltoOut = new XmlAltoOutputDev(textFileName, fileName, doc->getCatalog(),
+                                    physLayout, verbose, nsURI, cmd);
 
-    if (noLineNumbers) {
-        parameters->setNoLineNumbers(gTrue);
-        cmd->append("-noLineNumbers ");
-    } else {
-        parameters->setNoLineNumbers(gFalse);
-    }
+  xmlAltoOut->initMetadataInfoDoc();
+  xmlAltoOut->addMetadataInfo(doc);
+  xmlAltoOut->closeMetadataInfoDoc(shortFileName);
 
-    if (readingOrder) {
-        parameters->setReadingOrder(gTrue);
-        cmd->append("-readingOrder ");
-    } else {
-        parameters->setReadingOrder(gFalse);
-    }
+  if (xmlAltoOut->isOk()) {
 
-    if (charReadingOrderAttr) {
-        parameters->setCharReadingOrderAttr(gTrue);
-        cmd->append("-charReadingOrderAttr ");
-    } else {
-        parameters->setCharReadingOrderAttr(gFalse);
-    }
+    // We clean the data directory if it is already exist
+    dataDirName = new GString(textFileName);
+    dataDirName->append(NAME_DATA_DIR);
+    removeAlreadyExistingData(dataDirName);
 
-    if (ocr) {
-        parameters->setOcr(gTrue);
-        cmd->append("-ocr ");
-        //we avoid using heuristic mapping (not reliable)
-        globalParams->setMapNumericCharNames(gFalse);
-    } else {
-        parameters->setOcr(gFalse);
-        globalParams->setMapNumericCharNames(gTrue);
-    }
-
-    if (fullFontName) {
-        parameters->setFullFontName(gTrue);
-        cmd->append("-fullFontName ");
-    } else {
-        parameters->setFullFontName(gFalse);
-    }
-
-    /*if (noImageInline) {
-        parameters->setImageInline(gTrue);
-        cmd->append("-noImageInline ");
-    } else {
-        parameters->setImageInline(gFalse);
-    }*/
-
-    if (quiet) {
-        globalParams->setErrQuiet(quiet);
-    }
-
-    if (verbose) {
-        globalParams->setPrintCommands(gTrue);
-        cmd->append("-verbose ");
-    }
-
-    // open PDF file
-    if (ownerPassword[0] != '\001') {
-        ownerPW = new GString(ownerPassword);
-    } else {
-        ownerPW = NULL;
-    }
-    if (userPassword[0] != '\001') {
-        userPW = new GString(userPassword);
-    } else {
-        userPW = NULL;
-    }
-
-    if (filesCountLimit > 0) {
-        parameters->setFilesCountLimit(filesCountLimit);
-        cmd->append("--filesLimit ")->append(filesCountLimit)->append(" ");
-    } else
-        parameters->setFilesCountLimit(1000);//this is the previous default limit
-
-    if (namespaceUri[0] != '\001') {
-        nsURI = new GString(namespaceUri);
-        cmd->append("-nsURI ")->append(nsURI)->append(" ");
-    } else {
-        nsURI = NULL;
-    }
-
-    if (argc < 2) { 
-        goto err0; 
-    }
-
-    fileName = new GString(argv[1]);
-    // Create the object PDF doc
-    doc = new PDFDocXrce(fileName, ownerPW, userPW);
-
-    if (userPW) {
-        delete userPW;
-    }
-    if (ownerPW) {
-        delete ownerPW;
-    }
-    if (!doc->isOk()) {
-        exitCode = 1;
-        goto err2;
-    }
-
-    if (!doc->okToCopy())
-        fprintf(stderr, "\n\nYou are not supposed to copy this document...\n\n");
-
-    // IF output XML file name was given in command line
-    if (argc == 3) {
-        textFileName = new GString(argv[2]);
-        temp = textFileName->getCString() + textFileName->getLength() - 4;
-        if (!strcmp(temp, EXTENSION_XML) || !strcmp(temp, EXTENSION_XML_MAJ)) {
-            shortFileName = new GString(textFileName->getCString(), textFileName->getLength() - 4);
-        } else {
-            shortFileName = new GString(textFileName);
-        }
-    } else {
-        // ELSE we build the output XML file name with the PDF file name
-        p = fileName->getCString() + fileName->getLength() - 4;
-        if (!strcmp(p, EXTENSION_PDF) || !strcmp(p, EXTENSION_PDF_MAJ)) {
-            textFileName = new GString(fileName->getCString(), fileName->getLength() - 4);
-            shortFileName = new GString(textFileName);
-
-        } else {
-            textFileName = fileName->copy();
-            shortFileName = new GString(textFileName);
-        }
-        textFileName->append(EXTENSION_XML);
-    }
-
-    // For the annotations XML file
+    // Xml file to store annotations information
     if (annots) {
-        annotationfile = new GString(shortFileName);
-        annotationfile->append("_");
-        annotationfile->append(NAME_ANNOT);
-        annotationfile->append(EXTENSION_XML);
-        cmd->append("-annotation ");
-    }
+      xmlDocPtr docAnnotXml;
+      xmlNodePtr docroot;
+      docAnnotXml = xmlNewDoc((const xmlChar *)VERSION);
+      docAnnotXml->encoding = xmlStrdup((const xmlChar *)ENCODING_UTF8);
+      docroot = xmlNewNode(NULL, (const xmlChar *)TAG_ANNOTATIONS);
+      xmlDocSetRootElement(docAnnotXml, docroot);
 
-    // Get page range
-    if (firstPage < 1) {
-        firstPage = 1;
-    }
-    if (firstPage != 1) {
-        char temp[10];
-        snprintf(temp, sizeof(temp), "%d", firstPage);
-        cmd->append("-f ")->append(temp)->append(" ");
-    }
+      doc->displayPages(xmlAltoOut, docroot, firstPage, lastPage, 72, 72, 0,
+                        gFalse, gTrue, gFalse);
 
-    if (lastPage != 0) {
-        int last = lastPage;
-        if (lastPage > doc->getNumPages()) {
-            last = doc->getNumPages();
-        }
-        char temp[10];
-        snprintf(temp, sizeof(temp), "%d", last);
-        cmd->append("-l ")->append(temp)->append(" ");
-    }
-    if (lastPage < 1 || lastPage > doc->getNumPages()) {
-        lastPage = doc->getNumPages();
-    }
-
-    // Write xml file
-//    printf("crop width: %g\n",doc->getPageCropWidth(1));
-    xmlAltoOut = new XmlAltoOutputDev(textFileName, fileName, doc->getCatalog(), physLayout, verbose, nsURI, cmd);
-
-    xmlAltoOut->initMetadataInfoDoc();
-    xmlAltoOut->addMetadataInfo(doc);
-    xmlAltoOut->closeMetadataInfoDoc(shortFileName);
-
-    if (xmlAltoOut->isOk()) {
-
-        // We clean the data directory if it is already exist
-        dataDirName = new GString(textFileName);
-        dataDirName->append(NAME_DATA_DIR);
-        removeAlreadyExistingData(dataDirName);
-
-        // Xml file to store annotations information
-        if (annots) {
-            xmlDocPtr docAnnotXml;
-            xmlNodePtr docroot;
-            docAnnotXml = xmlNewDoc((const xmlChar *) VERSION);
-            docAnnotXml->encoding = xmlStrdup((const xmlChar *) ENCODING_UTF8);
-            docroot = xmlNewNode(NULL, (const xmlChar *) TAG_ANNOTATIONS);
-            xmlDocSetRootElement(docAnnotXml, docroot);
-
-            doc->displayPages(xmlAltoOut, docroot, firstPage, lastPage, 72, 72, 0, gFalse, gTrue, gFalse);
-
-
-            xmlSaveFile(annotationfile->getCString(), docAnnotXml);
-            xmlFreeDoc(docAnnotXml);
-        } else {
-            doc->displayPages(xmlAltoOut, NULL, firstPage, lastPage, 72, 72, 0, gFalse, gTrue, gFalse);
-        }
-        if (outline) {
-            if (doc->getOutline()) {
-                xmlAltoOut->initOutline(doc->getNumPages());
-                xmlAltoOut->generateOutline(doc->getOutline()->getItems(), doc, 0);
-                xmlAltoOut->closeOutline(shortFileName);
-            }
-        }
-        xmlAltoOut->addStyles();
+      xmlSaveFile(annotationfile->getCString(), docAnnotXml);
+      xmlFreeDoc(docAnnotXml);
     } else {
-        delete xmlAltoOut;
-        exitCode = 2;
-        goto err3;
+      doc->displayPages(xmlAltoOut, NULL, firstPage, lastPage, 72, 72, 0,
+                        gFalse, gTrue, gFalse);
     }
+    if (outline) {
+      if (doc->getOutline()) {
+        xmlAltoOut->initOutline(doc->getNumPages());
+        xmlAltoOut->generateOutline(doc->getOutline()->getItems(), doc, 0);
+        xmlAltoOut->closeOutline(shortFileName);
+      }
+    }
+    xmlAltoOut->addStyles();
+  } else {
     delete xmlAltoOut;
-    exitCode = 0;
-    // clean up
+    exitCode = 2;
+    goto err3;
+  }
+  delete xmlAltoOut;
+  exitCode = 0;
+  // clean up
 
-    if (nsURI) {
-        delete nsURI;
-    }
+  if (nsURI) {
+    delete nsURI;
+  }
 
-    // free the C malloc stuff 
-    free(thePath);
-    free(dirname);
-    free(xpdfrc_path);
+  // free the C malloc stuff
+  free(thePath);
+  free(dirname);
+  free(xpdfrc_path);
 
-    err3:
-    delete textFileName;
+err3:
+  delete textFileName;
 
-    err2:
-    delete doc;
-    delete globalParams;
-    delete parameters;
-    delete cmd;
+err2:
+  delete doc;
+  delete globalParams;
+  delete parameters;
+  delete cmd;
 
-    err0:
-    // check for memory leaks
-    Object::memCheck(stderr);
-    gMemReport(stderr);
-    
-    return exitCode;
+err0:
+  // check for memory leaks
+  Object::memCheck(stderr);
+  gMemReport(stderr);
+
+  return exitCode;
 }
 
 /** Remove all files which are in data directory of file pdf if it is already exist
  * @param dir The directory name where we remove all data */
 void removeAlreadyExistingData(GString *dir) {
-    GString *file;
-    struct dirent *lecture;
-    DIR *rep;
-    rep = opendir(dir->getCString());
-    if (rep != NULL) {
-        while ((lecture = readdir(rep))) {
-            file = new GString(dir);
-            file->append("/");
-            file->append(lecture->d_name);
-            remove(file->getCString());
-        }
-        if (file) delete file;
-        closedir(rep);
+  GString *file;
+  struct dirent *lecture;
+  DIR *rep;
+  rep = opendir(dir->getCString());
+  if (rep != NULL) {
+    while ((lecture = readdir(rep))) {
+      file = new GString(dir);
+      file->append("/");
+      file->append(lecture->d_name);
+      remove(file->getCString());
     }
+    if (file)
+      delete file;
+    closedir(rep);
+  }
 }
