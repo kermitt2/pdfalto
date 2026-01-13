@@ -7,7 +7,7 @@ jobs:
   build:
     strategy:
       matrix:
-        os: [ self-hosted, macos-latest, ubuntu-24.04-arm, macos-13 ]
+        os: [ self-hosted, macos-latest, ubuntu-24.04-arm, macos-15-intel ]
 
       fail-fast: false
 
