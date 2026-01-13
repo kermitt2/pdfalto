@@ -8322,10 +8322,10 @@ void XmlAltoOutputDev::initMetadataInfoDoc() {
 }
 
 GBool XmlAltoOutputDev::needNonText() {
-    //if (parameters->getDisplayImage())
+    if (parameters->getSkipGraphs())
+        return gFalse;
+    else
         return gTrue;
-    //else 
-    //    return gFalse;
 }
 
 void XmlAltoOutputDev::addMetadataInfo(PDFDocXrce *pdfdocxrce) {

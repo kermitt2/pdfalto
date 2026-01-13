@@ -54,6 +54,8 @@ static char XMLcfgFileName[256] = "";
 
 static GBool noText = gFalse;
 static GBool noImage = gFalse;
+static GBool onlyGraphsCoord = gFalse;
+static GBool skipGraphs = gFalse;
 static GBool outline = gFalse;
 static GBool cutPages = gFalse;
 //static GBool blocks = gFalse;
@@ -83,7 +85,11 @@ static ArgDesc argDesc[] = {
         {"-verbose",       argFlag,   &verbose,         0,
                 "display pdf attributes"},
         {"-noImage",       argFlag,   &noImage,         0,
-                "do not extract Images (Bitmap and Vectorial)"},
+                "deprecated, use -onlyGraphsCoord instead"},
+        {"-onlyGraphsCoord", argFlag, &onlyGraphsCoord, 0,
+                "only extract image coordinates, do not dump image files"},
+        {"-skipGraphs",    argFlag,   &skipGraphs,      0,
+                "skip all graphics processing (bitmap and vectorial)"},
         {"-noImageInline", argFlag,   &noImageInline,   0,
                 "deprecated"},
         {"-outline",       argFlag,   &outline,         0,
@@ -202,10 +208,28 @@ int main(int argc, char *argv[]) {
     parameters = new Parameters();
 
     if (noImage) {
+        fprintf(stderr, "Warning: -noImage is deprecated, use -onlyGraphsCoord instead\n");
         parameters->setDisplayImage(gFalse);
         cmd->append("-noImage ");
-    } else {
+    }
+
+    if (onlyGraphsCoord) {
+        parameters->setDisplayImage(gFalse);
+        cmd->append("-onlyGraphsCoord ");
+    }
+
+    if (skipGraphs) {
+        parameters->setDisplayImage(gFalse);
+        parameters->setSkipGraphs(gTrue);
+        cmd->append("-skipGraphs ");
+    }
+
+    if (!noImage && !onlyGraphsCoord && !skipGraphs) {
         parameters->setDisplayImage(gTrue);
+    }
+
+    if (!skipGraphs) {
+        parameters->setSkipGraphs(gFalse);
     }
 
     if (noText) {
