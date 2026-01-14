@@ -6459,7 +6459,7 @@ void TextPage::dump(GBool noLineNumbers, GBool fullFontName, vector<bool> lineNu
     }
 
 
-    //if (parameters->getDisplayImage()) 
+    if (!parameters->getSkipGraphs())
     {
         GString *sid = new GString("p");
         //GBool isInline = false;
@@ -7188,6 +7188,10 @@ void TextPage::doPathForClip(GfxPath *path, GfxState *state,
 }
 
 void TextPage::doPath(GfxPath *path, GfxState *state, GString *gattributes) {
+    if (parameters->getSkipGraphs()) {
+        return;
+    }
+
     // Increment the absolute object index
     idx++;
     //printf("path %d\n",idx);
@@ -9452,6 +9456,9 @@ void XmlAltoOutputDev::setupScreenParams(double hDPI, double vDPI) {
 }
 
 void XmlAltoOutputDev::stroke(GfxState *state) {
+    if (parameters->getSkipGraphs()) {
+        return;
+    }
     char tmp[100] = "stroke: ";
     GString attr(tmp);
     GfxRGB rgb;
@@ -9542,6 +9549,10 @@ void XmlAltoOutputDev::stroke(GfxState *state) {
 }
 
 void XmlAltoOutputDev::fill(GfxState *state) {
+    if (parameters->getSkipGraphs()) {
+        return;
+    }
+
     char tmp[100] = "fill: ";
     GString attr(tmp, sizeof(tmp));
     GfxRGB rgb;
@@ -9561,6 +9572,10 @@ void XmlAltoOutputDev::fill(GfxState *state) {
 }
 
 void XmlAltoOutputDev::eoFill(GfxState *state) {
+    if (parameters->getSkipGraphs()) {
+        return;
+    }
+
     char tmp[100] = "fill: ";
     GString attr(tmp, sizeof(tmp));
     GfxRGB rgb;
@@ -9598,10 +9613,11 @@ void XmlAltoOutputDev::clipToStrokePath(GfxState *state) {
 }
 
 void XmlAltoOutputDev::doPath(GfxPath *path, GfxState *state, GString *gattributes) {
-    //if (parameters->getDisplayImage()) 
-    {
-        text->doPath(path, state, gattributes);
+    if (parameters->getSkipGraphs()) {
+        return;
     }
+
+    text->doPath(path, state, gattributes);
 }
 
 void XmlAltoOutputDev::saveState(GfxState *state) {
