@@ -95,6 +95,11 @@ public:
 	 */
 	GBool getNoLineNumbers() { return noLineNumbers;};
 
+	/** Return a boolean which inform if all graphics processing should be skipped
+	 * @return <code>true</code> if the skipGraphs option is selected, <code>false</code> otherwise
+	 */
+	GBool getSkipGraphs() { return skipGraphs;};
+
 	// setters
 
 	/** Modify the boolean which inform if the images are displayed
@@ -154,7 +159,12 @@ public:
 	 * @param noLineNumberAttrs <code>true</code> if the noLineNumbers option is selected, <code>false</code> otherwise
 	 */	
 	void setNoLineNumbers(GBool noLineNumberAttrs);
-	
+
+	/** Modify the boolean which inform if all graphics processing should be skipped
+	 * @param skipGraphsAttr <code>true</code> if the skipGraphs option is selected, <code>false</code> otherwise
+	 */
+	void setSkipGraphs(GBool skipGraphsAttr);
+
 	void saveToXML(const char *fileName,int firstPage,int lastPage);
 	
 private:
@@ -183,6 +193,8 @@ private:
 	int filesCountLimit;
   	/** PL: the value of the noLineNumbers option*/
   	GBool noLineNumbers;
+	/** The value of the skipGraphs option */
+	GBool skipGraphs;
 };
 
 #endif /*PARAMETERS_H_*/
