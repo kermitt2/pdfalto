@@ -849,6 +849,11 @@ TextWord::~TextWord() {
     //gfree(text);
     gfree(edge);
     gfree(charPos);
+    // Clean up the chars GList to prevent memory leak
+    if (chars) {
+        deleteGList(chars, TextChar);
+        chars = nullptr;
+    }
 }
 #endif
 
@@ -1460,7 +1465,8 @@ const char *IWord::normalizeFontName(char *fontName) {
         name3 = name2;
     }
     cstr = new char[name3.size() + 1];
-    strcpy(cstr, name3.c_str());
+    strncpy(cstr, name3.c_str(), name3.size());
+    cstr[name3.size()] = '\0';
 //        printf("\t%s\t%s\n",fontName,cstr);
     return cstr;
 
@@ -3031,8 +3037,12 @@ void TextPage::addAttributsNode(xmlNodePtr node, IWord *word, TextFontStyleInfo 
 
     gfree(text);
 
+    // Sanitize XML content to prevent injection
+    xmlChar *encodedContent = xmlEncodeEntitiesReentrant(
+        node->doc, (const xmlChar *)stringTemp->getCString());
     xmlNewProp(node, (const xmlChar *) ATTR_TOKEN_CONTENT,
-               (const xmlChar *) stringTemp->getCString());
+               (const xmlChar *)encodedContent);
+    xmlFree(encodedContent);
     delete stringTemp;
 
     GString *gsFontName = new GString();
@@ -3321,7 +3331,7 @@ GBool TextFontStyleInfo::cmp(TextFontStyleInfo *tsi) {
     )
             )
         return gTrue;
-    else 
+    else
         return gFalse;
 }
 
@@ -4809,7 +4819,7 @@ void TextPage::dumpInReadingOrder(GBool noLineNumbers, GBool fullFontName) {
         col = (TextColumn *) columns->get(colIdx);
         for (parIdx = 0; parIdx < col->paragraphs->getLength(); ++parIdx) {
 
-            //if (useBlocks) 
+            //if (useBlocks)
             {
                 nodeblocks = xmlNewNode(NULL, (const xmlChar *) TAG_BLOCK);
                 nodeblocks->type = XML_ELEMENT_NODE;
@@ -4880,7 +4890,7 @@ void TextPage::dumpInReadingOrder(GBool noLineNumbers, GBool fullFontName) {
                         word->base < nextWord->base &&
                         word->yMax > nextWord->yMin &&
                         word->fontSize < lineFontSize) {
-                        // superscript: case first token of the line, check if the current token is the first token of the line 
+                        // superscript: case first token of the line, check if the current token is the first token of the line
                         // and use next tokens to see if we have a vertical shift
                         // note: it won't work when we have several tokens in superscript at the beginning of the line...
                         // actually it might screw all the rest :/
@@ -4903,19 +4913,19 @@ void TextPage::dumpInReadingOrder(GBool noLineNumbers, GBool fullFontName) {
                         word->base > nextWord->base &&
                         word->yMin < nextWord->yMax &&
                         word->fontSize < lineFontSize) {
-                        // subscript: case first token of the line, check if the current token is the first token of the line 
+                        // subscript: case first token of the line, check if the current token is the first token of the line
                         // and use next tokens to see if we have a vertical shift
                         // note: it won't work when we have several tokens in subscripts at the beginning of the line...
                         // actually it might screw all the rest :/
-                        // subscript as first token of a line should never appear, but it's better to cover this case to 
-                        // avoid having the rest of the line detected as superscript... 
+                        // subscript as first token of a line should never appear, but it's better to cover this case to
+                        // avoid having the rest of the line detected as superscript...
                         fontStyleInfo->setIsSubscript(gTrue);
                         currentLineBaseLine = nextWord->base;
                         currentLineYmin = nextWord->yMin;
                         currentLineYmax = nextWord->yMax;
                     }
-                    // PL: above, we need to pay attention to the font style of the previous token and consider the whole line, 
-                    // because otherwise the token next to a subscript is always superscript even when normal, in addition for 
+                    // PL: above, we need to pay attention to the font style of the previous token and consider the whole line,
+                    // because otherwise the token next to a subscript is always superscript even when normal, in addition for
                     // several tokens as superscript or subscript, only the first one will be set as superscript or subscript
 
                     // If option verbose is selected
@@ -5085,7 +5095,7 @@ bool is_digit(Unicode u) {
         u == (Unicode) 56 ||
         u == (Unicode) 57)
         return true;
-    else 
+    else
         return false;
 }
 
@@ -5134,12 +5144,12 @@ bool TextPage::markLineNumber() {
     // - vertical alignment along the page content
     // - number increment (same increment, but not necessarly by +1)
     // - same font (same font name and same font size)
-    // - immediate vertical gap with next token vertically aligned (note that this is actually complicated with the PDF stream order) 
+    // - immediate vertical gap with next token vertically aligned (note that this is actually complicated with the PDF stream order)
 
     int wordId = 0;
     //int nextVpos = 0;
     //int increment = 0;
-    
+
     bool hasLineNumber = false;
 
     // at this stage we already have a block and line segmentation
@@ -5173,11 +5183,11 @@ bool TextPage::markLineNumber() {
                 word->setLineNumber(false);
                 if (wordI < line1->words->getLength() - 1)
                     nextWord = (TextRawWord *) line1->words->get(wordI + 1);
-                else 
+                else
                     nextWord = NULL;
                 if (wordId != 0)
                     previousWord = (TextRawWord *) words->get(wordId - 1);
-                else 
+                else
                     previousWord = NULL;
 
                 // first or last token in the line?
@@ -5250,7 +5260,7 @@ bool TextPage::markLineNumber() {
         }
     }
 
-    // apply a similar clustering for selected non-numerical tokens 
+    // apply a similar clustering for selected non-numerical tokens
     vector<vector<int>> textClusters;
     vector<double> textPositions;
     for (wordI = 0; wordI < textWords.size(); wordI++) {
@@ -5314,13 +5324,13 @@ bool TextPage::markLineNumber() {
                         bestClusterIndex.push_back(i);
                         largestClusterSize.push_back(theCluster.size());
                         break;
-                    }            
+                    }
                 } else {
                     // this is sorted based on the cluster siez, so we insert just before j
                     bestClusterIndex.insert(it1, i);
                     largestClusterSize.insert(it2, theCluster.size());
                     break;
-                } 
+                }
                 j++;
                 ++it1;
                 ++it2;
@@ -5338,7 +5348,7 @@ bool TextPage::markLineNumber() {
     /*cout << "\nbest alignment vpos: " << final_vpos << endl;
     cout << "nb numbers best cluster: " << bestCluster.size() << endl;*/
 
-    // check the remaining constraints: 
+    // check the remaining constraints:
 
     // same font? we normally never have line number using different font
     /*
@@ -5347,7 +5357,7 @@ bool TextPage::markLineNumber() {
         word = (TextWord *)lineNumberWords->get(index);
         int font_size = 0;
         xmlChar *xcFontName;
-        font_size = word->fontSize;    
+        font_size = word->fontSize;
         if (word->getFontName())
             xcFontName = (xmlChar *) word->getFontName();
         // to be finished if needed...
@@ -5391,7 +5401,7 @@ bool TextPage::markLineNumber() {
                 //word = (TextWord *)textWords->get(theCluster[0]);
                 word = textWords[theCluster[0]];
 
-                // check top and lowest position of the text cluster, if too high or too low, 
+                // check top and lowest position of the text cluster, if too high or too low,
                 // it means it's head note or foot note and should not be considered
                 int ypos1 = word->yMin;
                 //cout << "ypos1: " << ypos1 << endl;
@@ -5424,17 +5434,17 @@ bool TextPage::markLineNumber() {
         return false;
     }
 
-    // neutralize candidate line numbers in the middle of a page with 2 columns 
+    // neutralize candidate line numbers in the middle of a page with 2 columns
     // (these are ref numbers in the biblio or something else, but can't be line numbers)
     int quarterWidth = (rightMostBoundary - leftMostBoundary) / 4;
     if (quarterWidth+leftMostBoundary < final_vpos && final_vpos < leftMostBoundary+(quarterWidth*3))
         hasLineNumber = false;
-    
+
     if (!hasLineNumber) {
         return false;
     }
 
-    // increment? it's not possible to suppose any particular increments, it could be 1 by 1 or 
+    // increment? it's not possible to suppose any particular increments, it could be 1 by 1 or
     // 5 by 5 for instance, however number should be growing!
     // to be done if needed...
 
@@ -5991,7 +6001,7 @@ void TextPage::dump(GBool noLineNumbers, GBool fullFontName, vector<bool> lineNu
         free(tmp);
     } // end FOR
 
-    // fix possible incorrect XMax and YMax values at 0 on block coordinates having only one line 
+    // fix possible incorrect XMax and YMax values at 0 on block coordinates having only one line
     for(int parIdx = 0; parIdx < blocks->getLength(); parIdx++) {
         TextParagraph *block = (TextParagraph *) blocks->get(parIdx);
         if (block->getXMax() == 0 || block->getYMax() == 0) {
@@ -6002,7 +6012,7 @@ void TextPage::dump(GBool noLineNumbers, GBool fullFontName, vector<bool> lineNu
                 TextLine *line = (TextLine *) block->lines->get(lineIdx);
                 if (line->getYMax() > maxLineY)
                     maxLineY = line->getYMax();
-                if (line->getXMax() - line->getXMin() > maxLineWidth) 
+                if (line->getXMax() - line->getXMin() > maxLineWidth)
                     maxLineWidth = line->getXMax() - line->getXMin();
             }
             if (block->getXMax() == 0)
@@ -6040,7 +6050,7 @@ void TextPage::dump(GBool noLineNumbers, GBool fullFontName, vector<bool> lineNu
         if (previousLineNumber)
             break;
     }
-    
+
     bool hasLineNumber = false;
     if ( (currentPageNumber < nbTotalPage/2) || (previousLineNumber && nbTotalPage>4)) {
         hasLineNumber = markLineNumber();
@@ -6136,7 +6146,7 @@ void TextPage::dump(GBool noLineNumbers, GBool fullFontName, vector<bool> lineNu
 
             for(wordI = 0; wordI < lineNumberWords->getLength(); wordI++) {
                 word = (TextRawWord *) lineNumberWords->get(wordI);
-                
+
                 // create lines with one number
                 nodeline = xmlNewNode(NULL, (const xmlChar *) TAG_TEXT);
                 nodeline->type = XML_ELEMENT_NODE;
@@ -6167,7 +6177,7 @@ void TextPage::dump(GBool noLineNumbers, GBool fullFontName, vector<bool> lineNu
                     addAttributsNodeVerbose(node, tmp, word);
                 }
                 addAttributsNode(node, word, fontStyleInfo, uMap, fullFontName);
-                addAttributTypeReadingOrder(node, tmp, word);    
+                addAttributTypeReadingOrder(node, tmp, word);
 
                 xmlAddChild(nodeline, node);
                 xmlAddChild(nodeblocks, nodeline);
@@ -6266,7 +6276,7 @@ void TextPage::dump(GBool noLineNumbers, GBool fullFontName, vector<bool> lineNu
                     word->base < nextWord->base &&
                     word->yMax > nextWord->yMin &&
                     word->fontSize < lineFontSize) {
-                    // superscript: case first token of the line, check if the current token is the first token of the line 
+                    // superscript: case first token of the line, check if the current token is the first token of the line
                     // and use next tokens to see if we have a vertical shift
                     // note: it won't work when we have several tokens in superscript at the beginning of the line...
                     // actually it might screw all the rest :/
@@ -6289,19 +6299,19 @@ void TextPage::dump(GBool noLineNumbers, GBool fullFontName, vector<bool> lineNu
                     word->base > nextWord->base &&
                     word->yMin < nextWord->yMax &&
                     word->fontSize < lineFontSize) {
-                    // subscript: case first token of the line, check if the current token is the first token of the line 
+                    // subscript: case first token of the line, check if the current token is the first token of the line
                     // and use next tokens to see if we have a vertical shift
                     // note: it won't work when we have several tokens in subscripts at the beginning of the line...
                     // actually it might screw all the rest :/
-                    // subscript as first token of a line should never appear, but it's better to cover this case to 
-                    // avoid having the rest of the line detected as superscript... 
+                    // subscript as first token of a line should never appear, but it's better to cover this case to
+                    // avoid having the rest of the line detected as superscript...
                     fontStyleInfo->setIsSubscript(gTrue);
                     currentLineBaseLine = nextWord->base;
                     currentLineYmin = nextWord->yMin;
                     currentLineYmax = nextWord->yMax;
                 }
-                // PL: above, we need to pay attention to the font style of the previous token and consider the whole line, 
-                // because otherwise the token next to a subscript is always superscript even when normal, in addition for 
+                // PL: above, we need to pay attention to the font style of the previous token and consider the whole line,
+                // because otherwise the token next to a subscript is always superscript even when normal, in addition for
                 // several tokens as superscript or subscript, only the first one will be set as superscript or subscript
 
                 // if option verbose is selected
@@ -6377,7 +6387,7 @@ void TextPage::dump(GBool noLineNumbers, GBool fullFontName, vector<bool> lineNu
                 if (!word->getLineNumber()) {
                     xmlAddChild(nodeline, node);
                     nonEmptyLine = true;
-                
+
                     if (wordI < line1->words->getLength() - 1 and (word->spaceAfter == gTrue)) {
                         xmlNodePtr spacingNode = xmlNewNode(NULL, (const xmlChar *) TAG_SPACING);
                         spacingNode->type = XML_ELEMENT_NODE;
@@ -6407,7 +6417,7 @@ void TextPage::dump(GBool noLineNumbers, GBool fullFontName, vector<bool> lineNu
 
             if (nonEmptyLine)
                 xmlAddChild(nodeblocks, nodeline);
-            
+
         }
 
         xmlAddChild(printSpace, nodeblocks);
@@ -6501,12 +6511,18 @@ void TextPage::dump(GBool noLineNumbers, GBool fullFontName, vector<bool> lineNu
             relname->append(GString::fromInt(num));
             relname->append(EXTENSION_SVG);
 
-            xmlNewProp(node, (const xmlChar *) ATTR_HREF, (const xmlChar *) relname->getCString());
+            // Sanitize file path to prevent XML injection
+            xmlChar *encodedHref = xmlEncodeEntitiesReentrant(
+                node->doc, (const xmlChar *)relname->getCString());
+            xmlNewProp(node, (const xmlChar *) ATTR_HREF, (const xmlChar *) encodedHref);
+            xmlFree(encodedHref);
 
             // Save the file for example with relname 'p_06.xml_data/image-27.vec'
             if (!xmlSaveFile(relname->getCString(), vecdoc)) {
                 //error(errIO,-1, "Couldn't open file '%s'", relname->getCString());
             }
+            // Cleanup allocated memory
+            delete relname;
         }
         
         xmlNewProp(node, (const xmlChar *) ATTR_TYPE, (const xmlChar *) "svg");
@@ -7845,6 +7861,8 @@ const char *TextPage::drawImageOrMask(GfxState *state, Object *ref, Stream *str,
                 // Save PNG file
                 save_png(relname, width, height, stride, data, 1, PNG_COLOR_TYPE_PALETTE, palette, 2);
 
+                // Cleanup allocated memory
+                delete[] data;
             }
         }
 
@@ -7914,6 +7932,9 @@ const char *TextPage::drawImageOrMask(GfxState *state, Object *ref, Stream *str,
 
                     // Save PNG file
                     save_png(relname, width, height, width * 3, data, 24, PNG_COLOR_TYPE_RGB, NULL, 0);
+
+                    // Cleanup allocated memory
+                    delete[] data;
                 }
             }
         }

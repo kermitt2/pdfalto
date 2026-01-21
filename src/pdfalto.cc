@@ -3,6 +3,7 @@
 #include <stdlib.h>
 #include <stddef.h>
 #include <string.h>
+#include <cstring> // For strnlen
 #include "parseargs.h"
 #include "GString.h"
 #include "gmem.h"
@@ -150,7 +151,7 @@ int main(int argc, char *argv[]) {
     GString *textFileName;
     GString *dataDirName;
     GString *shortFileName;
-    GString *annotationfile;
+    GString *annotationfile = NULL;
     GString *ownerPW, *userPW;
     GString *nsURI;
     GString *cmd;
@@ -198,9 +199,8 @@ int main(int argc, char *argv[]) {
 
     // set the config file path as alongside the executable
     char *xpdfrc_path;
-    xpdfrc_path = (char*)malloc(dirname_length + 8); 
-    strcpy(xpdfrc_path, dirname);
-    strcat(xpdfrc_path, "/xpdfrc");
+    xpdfrc_path = (char*)malloc(dirname_length + 8);
+    snprintf(xpdfrc_path, dirname_length + 8, "%s/xpdfrc", dirname);
 
     globalParams = new GlobalParams(xpdfrc_path, dirname);
 
@@ -462,7 +462,18 @@ int main(int argc, char *argv[]) {
         delete nsURI;
     }
 
-    // free the C malloc stuff 
+    // Cleanup data directory name
+    delete dataDirName;
+
+    // Cleanup annotation file if it was allocated
+    if (annotationfile) {
+        delete annotationfile;
+    }
+
+    // Cleanup short filename
+    delete shortFileName;
+
+    // free the C malloc stuff
     free(thePath);
     free(dirname);
     free(xpdfrc_path);
