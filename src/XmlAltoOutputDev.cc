@@ -3037,12 +3037,8 @@ void TextPage::addAttributsNode(xmlNodePtr node, IWord *word, TextFontStyleInfo 
 
     gfree(text);
 
-    // Sanitize XML content to prevent injection
-    xmlChar *encodedContent = xmlEncodeEntitiesReentrant(
-        node->doc, (const xmlChar *)stringTemp->getCString());
     xmlNewProp(node, (const xmlChar *) ATTR_TOKEN_CONTENT,
-               (const xmlChar *)encodedContent);
-    xmlFree(encodedContent);
+               (const xmlChar *)stringTemp->getCString());
     delete stringTemp;
 
     GString *gsFontName = new GString();
