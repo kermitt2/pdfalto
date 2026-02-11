@@ -6,12 +6,12 @@ search = "{current_version}"
 replace = "{new_version}"
 regex = false
 ignore_missing_version = false
-tag = false
-sign_tags = false
+tag = true
+sign_tags = true
 tag_name = "v{new_version}"
 tag_message = "Bump version: {current_version} -> {new_version}"
 allow_dirty = false
-commit = false
+commit = true
 message = "Bump version: {current_version} -> {new_version}"
 commit_args = ""
 
