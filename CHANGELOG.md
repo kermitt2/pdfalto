@@ -4,7 +4,8 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
-## [0.6] 
+## [0.6.0] 
+- Change release schema following the major.minor.patch convention
 - update to xpdf-4.05
 - add more font mappings
 - full automation for multi-platform building, all platforms are now in sync #178 #177 #180 #181 #186 #188 #189 #193 #194 #195 
