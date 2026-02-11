@@ -1,10 +1,14 @@
 name: Manual build static libraries
 
+
+# NOTE:
+# - the matrices are repeated for each library
+# - we don't run that on self-hosted because the cmake version is too old for libxml
+
 on:
   workflow_dispatch:
   push:
     branches:
-      - feature/update-external-libraries-ubuntu16
       - main
 
 env:
@@ -78,7 +82,7 @@ jobs:
   build-freetype:
     strategy:
       matrix:
-        os: [ ubuntu-20.04, ubuntu-24.04-arm, macos-latest, macos-13 ]
+        os: [ ubuntu-22.04, ubuntu-24.04-arm, macos-latest, macos-15-intel  ]
 
       fail-fast: false
 
@@ -92,12 +96,12 @@ jobs:
         if: runner.os == 'Linux'
         run: |
           sudo apt-get update
-          sudo apt-get install -y wget cmake autoconf automake
+          sudo apt-get install -y wget cmake autoconf automake libfontconfig-dev
 
       - name: Set up dependencies Macos
         if: runner.os == 'macOS'
         run: |
-          brew install wget cmake autoconf automake
+          brew install wget cmake autoconf automake fontconfig
 
       - name: Set OS and ARCH variables
         run: |
@@ -135,7 +139,7 @@ jobs:
   build-libpng:
     strategy:
       matrix:
-        os: [ ubuntu-20.04, ubuntu-24.04-arm, macos-latest, macos-13 ]
+        os: [ ubuntu-22.04, ubuntu-24.04-arm, macos-latest, macos-15-intel  ]
 
       fail-fast: false
 
@@ -149,12 +153,12 @@ jobs:
         if: runner.os == 'Linux'
         run: |
           sudo apt-get update
-          sudo apt-get install -y wget cmake autoconf automake
+          sudo apt-get install -y wget cmake autoconf automake libfontconfig-dev
 
       - name: Set up dependencies Macos
         if: runner.os == 'macOS'
         run: |
-          brew install wget cmake autoconf automake
+          brew install wget cmake autoconf automake fontconfig
 
       - name: Set OS and ARCH variables
         run: |
@@ -199,7 +203,7 @@ jobs:
   build-zlib:
     strategy:
       matrix:
-        os: [ ubuntu-20.04, ubuntu-24.04-arm, macos-latest, macos-13 ]
+        os: [ ubuntu-22.04, ubuntu-24.04-arm, macos-latest, macos-15-intel ]
 
       fail-fast: false
 
@@ -213,12 +217,12 @@ jobs:
         if: runner.os == 'Linux'
         run: |
           sudo apt-get update
-          sudo apt-get install -y wget cmake autoconf automake
+          sudo apt-get install -y wget cmake autoconf automake libfontconfig-dev
 
       - name: Set up dependencies Macos
         if: runner.os == 'macOS'
         run: |
-          brew install wget cmake autoconf automake
+          brew install wget cmake autoconf automake fontconfig
 
       - name: Set OS and ARCH variables
         run: |
@@ -256,7 +260,7 @@ jobs:
   build-icu:
     strategy:
       matrix:
-        os: [ ubuntu-22.04, ubuntu-24.04-arm, macos-latest, macos-13 ]
+        os: [ ubuntu-22.04, ubuntu-24.04-arm, macos-latest, macos-15-intel  ]
 
       fail-fast: false
 
@@ -270,12 +274,12 @@ jobs:
         if: runner.os == 'Linux'
         run: |
           sudo apt-get update
-          sudo apt-get install -y wget cmake autoconf automake
+          sudo apt-get install -y wget cmake autoconf automake libfontconfig-dev
 
       - name: Set up dependencies Macos
         if: runner.os == 'macOS'
         run: |
-          brew install wget cmake autoconf automake
+          brew install wget cmake autoconf automake fontconfig
 
       - name: Set OS and ARCH variables
         run: |
