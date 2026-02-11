@@ -14,8 +14,8 @@ An Archlinux package for pdfalto is available [here](https://aur.archlinux.org/p
 
 # Requirements
 
-* compilers : clang 3.6 or gcc 4.9
-* makefile generator : cmake 3.12.0
+* compilers : clang > 5 or gcc > 7, c++17 required
+* makefile generator : cmake >= 3.10.0
 * fetching dependencies : wget
 
 # Usage

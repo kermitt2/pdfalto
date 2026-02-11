@@ -7,8 +7,8 @@ each [build](https://github.com/kermitt2/pdfalto/actions) under [Manual build st
 
 ## Requirements
 
-* compilers : clang 3.6 or gcc 4.9
-* makefile generator : cmake 3.12.0
+* compilers : clang > 5 or gcc > 7, c++17 required
+* makefile generator : cmake >= 3.10.0
 * fetching dependencies : wget
 
 ## Current versions:
