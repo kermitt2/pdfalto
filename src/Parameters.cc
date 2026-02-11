@@ -88,6 +88,12 @@ void Parameters::setNoLineNumbers(GBool noLineNumberAttrs) {
   unlockGlobalParams;
 }
 
+void Parameters::setSkipGraphs(GBool skipGraphsAttr) {
+  lockGlobalParams;
+  skipGraphs = skipGraphsAttr;
+  unlockGlobalParams;
+}
+
 void Parameters::saveToXML(const char *fileName,int firstPage,int lastPage){
 	char tmp[10];
 

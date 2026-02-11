@@ -1,0 +1,37 @@
+[*]
+charset = utf-8
+end_of_line = lf
+
+[{.babelrc,.stylelintrc,.eslintrc,jest.config,*.bowerrc,*.jsb3,*.jsb2,*.avsc,*.json}]
+indent_style = space
+indent_size = 2
+
+[{*.ddl,*.sql}]
+indent_style = space
+indent_size = 2
+
+[*.less]
+indent_style = space
+indent_size = 2
+
+[*.md]
+insert_final_newline = true
+trim_trailing_whitespace = true
+
+[{*.yml,*.yaml}]
+indent_style = space
+indent_size = 2
+insert_final_newline = true
+trim_trailing_whitespace = true
+
+[{*.py, *.java}]
+indent_style = space
+indent_size = 4
+insert_final_newline = true
+trim_trailing_whitespace = true
+
+[*.[ch]]
+indent_style = space
+indent_size = 4
+trim_trailing_whitespace = true
+insert_final_newline = true

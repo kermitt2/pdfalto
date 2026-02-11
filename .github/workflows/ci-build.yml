@@ -35,7 +35,7 @@ jobs:
         if: runner.os == 'macOS'
         run: |
           brew update
-          brew upgrade cmake 
+          brew upgrade --formula cmake 
           brew install automake autoconf fontconfig
           brew install icu4c ucon64
 

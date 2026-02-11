@@ -67,6 +67,7 @@ class T3FontCache;
 struct T3FontCacheTag;
 
 class XmlAltoOutputDev;
+class UnicodeRemapping;
 
 enum ModifierClass {
     NOT_A_MODIFIER, DIAERESIS, ACUTE_ACCENT, DOUBLE_ACUTE_ACCENT, GRAVE_ACCENT, DOUBLE_GRAVE_ACCENT, BREVE_ACCENT, INVERTED_BREVE_ACCENT, CIRCUMFLEX, TILDE, NORDIC_RING, CZECH_CARON, CEDILLA, DOT_ABOVE, HOOK, HORN, MACRON, OGONEK,
@@ -1467,6 +1468,9 @@ private:
 
     /** if the page contains a column of line numbers */
     bool lineNumber = false;
+    UnicodeRemapping *remapping;
+    Unicode *uBuf;
+    int uBufSize;
 
 //    friend class TextBlock;
 //    friend class TextColumn;
@@ -1573,7 +1577,8 @@ public:
     virtual void drawChar(GfxState *state, double x, double y,
                           double dx, double dy,
                           double originX, double originY,
-                          CharCode c, int nBytes, Unicode *u, int uLen);
+                          CharCode c, int nBytes, Unicode *u, int uLen,
+                          GBool fill, GBool stroke, GBool makePath);
 
     /** Save graphics state
      * @param state The state description */
@@ -1611,7 +1616,7 @@ public:
     /** Return the hexadecimal value of the color of string
      * @param rgb The color in RGB value
      * @return The hexadecimal value color in a string value*/
-    GString *colortoString(GfxRGB rgb) const;
+    void colortoString(char *buf, size_t buflen, GfxRGB rgb) const;
 
 
     /** Draw the image mask

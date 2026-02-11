@@ -3,6 +3,7 @@
 #include <stdlib.h>
 #include <stddef.h>
 #include <string.h>
+#include <cstring> // For strnlen
 #include "parseargs.h"
 #include "GString.h"
 #include "gmem.h"
@@ -54,6 +55,8 @@ static char XMLcfgFileName[256] = "";
 
 static GBool noText = gFalse;
 static GBool noImage = gFalse;
+static GBool onlyGraphsCoord = gFalse;
+static GBool skipGraphs = gFalse;
 static GBool outline = gFalse;
 static GBool cutPages = gFalse;
 //static GBool blocks = gFalse;
@@ -83,7 +86,11 @@ static ArgDesc argDesc[] = {
         {"-verbose",       argFlag,   &verbose,         0,
                 "display pdf attributes"},
         {"-noImage",       argFlag,   &noImage,         0,
-                "do not extract Images (Bitmap and Vectorial)"},
+                "deprecated, use -onlyGraphsCoord instead"},
+        {"-onlyGraphsCoord", argFlag, &onlyGraphsCoord, 0,
+                "only extract image coordinates, do not dump image files"},
+        {"-skipGraphs",    argFlag,   &skipGraphs,      0,
+                "skip all graphics processing (bitmap and vectorial)"},
         {"-noImageInline", argFlag,   &noImageInline,   0,
                 "deprecated"},
         {"-outline",       argFlag,   &outline,         0,
@@ -144,7 +151,7 @@ int main(int argc, char *argv[]) {
     GString *textFileName;
     GString *dataDirName;
     GString *shortFileName;
-    GString *annotationfile;
+    GString *annotationfile = NULL;
     GString *ownerPW, *userPW;
     GString *nsURI;
     GString *cmd;
@@ -192,9 +199,8 @@ int main(int argc, char *argv[]) {
 
     // set the config file path as alongside the executable
     char *xpdfrc_path;
-    xpdfrc_path = (char*)malloc(dirname_length + 8); 
-    strcpy(xpdfrc_path, dirname);
-    strcat(xpdfrc_path, "/xpdfrc");
+    xpdfrc_path = (char*)malloc(dirname_length + 8);
+    snprintf(xpdfrc_path, dirname_length + 8, "%s/xpdfrc", dirname);
 
     globalParams = new GlobalParams(xpdfrc_path, dirname);
 
@@ -202,10 +208,28 @@ int main(int argc, char *argv[]) {
     parameters = new Parameters();
 
     if (noImage) {
+        fprintf(stderr, "Warning: -noImage is deprecated, use -onlyGraphsCoord instead\n");
         parameters->setDisplayImage(gFalse);
         cmd->append("-noImage ");
-    } else {
+    }
+
+    if (onlyGraphsCoord) {
+        parameters->setDisplayImage(gFalse);
+        cmd->append("-onlyGraphsCoord ");
+    }
+
+    if (skipGraphs) {
+        parameters->setDisplayImage(gFalse);
+        parameters->setSkipGraphs(gTrue);
+        cmd->append("-skipGraphs ");
+    }
+
+    if (!noImage && !onlyGraphsCoord && !skipGraphs) {
         parameters->setDisplayImage(gTrue);
+    }
+
+    if (!skipGraphs) {
+        parameters->setSkipGraphs(gFalse);
     }
 
     if (noText) {
@@ -239,11 +263,15 @@ int main(int argc, char *argv[]) {
     if (readingOrder) {
         parameters->setReadingOrder(gTrue);
         cmd->append("-readingOrder ");
+    } else {
+        parameters->setReadingOrder(gFalse);
     }
 
     if (charReadingOrderAttr) {
         parameters->setCharReadingOrderAttr(gTrue);
         cmd->append("-charReadingOrderAttr ");
+    } else {
+        parameters->setCharReadingOrderAttr(gFalse);
     }
 
     if (ocr) {
@@ -251,8 +279,10 @@ int main(int argc, char *argv[]) {
         cmd->append("-ocr ");
         //we avoid using heuristic mapping (not reliable)
         globalParams->setMapNumericCharNames(gFalse);
-    } else
+    } else {
+        parameters->setOcr(gFalse);
         globalParams->setMapNumericCharNames(gTrue);
+    }
 
     if (fullFontName) {
         parameters->setFullFontName(gTrue);
@@ -394,7 +424,7 @@ int main(int argc, char *argv[]) {
         dataDirName->append(NAME_DATA_DIR);
         removeAlreadyExistingData(dataDirName);
 
-        // Xml file to store annotations informations
+        // Xml file to store annotations information
         if (annots) {
             xmlDocPtr docAnnotXml;
             xmlNodePtr docroot;
@@ -432,7 +462,18 @@ int main(int argc, char *argv[]) {
         delete nsURI;
     }
 
-    // free the C malloc stuff 
+    // Cleanup data directory name
+    delete dataDirName;
+
+    // Cleanup annotation file if it was allocated
+    if (annotationfile) {
+        delete annotationfile;
+    }
+
+    // Cleanup short filename
+    delete shortFileName;
+
+    // free the C malloc stuff
     free(thePath);
     free(dirname);
     free(xpdfrc_path);
