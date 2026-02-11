@@ -6,9 +6,9 @@
 
 **pdfalto** is a command line executable for parsing PDF files and producing structured XML representations of the PDF content in [ALTO](https://github.com/kermitt2/pdfalto/blob/master/schema/alto.xsd) format, capturing in particular all the layout and style information of the PDF. 
 
-**pdfalto** is initially a fork of [pdf2xml](http://sourceforge.net/projects/pdf2xml), developed at XRCE, with modifications for robustness, addition of features, improved layout element detections, and output enhanced format in [ALTO](https://github.com/altoxml/documentation/wiki) (including in particular space information, useful for instance for further machine learning processing). It is based on the [Xpdf](http://www.xpdfreader.com/) library.  
+**pdfalto** is initially a fork of [pdf2xml](http://sourceforge.net/projects/pdf2xml), developed at XRCE, with modifications for robustness, addition of features, improved layout element detections, and output enhanced format in [ALTO](https://github.com/altoxml/documentation/wiki) (including in particular space information, useful for instance for further machine learning processing). It is based on the [Xpdf](http://www.xpdfreader.com/) library.
 
-The latest stable version is *0.4*. Working version (master) is *0.5*.
+Versions are provided in the [CHANGELOG.md](CHANGELOG.md) and in the Github release panel on the right side of the main page of this repository. 
 
 An Archlinux package for pdfalto is available [here](https://aur.archlinux.org/packages/pdfalto/), thanks to @andreasbaumann. The build process described [below](https://github.com/kermitt2/pdfalto#build) will create a portable standalone pdfalto executable that can be packaged with other tools without further installation requirements for the end-user. 
 
@@ -29,8 +29,7 @@ Usage: pdfalto [options] <PDF-file> [<xml-file>]
   -verbose                      : display pdf attributes
   -noImage                      : deprecated, use -onlyGraphsCoord instead
   -onlyGraphsCoord              : only extract image coordinates, do not dump image files
-  -skipGraphs                   : skip all graphics processing (bitmap and vectorial)
-  
+  -skipGraphs                   : skip all graphics processing (bitmap and vectorial)  
   -outline                      : create an outline file xml
   -annotation                   : create an annotations file xml
   -noLineNumbers                : do not output line numbers added in manuscript-style textual documents
