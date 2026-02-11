@@ -10,6 +10,7 @@ on:
   push:
     branches:
       - main
+      - master
 
 env:
   LIBXML2_VERSION: 2.13.6
