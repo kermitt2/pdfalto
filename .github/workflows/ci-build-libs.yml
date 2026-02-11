@@ -17,7 +17,7 @@ jobs:
   build-libxml2:
     strategy:
       matrix:
-        os: [ ubuntu-22.04, ubuntu-24.04-arm, macos-latest, macos-13 ]
+        os: [ self-hosted, macos-latest, ubuntu-24.04-arm, macos-15-intel ]
 
       fail-fast: false
 

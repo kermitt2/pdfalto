@@ -17,13 +17,16 @@ fi
 
 DEP_INSTALL_DIR=install
 
-LIBXML_URI=http://xmlsoft.org/sources/libxml2-2.9.8.tar.gz
-FREETYPE_URI=https://download.savannah.gnu.org/releases/freetype/freetype-2.9.tar.gz
-#ICU_URI=http://download.icu-project.org/files/icu4c/62.1/icu4c-62_1-src.tgz
-ICU_URI="https://github.com/unicode-org/icu/releases/download/release-62-2/icu4c-62_2-src.tgz"
-#ICU_URI=https://github.com/unicode-org/icu/releases/download/release-66-1/icu4c-66_1-src.tgz
-# Latest version
-# ICU_URI="https://github.com/unicode-org/icu/archive/refs/tags/release-76-1.tar.gz"
+LIBXML2_VERSION=2.13.6
+FREETYPE2_VERSION=2.13.3
+LIBPNG16_VERSION=1.6.47
+ZLIB_VERSION=1.3.1
+
+LIBXML_URI="https://gitlab.gnome.org/GNOME/libxml2/-/archive/v${LIBXML2_VERSION}/libxml2-v${LIBXML2_VERSION}.tar.gz"
+FREETYPE_URI="https://sourceforge.net/projects/freetype/files/freetype2/${FREETYPE2_VERSION}/freetype-${FREETYPE2_VERSION}.tar.gz/download"
+LIBPNG_URI="https://sourceforge.net/projects/libpng/files/libpng16/${LIBPNG16_VERSION}/libpng-${LIBPNG16_VERSION}.tar.gz/download"
+ZLIB_URI="https://zlib.net/zlib-${ZLIB_VERSION}.tar.gz"
+ICU_URI="https://github.com/unicode-org/icu/archive/refs/tags/release-76-1.tar.gz"
 
 ICU_FILENAME=$(basename "${ICU_URI}")
 ICU_DIR_NAME=icu
@@ -70,42 +73,33 @@ echo "${LIB_INSTALL}"
 
 echo 'Installing libxml2.'
 #
-rm -rf libxml2-2.9.8
-wget -nc "${LIBXML_URI}"
-
-tar xvf libxml2-2.9.8.tar.gz
-
-cd libxml2-2.9.8
-
-autoreconf
-
-#Once configure is produced :
-
-./configure --disable-dependency-tracking --without-python --without-lzma --without-iconv --without-zlib
-
+rm -rf libxml2
+wget -O libxml2.tar.gz -nc "${LIBXML_URI}"
+tar -xzf libxml2.tar.gz
+mv libxml2-* libxml2
+cd libxml2
+mkdir -p build/output
+cd build
+cmake -DCMAKE_INSTALL_PREFIX=$(pwd)/output -G "Unix Makefiles" .. -D LIBXML2_WITH_LZMA=OFF -D LIBXML2_WITH_ICONV=OFF -D LIBXML2_WITH_ZLIB=OFF -DBUILD_SHARED_LIBS=OFF
 make
-
-cd ..
+make install
+cd ../..
 
 echo 'libxml2 installation is finished.'
 
 
 echo 'Installing freetype.'
 
-rm -rf freetype-2.9
-
-wget -nc $FREETYPE_URI
-
-tar xvf freetype-2.9.tar.gz
-
-cd freetype-2.9
-
-mkdir _build && cd _build
-
-cmake -G "Unix Makefiles" ../ "-DCMAKE_POSITION_INDEPENDENT_CODE:BOOL=true"  -DCMAKE_DISABLE_FIND_PACKAGE_HarfBuzz=TRUE -DWITH_ZLIB=OFF -DWITH_BZIP2=OFF -DWITH_PNG=OFF
-
+rm -rf freetype
+wget -O freetype.tar.gz -nc "${FREETYPE_URI}"
+tar -xzf freetype.tar.gz
+mv freetype-* freetype
+cd freetype
+mkdir -p build/output
+cd build
+cmake .. -DCMAKE_INSTALL_PREFIX=$(pwd)/output -G "Unix Makefiles" -D FT_DISABLE_BROTLI=TRUE -D FT_DISABLE_HARFBUZZ=TRUE -D FT_DISABLE_ZLIB=TRUE -D FT_DISABLE_BZIP2=TRUE -D FT_DISABLE_PNG=TRUE
 make
-
+make install
 cd ../..
 
 echo 'Freetype installation is finished.'
@@ -114,30 +108,45 @@ echo 'Freetype installation is finished.'
 echo 'Installing ICU.'
 
 rm -rf "${ICU_DIR_NAME}"
-
-wget -nc ${ICU_URI}
-
-tar xvf "${ICU_FILENAME}"
-
-cd "${ICU_DIR_NAME}/source" && mkdir lib && mkdir bin
-
+wget -O "${ICU_FILENAME}" -nc "${ICU_URI}"
+tar -xzf "${ICU_FILENAME}"
+mv icu-release-* "${ICU_DIR_NAME}"
+cd "${ICU_DIR_NAME}/icu4c/source"
+mkdir output
 chmod +x runConfigureICU configure install-sh
-
 echo "ICU_CONFIG -> ${ICU_CONFIG}"
-./runConfigureICU "${ICU_CONFIG}" --enable-static --disable-shared
-
+./runConfigureICU "${ICU_CONFIG}" --enable-static --disable-shared --prefix=$(pwd)/output
 make
-
-cd ../..
+make install
+cd ../../..
 
 echo 'ICU installation is finished.'
 
 echo 'Installing zlib and png.'
 
-cd ..
+rm -rf zlib
+wget -O zlib.tar.gz -nc "${ZLIB_URI}"
+tar -xzf zlib.tar.gz
+mv zlib-* zlib
+cd zlib
+mkdir -p build/output
+cd build
+cmake .. -DCMAKE_INSTALL_PREFIX=$(pwd)/output -DBUILD_SHARED_LIBS=OFF
+make
+make install
+cd ../..
 
-cd libs/image/zlib/src && cmake -S . -B build "-DCMAKE_POSITION_INDEPENDENT_CODE:BOOL=true" && make -C build && cd -
-cd libs/image/png/src && cmake -S . -B build "-DCMAKE_POSITION_INDEPENDENT_CODE:BOOL=true" && make -C build && cd -
+rm -rf libpng
+wget -O libpng.tar.gz -nc "${LIBPNG_URI}"
+tar -xzf libpng.tar.gz
+mv libpng* libpng
+cd libpng
+mkdir -p build/output
+cd build
+cmake .. -DCMAKE_INSTALL_PREFIX=$(pwd)/output -DBUILD_SHARED_LIBS=OFF
+make
+make install
+cd ../..
 
 echo 'zlib and png installation is finished.'
 
@@ -151,18 +160,36 @@ else
   ARCH="32"
 fi
 
-cp "libs/image/zlib/src/build/libzlib.a" "libs/image/zlib/${LIB_INSTALL}/$ARCH/"
-cp "libs/image/png/src/build/libpng.a" "libs/image/png/${LIB_INSTALL}/$ARCH/"
-cp "${DEP_INSTALL_DIR}/freetype-2.9/_build/libfreetype.a" "libs/freetype/${LIB_INSTALL}/${ARCH}/"
-cp "${DEP_INSTALL_DIR}/libxml2-2.9.8/.libs/libxml2.a" "libs/libxml/${LIB_INSTALL}/${ARCH}/"
-if [[ "$OSTYPE" == "cygwin" ]]; then
-  mv "${DEP_INSTALL_DIR}/icu/source/lib/libsicuuc.a" "${DEP_INSTALL_DIR}/icu/source/lib/libicuuc.a"
-  mv "${DEP_INSTALL_DIR}/icu/source/lib/libsicudata.a" "${DEP_INSTALL_DIR}/icu/source/lib/libicudata.a"
-fi
+mkdir -p "libs/libxml/${LIB_INSTALL}/${ARCH}" "libs/freetype/${LIB_INSTALL}/${ARCH}" "libs/icu/${LIB_INSTALL}/${ARCH}" "libs/image/zlib/${LIB_INSTALL}/${ARCH}" "libs/image/png/${LIB_INSTALL}/${ARCH}"
 
-cp "${DEP_INSTALL_DIR}/icu/source/lib/libicuuc.a" "libs/icu/${LIB_INSTALL}/${ARCH}/"
-cp "${DEP_INSTALL_DIR}/icu/source/lib/libicudata.a" "libs/icu/${LIB_INSTALL}/${ARCH}/"
+cp "${DEP_INSTALL_DIR}/freetype/build/output/lib/libfreetype.a" "libs/freetype/${LIB_INSTALL}/${ARCH}/"
+cp "${DEP_INSTALL_DIR}/libxml2/build/output/lib/libxml2.a" "libs/libxml/${LIB_INSTALL}/${ARCH}/"
 
+cp "${DEP_INSTALL_DIR}/icu/icu4c/source/output/lib/libicuuc.a" "libs/icu/${LIB_INSTALL}/${ARCH}/"
+cp "${DEP_INSTALL_DIR}/icu/icu4c/source/output/lib/libicudata.a" "libs/icu/${LIB_INSTALL}/${ARCH}/"
+
+cp "${DEP_INSTALL_DIR}/zlib/build/output/lib/libz.a" "libs/image/zlib/${LIB_INSTALL}/$ARCH/"
+cp "${DEP_INSTALL_DIR}/libpng/build/output/lib/libpng.a" "libs/image/png/${LIB_INSTALL}/$ARCH/"
+cp "${DEP_INSTALL_DIR}/libpng/build/output/lib/libpng16.a" "libs/image/png/${LIB_INSTALL}/$ARCH/"
+
+rm -rf libs/libxml/include
+cp -R "${DEP_INSTALL_DIR}/libxml2/build/output/include/libxml2" libs/libxml
+mv libs/libxml/libxml2 libs/libxml/include
+
+rm -rf libs/freetype/include
+cp -R "${DEP_INSTALL_DIR}/freetype/build/output/include/freetype2" libs/freetype
+mv libs/freetype/freetype2 libs/freetype/include
+
+rm -rf libs/icu/include
+cp -R "${DEP_INSTALL_DIR}/icu/icu4c/source/output/include" libs/icu
+
+rm -rf libs/image/zlib/include
+cp -R "${DEP_INSTALL_DIR}/zlib/build/output/include" libs/image/zlib
+
+rm -rf libs/image/png/include
+cp -R "${DEP_INSTALL_DIR}/libpng/build/output/include" libs/image/png
+
+cd ..
 rm -rf $DEP_INSTALL_DIR
 
 echo 'installing additional language support packages.'
