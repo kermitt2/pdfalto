@@ -4,8 +4,19 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
-## [0.5] -TBD 
+## [0.6] 
 - update to xpdf-4.05
+- add more font mappings
+- full automation for multi-platform building, all platforms are now in sync #178 #177 #180 #181 #186 #188 #189 #193 #194 #195 
+- support for Linux ARM 64 
+- Improve -noImage parameters #213
+- Fixes some potential memory Leaks #30
+- Improve removal of line numbers in case of footnotes #211
+- Fixed inconsistent missing of text #201 #202 #203
+- **Breaking change**: deprecate support to old glibc the earliest version is now ubuntu 20 #197
+
+## [0.5]
+- skipping this version, as the 0.5 version is currently shipped in Grobid
 
 ## [0.4]
 
