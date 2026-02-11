@@ -33,12 +33,12 @@ jobs:
         if: runner.os == 'Linux'
         run: |
           sudo apt-get update
-          sudo apt-get install -y wget cmake autoconf automake
+          sudo apt-get install -y wget cmake autoconf automake libfontconfig-dev
 
       - name: Set up dependencies Macos
         if: runner.os == 'macOS'
         run: |
-          brew install wget cmake autoconf automake
+          brew install wget cmake autoconf automake fontconfig
 
       - name: Set OS and ARCH variables
         run: |
