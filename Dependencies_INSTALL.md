@@ -2,6 +2,9 @@
 
 Here we describe procedures to compile the static dependencies.
 
+The include and the libraries are shipped under `libs`, you can also find the artifact in the bottom of the page of 
+each [build](https://github.com/kermitt2/pdfalto/actions) under [Manual build static libraries](https://github.com/kermitt2/pdfalto/actions/workflows/ci-build-libs.yml).  
+
 ## Requirements
 
 * compilers : clang 3.6 or gcc 4.9
