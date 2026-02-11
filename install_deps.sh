@@ -39,7 +39,7 @@ echo ${OSTYPE}
 
 if [[ "${OSTYPE}" == "linux"* ]]; then
   if ! [ -x "$(command -v autoreconf)" ]; then
-    sudo apt-get install autoconf
+    sudo apt-get install autoconf libfontconfig-dev
   fi
   ICU_CONFIG="Linux"
   LIB_INSTALL="linux"
@@ -63,7 +63,7 @@ elif [[ "$OSTYPE" == "cygwin" ]]; then
 else
   echo "Unknown OSTYPE: $OSTYPE, assuming it's LINUX"
   if ! [ -x "$(command -v autoreconf)" ]; then
-    sudo apt-get install autoconf
+    sudo apt-get install autoconf libfontconfig-dev
   fi
   ICU_CONFIG="Linux"
   LIB_INSTALL="linux"
