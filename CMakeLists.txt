@@ -1,5 +1,7 @@
 cmake_minimum_required(VERSION 3.10+)
-project(pdfalto)
+project(pdfalto VERSION 0.5.0)
+
+set(PDFALTO_VERSION_STR "${PROJECT_VERSION}")
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -137,6 +139,8 @@ set(SOURCE_FILES
 )
 
 add_executable(pdfalto ${SOURCE_FILES})
+
+target_compile_definitions(pdfalto PRIVATE PDFALTO_VERSION_STR=\"${PDFALTO_VERSION_STR}\")
 
 if (HAVE_PAPER_H)
     if (HAVE_FONTCONFIG)
