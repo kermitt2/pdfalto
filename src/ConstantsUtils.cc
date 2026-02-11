@@ -1,6 +1,10 @@
 static const char cvsid[] = "$Revision: 1.3 $";
 #include "ConstantsUtils.h"
 
+#ifndef PDFALTO_VERSION_STR
+#define PDFALTO_VERSION_STR "unknown"
+#endif
+
 namespace ConstantsUtils {
 	const char *EXTENSION_XML = ".xml";
 	const char *EXTENSION_XML_MAJ = ".XML";
@@ -15,7 +19,7 @@ namespace ConstantsUtils {
 	const char *NAME_ANNOT = "annot";
 	const char *NAME_DATA_DIR = "_data";
 
-	const char *PDFALTO_VERSION = "0.6-dev";
+	const char *PDFALTO_VERSION = PDFALTO_VERSION_STR;
 	const char *PDFALTO_NAME = "pdfalto";
 
 	const char *PDFALTO_CREATOR = "CONTRIBUTORS";
