@@ -5604,7 +5604,6 @@ void TextPage::dump(GBool noLineNumbers, GBool fullFontName, vector<bool> lineNu
         else nextWord = NULL;
         if (wordId != 0)
             prvWord = (TextRawWord *) words->get(wordId - 1);
-
         char *tmp;
 
         tmp = (char *) malloc(10 * sizeof(char));
@@ -6361,6 +6360,23 @@ void TextPage::dump(GBool noLineNumbers, GBool fullFontName, vector<bool> lineNu
                     currentLineBaseLine = nextWord->base;
                     currentLineYmin = nextWord->yMin;
                     currentLineYmax = nextWord->yMax;
+                }
+                // single-word line: compare against previous word's baseline since there's no
+                // neighbor on the same line to compare with. This handles footnote reference numbers
+                // that end up alone on their TextLine due to PDF content stream ordering.
+                else if (wordI == 0 &&
+                    line1->words->getLength() == 1 &&
+                    previousWordBaseLine != 0 &&
+                    word->fontSize < lineFontSize &&
+                    word->base < previousWordBaseLine) {
+                    fontStyleInfo->setIsSuperscript(gTrue);
+                }
+                else if (wordI == 0 &&
+                    line1->words->getLength() == 1 &&
+                    previousWordBaseLine != 0 &&
+                    word->fontSize < lineFontSize &&
+                    word->base > previousWordBaseLine) {
+                    fontStyleInfo->setIsSubscript(gTrue);
                 }
                 // PL: above, we need to pay attention to the font style of the previous token and consider the whole line,
                 // because otherwise the token next to a subscript is always superscript even when normal, in addition for
