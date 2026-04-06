@@ -13,7 +13,7 @@ each [build](https://github.com/kermitt2/pdfalto/actions) under [Manual build st
 
 ## Current versions:
 
-- LibPNG: 1.6.47
+- LibPNG: 1.6.56
 - zLib: 1.3.2
 - libxml2: 2.13.6
 - freetype: 2.13.3
@@ -36,10 +36,10 @@ LibPNG and zLib sources are downloaded and built as part of the dependency build
    make install
    ```
 
-2. Download and build libpng (tested with 1.6.47):
+2. Download and build libpng (tested with 1.6.56):
 
    ```shell
-   wget -O source.tar.gz https://sourceforge.net/projects/libpng/files/libpng16/1.6.47/libpng-1.6.47.tar.gz/download
+   wget -O source.tar.gz https://sourceforge.net/projects/libpng/files/libpng16/1.6.56/libpng-1.6.56.tar.gz/download
    tar -zxf source.tar.gz
    cd libpng*
    mkdir -p build/output
