@@ -15,9 +15,9 @@ each [build](https://github.com/kermitt2/pdfalto/actions) under [Manual build st
 
 - LibPNG: 1.6.56
 - zLib: 1.3.2
-- libxml2: 2.13.6
-- freetype: 2.13.3
-- ICU: 76-1
+- libxml2: 2.15.2
+- freetype: 2.14.2
+- ICU: 78.3
 
 ## LibPNG & zLib
 
@@ -56,7 +56,7 @@ LibPNG and zLib sources are downloaded and built as part of the dependency build
 
 ## libxml2
 
-1. Download the source from https://gitlab.gnome.org/GNOME/libxml2/-/archive/v2.13.6/libxml2-v2.13.6.tar.gz and unpack it.
+1. Download the source from https://gitlab.gnome.org/GNOME/libxml2/-/archive/v2.15.2/libxml2-v2.15.2.tar.gz and unpack it.
 
 2. Access the directory and build:
 
@@ -72,7 +72,7 @@ LibPNG and zLib sources are downloaded and built as part of the dependency build
 
 ## Freetype
 
-1. Download the source from https://sourceforge.net/projects/freetype/files/freetype2/2.13.3/ and unpack it.
+1. Download the source from https://sourceforge.net/projects/freetype/files/freetype2/2.14.2/ and unpack it.
 2. Access the directory then build:
    ```shell
    mkdir -p build/output
@@ -93,8 +93,8 @@ LibPNG and zLib sources are downloaded and built as part of the dependency build
 
 ## ICU
 
-1. Download the sources (tested with version 76-1)
-   from https://github.com/unicode-org/icu/archive/refs/tags/release-76-1.tar.gz
+1. Download the sources (tested with version 78.3)
+   from https://github.com/unicode-org/icu/archive/refs/tags/release-78.3.tar.gz
 
 2. Decompress the archive file. For example,
    ```shell
