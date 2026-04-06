@@ -17,16 +17,19 @@ fi
 
 DEP_INSTALL_DIR=install
 
-LIBXML2_VERSION=2.13.6
-FREETYPE2_VERSION=2.13.3
-LIBPNG16_VERSION=1.6.47
-ZLIB_VERSION=1.3.1
+LIBXML2_VERSION=2.15.2
+FREETYPE2_VERSION=2.14.2
+LIBPNG16_VERSION=1.6.56
+ZLIB_VERSION=1.3.2
+# ICU_VERSION is the full git tag (not just a semver) — upstream uses a dash
+# for 76.x/77.x (release-76-1) but a dot for 78.x (release-78.3).
+ICU_VERSION=release-78.3
 
 LIBXML_URI="https://gitlab.gnome.org/GNOME/libxml2/-/archive/v${LIBXML2_VERSION}/libxml2-v${LIBXML2_VERSION}.tar.gz"
 FREETYPE_URI="https://sourceforge.net/projects/freetype/files/freetype2/${FREETYPE2_VERSION}/freetype-${FREETYPE2_VERSION}.tar.gz/download"
 LIBPNG_URI="https://sourceforge.net/projects/libpng/files/libpng16/${LIBPNG16_VERSION}/libpng-${LIBPNG16_VERSION}.tar.gz/download"
 ZLIB_URI="https://zlib.net/zlib-${ZLIB_VERSION}.tar.gz"
-ICU_URI="https://github.com/unicode-org/icu/archive/refs/tags/release-76-1.tar.gz"
+ICU_URI="https://github.com/unicode-org/icu/archive/refs/tags/${ICU_VERSION}.tar.gz"
 
 ICU_FILENAME=$(basename "${ICU_URI}")
 ICU_DIR_NAME=icu
