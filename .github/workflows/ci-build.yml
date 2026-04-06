@@ -87,16 +87,16 @@ jobs:
           cmake ./
           make
 
-      - name: Copy pdfalto executable
-        run: |
-          mkdir -p output/pdfalto/${{ env.OS }}/${{ env.ARCH }}
-          cp pdfalto output/pdfalto/${{ env.OS }}/${{ env.ARCH }}
-
       - name: Save pdfalto executable
+        # Flat layout: the artifact contains just the `pdfalto` binary at root,
+        # so a developer downloading pdfalto-bin-mac-arm64.zip from the Actions
+        # UI gets the binary directly with no nested directories. The os/arch
+        # information is encoded in the artifact NAME and reconstructed by the
+        # assemble-artifact job, which uses it to build the combined tree.
         uses: actions/upload-artifact@v4
         with:
           name: pdfalto-bin-${{ env.OS }}-${{ env.ARCH }}
-          path: output
+          path: pdfalto
 
   assemble-artifact:
     needs: [ build ]
@@ -106,31 +106,93 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Download artifacts
+      - name: Download per-platform artifacts (flat binaries)
         uses: actions/download-artifact@v4
         with:
-          path: output
-      - name: Move contents to output directory
+          pattern: pdfalto-bin-*
+          path: incoming
+          # Each artifact lands at incoming/pdfalto-bin-<os>-<arch>/pdfalto.
+          # We reconstruct the os/arch tree in the next step using the
+          # artifact NAME (not the contents).
+
+      - name: Reconstruct os/arch tree from artifact names
+        # The artifact name (pdfalto-bin-<os>-<arch>) encodes the platform.
+        # OS and ARCH are single tokens with no internal dashes (linux/mac,
+        # 64/arm64), so splitting on the last dash recovers them. If a future
+        # runner reports a multi-token os like "linux-musl", this parser will
+        # need updating.
         run: |
-          for dir in output/*; do
-            if [ -d "$dir" ]; then
-              rsync -a "$dir"/* output/
-              rm -rf "$dir"
-            fi
+          set -euo pipefail
+          mkdir -p output
+          for dir in incoming/pdfalto-bin-*; do
+            [ -d "$dir" ] || continue
+            name=$(basename "$dir")            # pdfalto-bin-mac-arm64
+            rest=${name#pdfalto-bin-}          # mac-arm64
+            os=${rest%-*}                      # mac
+            arch=${rest##*-}                   # arm64
+            mkdir -p "output/pdfalto/${os}/${arch}"
+            cp "${dir}/pdfalto" "output/pdfalto/${os}/${arch}/pdfalto"
           done
+          rm -rf incoming
         shell: bash
-      - name: Display structure of downloaded files
-        run: ls -R
-      - name: Get the revision ID
-        id: extract_rev_id
+
+      - name: Show assembled tree
+        run: find output -maxdepth 4 -print
+
+      - name: Derive version label
+        # On a tag push (refs/tags/v*), strip the leading 'v' so files are
+        # named pdfalto-0.7.0-*.tar.gz. On any other push, use the short
+        # commit SHA so dev builds get pdfalto-a6d49dc-*.tar.gz. One label
+        # is computed once and reused for both the artifact names and the
+        # archive filenames, keeping naming consistent.
+        id: version
+        env:
+          REF_NAME: ${{ github.ref_name }}
+          IS_TAG: ${{ startsWith(github.ref, 'refs/tags/v') }}
+          SHA: ${{ github.sha }}
         run: |
-          SHORT_COMMIT_ID=$(echo "${{ github.sha }}" | cut -c1-7)
-          echo "short_commit_id=${SHORT_COMMIT_ID}" >> $GITHUB_OUTPUT
-      - name: Save artifacts
+          set -euo pipefail
+          if [ "$IS_TAG" = "true" ]; then
+            label="${REF_NAME#v}"
+          else
+            label=$(echo "$SHA" | cut -c1-7)
+          fi
+          echo "label=${label}" >> "$GITHUB_OUTPUT"
+
+      - name: Create per-platform tar.gz archives (shallow — binary at root)
+        env:
+          LABEL: ${{ steps.version.outputs.label }}
+        run: |
+          set -euo pipefail
+          for plat_dir in output/pdfalto/*/*/; do
+            os=$(basename "$(dirname "$plat_dir")")
+            arch=$(basename "$plat_dir")
+            tar -czf "pdfalto-${LABEL}-${os}-${arch}.tar.gz" -C "$plat_dir" pdfalto
+          done
+          ls -l pdfalto-*.tar.gz
+
+      - name: Create combined bundle (preserves os/arch tree)
+        env:
+          LABEL: ${{ steps.version.outputs.label }}
+        run: |
+          set -euo pipefail
+          tar -czf "pdfalto-${LABEL}-all.tar.gz" -C output pdfalto
+
+      - name: Save assembled tree as artifact
         uses: actions/upload-artifact@v4
         with:
-          name: pdfalto-bin-all-${{ steps.extract_rev_id.outputs.short_commit_id }}
+          name: pdfalto-bin-all-${{ steps.version.outputs.label }}
           path: output
+
+      - name: Save tar.gz archives as artifact
+        # Uploaded on every push, not just tag pushes — gives dev builds the
+        # same downloadable archive shape as releases. The release job (gated
+        # on tag push) downloads this artifact and re-publishes its contents
+        # to the GitHub Release page.
+        uses: actions/upload-artifact@v4
+        with:
+          name: pdfalto-archives-${{ steps.version.outputs.label }}
+          path: pdfalto-*.tar.gz
 
   release:
     needs: [ assemble-artifact ]
@@ -140,53 +202,23 @@ jobs:
       contents: write   # required for softprops/action-gh-release to create the Release
 
     steps:
-      - name: Download assembled artifact
+      - name: Download tar.gz archives
+        # The assemble-artifact job already created and uploaded the archives
+        # under pdfalto-archives-<label>. We just download and re-publish.
         uses: actions/download-artifact@v4
         with:
-          pattern: pdfalto-bin-all-*
+          pattern: pdfalto-archives-*
           path: dist
           merge-multiple: true
 
-      - name: Derive version from tag
-        id: version
-        env:
-          REF_NAME: ${{ github.ref_name }}
-        run: |
-          version="${REF_NAME#v}"
-          echo "version=${version}" >> "$GITHUB_OUTPUT"
-
-      - name: Show downloaded layout
-        run: |
-          find dist -maxdepth 4 -print
-
-      - name: Create per-platform archives
-        env:
-          VERSION: ${{ steps.version.outputs.version }}
-        run: |
-          set -euo pipefail
-          # Shallow layout: each archive contains just the `pdfalto` binary at
-          # the root, so users download `pdfalto-<version>-<os>-<arch>.tar.gz`,
-          # extract, and the binary is right there. The combined bundle step
-          # below preserves the full dist/pdfalto/<os>/<arch>/ tree instead.
-          for plat_dir in dist/pdfalto/*/*/; do
-            os=$(basename "$(dirname "$plat_dir")")
-            arch=$(basename "$plat_dir")
-            tar -czf "pdfalto-${VERSION}-${os}-${arch}.tar.gz" -C "$plat_dir" pdfalto
-          done
-          ls -l pdfalto-*.tar.gz
-
-      - name: Create combined bundle
-        env:
-          VERSION: ${{ steps.version.outputs.version }}
-        run: |
-          set -euo pipefail
-          tar -czf "pdfalto-${VERSION}-all.tar.gz" -C dist pdfalto
+      - name: Show downloaded archives
+        run: ls -lh dist/
 
       - name: Publish GitHub Release
         uses: softprops/action-gh-release@v2
         with:
           files: |
-            pdfalto-*.tar.gz
+            dist/pdfalto-*.tar.gz
           draft: false
           prerelease: false
           # body intentionally left empty — to be filled in manually on github.com
