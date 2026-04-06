@@ -5142,7 +5142,6 @@ bool TextPage::markLineNumber() {
     // - same font (same font name and same font size)
     // - immediate vertical gap with next token vertically aligned (note that this is actually complicated with the PDF stream order)
 
-    int wordId = 0;
     //int nextVpos = 0;
     //int increment = 0;
 
@@ -5181,8 +5180,8 @@ bool TextPage::markLineNumber() {
                     nextWord = (TextRawWord *) line1->words->get(wordI + 1);
                 else
                     nextWord = NULL;
-                if (wordId != 0)
-                    previousWord = (TextRawWord *) words->get(wordId - 1);
+                if (wordI > 0)
+                    previousWord = (TextRawWord *) line1->words->get(wordI - 1);
                 else
                     previousWord = NULL;
 
@@ -5380,87 +5379,144 @@ bool TextPage::markLineNumber() {
 
     //cout << "nonTrivialClusterSize: " << nonTrivialClusterSize << endl;
 
+    // Count content lines (lines with >1 word, or whose single word is not a number)
+    // to avoid inflating coverage denominator with line-number-only lines
+    int contentLines = 0;
+    for (int pi = 0; pi < blocks->getLength(); pi++) {
+        TextParagraph *p = (TextParagraph *) blocks->get(pi);
+        for (int li = 0; li < p->lines->getLength(); li++) {
+            TextLine *l = (TextLine *) p->lines->get(li);
+            if (l->words->getLength() > 1) {
+                contentLines++;
+            } else if (l->words->getLength() == 1) {
+                TextRawWord *w = (TextRawWord *) l->words->get(0);
+                if (!is_number(w)) {
+                    contentLines++;
+                }
+            }
+        }
+    }
+    if (contentLines == 0)
+        contentLines = 1;
+
+    // neutralize candidate line numbers in the middle of a page with 2 columns
+    // (these are ref numbers in the biblio or something else, but can't be line numbers)
+    int quarterWidth = (rightMostBoundary - leftMostBoundary) / 4;
+
+    // Validate each candidate cluster and collect all valid ones (supports both-margin line numbers)
+    vector<int> validClusterIndices;
     for(int j=0; j<bestClusterIndex.size(); j++) {
         bestCluster = clusters[bestClusterIndex[j]];
         final_vpos = positions[bestClusterIndex[j]];
-        hasLineNumber = true;
-
-        /*cout << "move to next best" << endl;
-        cout << "     final alignment vpos: " << final_vpos << endl;
-        cout << "     size of next best is: " << bestCluster.size() << endl;
-        cout << "     nb numbers best cluster: " << bestCluster.size() << endl;*/
+        bool clusterValid = true;
 
         for (int i = 0; i < textClusters.size(); i++) {
             vector<int> theCluster = textClusters[i];
-            //cout << "cluster size: " << theCluster.size() << endl;
             if (theCluster.size() >= nonTrivialClusterSize) {
-                //word = (TextWord *)textWords->get(theCluster[0]);
                 word = textWords[theCluster[0]];
 
                 // check top and lowest position of the text cluster, if too high or too low,
                 // it means it's head note or foot note and should not be considered
                 int ypos1 = word->yMin;
-                //cout << "ypos1: " << ypos1 << endl;
                 if (ypos1 < 30)
                     continue;
-
-                /*if (theCluster.size() >0) {
-                    lastWord = textWords[theCluster[theCluster.size()-1]];
-                    int ypos2 = word->yMax;
-                    if (pageHeight - ypos2 < 50)
-                        continue;
-                }*/
 
                 int vpos1 = word->xMin-1;
                 int vpos2 = word->xMax+1;
 
-                //cout << "vpos1: " << vpos1 << ", vpos2: " << vpos2 << endl;
                 if ( (vpos1 <= final_vpos) && (vpos2 >= final_vpos)) {
-                    hasLineNumber = false;
-                    //cout << "           breaking text cluster has a size of: " << theCluster.size() << endl;
+                    clusterValid = false;
                     break;
                 }
             }
         }
-        if (hasLineNumber)
-            break;
+
+        if (!clusterValid)
+            continue;
+
+        // reject numbers in the middle of the page (likely bibliography references)
+        if (quarterWidth+leftMostBoundary < final_vpos && final_vpos < leftMostBoundary+(quarterWidth*3))
+            continue;
+
+        // Coverage check against content lines with size-scaled threshold.
+        // Large clusters (>= 30) are accepted regardless of coverage — a cluster of 30+ margin-aligned
+        // numbers is almost certainly line numbers even on table-heavy pages.
+        // Smaller clusters require progressively higher coverage to avoid false positives
+        // from footnote reference numbers (which form small clusters with low coverage).
+        double coverage = (double)bestCluster.size() / contentLines;
+        int clusterSize = (int)bestCluster.size();
+
+        double requiredCoverage;
+        if (clusterSize >= 30)
+            requiredCoverage = 0.0;  // always accept large clusters
+        else if (clusterSize >= 20)
+            requiredCoverage = 0.3;
+        else
+            requiredCoverage = 0.5;
+
+        if (coverage < requiredCoverage)
+            continue;
+        validClusterIndices.push_back(bestClusterIndex[j]);
     }
 
-    if (!hasLineNumber) {
+    if (validClusterIndices.size() == 0) {
         return false;
     }
 
-    // neutralize candidate line numbers in the middle of a page with 2 columns
-    // (these are ref numbers in the biblio or something else, but can't be line numbers)
-    int quarterWidth = (rightMostBoundary - leftMostBoundary) / 4;
-    if (quarterWidth+leftMostBoundary < final_vpos && final_vpos < leftMostBoundary+(quarterWidth*3))
-        hasLineNumber = false;
+    // Deduplicate clusters that represent the same margin (xMin and xMax of the same side).
+    // Since each margin creates two clusters (one for xMin, one for xMax), nearby positions
+    // should be merged by keeping only the largest cluster from each group.
+    double mergeThreshold = 20.0;
+    vector<int> deduplicatedIndices;
+    for (int i = 0; i < validClusterIndices.size(); i++) {
+        double posI = positions[validClusterIndices[i]];
+        int sizeI = clusters[validClusterIndices[i]].size();
+        bool merged = false;
+        for (int k = 0; k < deduplicatedIndices.size(); k++) {
+            double posK = positions[deduplicatedIndices[k]];
+            if (fabs(posI - posK) < mergeThreshold) {
+                // keep the larger cluster
+                int sizeK = clusters[deduplicatedIndices[k]].size();
+                if (sizeI > sizeK) {
+                    deduplicatedIndices[k] = validClusterIndices[i];
+                }
+                merged = true;
+                break;
+            }
+        }
+        if (!merged) {
+            deduplicatedIndices.push_back(validClusterIndices[i]);
+        }
+    }
+    validClusterIndices = deduplicatedIndices;
 
-    if (!hasLineNumber) {
-        return false;
+    // Limit to at most 2 line number columns (left and right margins)
+    if (validClusterIndices.size() > 2) {
+        validClusterIndices.resize(2);
     }
 
-    // increment? it's not possible to suppose any particular increments, it could be 1 by 1 or
-    // 5 by 5 for instance, however number should be growing!
-    // to be done if needed...
-
-    // immediate vertigal gap?
-
-    // Check coverage over the vertical axis
-    double coverage = (double)bestCluster.size() / totalNumberOfLines;
-    if (coverage < 0.3) {  // Require at least 30% coverage
-        return false;
+    // If 2 clusters found, verify they are on opposite sides of the page
+    if (validClusterIndices.size() == 2) {
+        double pos1 = positions[validClusterIndices[0]];
+        double pos2 = positions[validClusterIndices[1]];
+        double midPage = (leftMostBoundary + rightMostBoundary) / 2.0;
+        if (!((pos1 < midPage && pos2 > midPage) || (pos1 > midPage && pos2 < midPage))) {
+            // both on the same side, keep only the largest
+            validClusterIndices.resize(1);
+        }
     }
 
     // final marking of TextWord corresponding to line numbers
-    for (int i = 0; i < bestCluster.size(); i++) {
-        int index = bestCluster[i];
-        word = lineNumberWords[index];
-        // consider only aligned tokens
-        word->setLineNumber(true);
+    for (int vc = 0; vc < validClusterIndices.size(); vc++) {
+        vector<int> theCluster = clusters[validClusterIndices[vc]];
+        for (int i = 0; i < theCluster.size(); i++) {
+            int index = theCluster[i];
+            word = lineNumberWords[index];
+            word->setLineNumber(true);
+        }
     }
 
-    return hasLineNumber;
+    return true;
 }
 
 void TextPage::dump(GBool noLineNumbers, GBool fullFontName, vector<bool> lineNumberStatus) {
