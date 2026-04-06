@@ -87,6 +87,37 @@ jobs:
           cmake ./
           make
 
+      - name: Determine version label
+        # Same logic as in the assemble-artifact job. We compute it here
+        # too because each build job needs the label to name its tar.gz
+        # file. The computation is a pure function of github.ref_name and
+        # github.sha, so all jobs that run it will get the same answer for
+        # a given push. (Could be hoisted into a setup job and passed via
+        # job outputs, but the duplication is small and self-contained.)
+        id: label
+        env:
+          REF_NAME: ${{ github.ref_name }}
+          IS_TAG: ${{ startsWith(github.ref, 'refs/tags/v') }}
+          SHA: ${{ github.sha }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ "$IS_TAG" = "true" ]; then
+            value="${REF_NAME#v}"
+          else
+            value=$(echo "$SHA" | cut -c1-7)
+          fi
+          echo "value=${value}" >> "$GITHUB_OUTPUT"
+
+      - name: Create per-platform tar.gz (shallow — binary at root)
+        env:
+          LABEL: ${{ steps.label.outputs.value }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          tar -czf "pdfalto-${LABEL}-${OS}-${ARCH}.tar.gz" pdfalto
+          ls -lh "pdfalto-${LABEL}-${OS}-${ARCH}.tar.gz"
+
       - name: Save pdfalto executable
         # Flat layout: the artifact contains just the `pdfalto` binary at root,
         # so a developer downloading pdfalto-bin-mac-arm64.zip from the Actions
@@ -97,6 +128,15 @@ jobs:
         with:
           name: pdfalto-bin-${{ env.OS }}-${{ env.ARCH }}
           path: pdfalto
+
+      - name: Save pdfalto tar.gz
+        # Sibling per-arch artifact alongside the binary upload above. Lets
+        # a developer download just one platform's tar.gz directly from the
+        # Actions UI without pulling the full pdfalto-archives-<label> bundle.
+        uses: actions/upload-artifact@v4
+        with:
+          name: pdfalto-gz-${{ env.OS }}-${{ env.ARCH }}
+          path: pdfalto-${{ steps.label.outputs.value }}-${{ env.OS }}-${{ env.ARCH }}.tar.gz
 
   assemble-artifact:
     needs: [ build ]
