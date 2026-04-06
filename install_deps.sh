@@ -20,7 +20,7 @@ DEP_INSTALL_DIR=install
 LIBXML2_VERSION=2.13.6
 FREETYPE2_VERSION=2.13.3
 LIBPNG16_VERSION=1.6.47
-ZLIB_VERSION=1.3.1
+ZLIB_VERSION=1.3.2
 
 LIBXML_URI="https://gitlab.gnome.org/GNOME/libxml2/-/archive/v${LIBXML2_VERSION}/libxml2-v${LIBXML2_VERSION}.tar.gz"
 FREETYPE_URI="https://sourceforge.net/projects/freetype/files/freetype2/${FREETYPE2_VERSION}/freetype-${FREETYPE2_VERSION}.tar.gz/download"
