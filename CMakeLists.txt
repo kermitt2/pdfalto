@@ -108,12 +108,83 @@ endif ()
 
 MESSAGE("Final os/arch: " ${OSSUFFIX}/${ARCHSUFFIX})
 
-set(XML_LIBRARY ${LIBXML_SUBDIR}/${OSSUFFIX}/${ARCHSUFFIX}/libxml2.a)
-set(PNG_LIBRARY ${PNG_SUBDIR}/${OSSUFFIX}/${ARCHSUFFIX}/libpng.a)
-set(ZLIB_LIBRARY ${ZLIB_SUBDIR}/${OSSUFFIX}/${ARCHSUFFIX}/libz.a)
-set(FREETYPE_LIBRARY ${FREETYPE_SUBDIR}/${OSSUFFIX}/${ARCHSUFFIX}/libfreetype.a)
-set(ICUUC_LIBRARY ${ICU_SUBDIR}/${OSSUFFIX}/${ARCHSUFFIX}/libicuuc.a)
-set(ICUDATA_LIBRARY ${ICU_SUBDIR}/${OSSUFFIX}/${ARCHSUFFIX}/libicudata.a)
+# ── WINDOWS/MinGW SUPPORT: find system libraries via pkg-config ──────────────
+#
+# What this block does:
+#   When building on Windows with MinGW (a toolchain that lets you compile
+#   Linux-style C/C++ code on Windows), this block finds the required libraries
+#   (libxml2, libpng, zlib, freetype, ICU) using the system's installed copies
+#   instead of the pre-built static library files (.a files) that are bundled
+#   ("vendored") in the pdfalto source tree.
+#
+# Why MinGW needs different treatment:
+#   The vendored static libraries were compiled for Linux and Mac. They cannot
+#   be linked into a Windows executable. Additionally, the vendored ICU header
+#   files trigger compile errors with GCC 15+ (the version of the C++ compiler
+#   shipped with modern MinGW). By using the system-installed versions (from
+#   MSYS2's package manager), we get headers and libraries that are already
+#   built for Windows and compatible with the current compiler.
+#
+# What pkg-config is:
+#   pkg-config is a helper tool that answers the question "where are library X's
+#   header files and compiled code on this system?" When you install a library
+#   through a package manager (like MSYS2's pacman on Windows, or apt on Linux),
+#   it registers a small ".pc" file that lists the include paths, library paths,
+#   and linker flags. The commands below ask pkg-config for that information.
+#
+# What each CMake command does:
+#   find_package(PkgConfig REQUIRED)
+#     -- Tells CMake to locate the pkg-config tool itself. REQUIRED means
+#        "stop with an error if pkg-config is not installed."
+#
+#   pkg_check_modules(LIBXML2 REQUIRED libxml-2.0)
+#     -- Asks pkg-config: "Is libxml-2.0 installed? If so, store its include
+#        paths in LIBXML2_INCLUDE_DIRS, its library names in LIBXML2_LIBRARIES,
+#        and its library folder paths in LIBXML2_LIBRARY_DIRS." REQUIRED means
+#        "stop with an error if the library is not found."
+#     -- The same pattern repeats for libpng, zlib, freetype2, and icu-uc.
+#
+#   set(XML_LIBRARY ${LIBXML2_LIBRARIES})
+#     -- Stores the library name(s) that pkg-config found into the variable
+#        XML_LIBRARY, which the rest of this CMake file uses when linking.
+#
+#   include_directories(...)
+#     -- Tells the compiler "also look in these folders for #include header
+#        files." Without this, the compiler would not find <libxml/parser.h>,
+#        <unicode/normalizer2.h>, etc.
+#
+#   link_directories(...)
+#     -- Tells the linker "also look in these folders for the compiled library
+#        files." Without this, the linker would not find the .dll.a or .a files
+#        that contain the actual compiled code.
+#
+# The "else" branch (non-MinGW):
+#   On Linux and Mac, the vendored static .a files in the source tree are used
+#   directly — no pkg-config needed. These are pre-built for each platform.
+# ─────────────────────────────────────────────────────────────────────────────
+if (MINGW)
+    find_package(PkgConfig REQUIRED)
+    pkg_check_modules(LIBXML2 REQUIRED libxml-2.0)
+    pkg_check_modules(LIBPNG REQUIRED libpng)
+    pkg_check_modules(ZLIB REQUIRED zlib)
+    pkg_check_modules(FREETYPE2 REQUIRED freetype2)
+    pkg_check_modules(ICU REQUIRED icu-uc)
+    set(XML_LIBRARY ${LIBXML2_LIBRARIES})
+    set(PNG_LIBRARY ${LIBPNG_LIBRARIES})
+    set(ZLIB_LIBRARY ${ZLIB_LIBRARIES})
+    set(FREETYPE_LIBRARY ${FREETYPE2_LIBRARIES})
+    set(ICUUC_LIBRARY ${ICU_LIBRARIES})
+    set(ICUDATA_LIBRARY "")
+    include_directories(${LIBXML2_INCLUDE_DIRS} ${ICU_INCLUDE_DIRS} ${FREETYPE2_INCLUDE_DIRS})
+    link_directories(${LIBXML2_LIBRARY_DIRS} ${ICU_LIBRARY_DIRS} ${FREETYPE2_LIBRARY_DIRS})
+else ()
+    set(XML_LIBRARY ${LIBXML_SUBDIR}/${OSSUFFIX}/${ARCHSUFFIX}/libxml2.a)
+    set(PNG_LIBRARY ${PNG_SUBDIR}/${OSSUFFIX}/${ARCHSUFFIX}/libpng.a)
+    set(ZLIB_LIBRARY ${ZLIB_SUBDIR}/${OSSUFFIX}/${ARCHSUFFIX}/libz.a)
+    set(FREETYPE_LIBRARY ${FREETYPE_SUBDIR}/${OSSUFFIX}/${ARCHSUFFIX}/libfreetype.a)
+    set(ICUUC_LIBRARY ${ICU_SUBDIR}/${OSSUFFIX}/${ARCHSUFFIX}/libicuuc.a)
+    set(ICUDATA_LIBRARY ${ICU_SUBDIR}/${OSSUFFIX}/${ARCHSUFFIX}/libicudata.a)
+endif ()
 
 
 set(XPDF_BUILD_DIR ${XPDF_SUBDIR}/build)
@@ -149,23 +220,95 @@ if (HAVE_PAPER_H)
         target_link_libraries(pdfalto ${PNG_LIBRARY} ${ZLIB_LIBRARY} ${XML_LIBRARY} splash xpdf goo fofi ${ICUUC_LIBRARY} ${ICUDATA_LIBRARY} ${FREETYPE_LIBRARY} dl ${PAPER_LIBRARY} pthread)
     endif ()
 else ()
-    if (HAVE_FONTCONFIG)
+    if (MINGW)
+        # ── WINDOWS/MinGW SUPPORT: Windows-specific link libraries ───────────
+        #
+        # What target_link_libraries does:
+        #   It tells the linker (the tool that combines compiled code into a
+        #   final executable) which libraries the program depends on. Each name
+        #   listed here is a library whose compiled code will be merged into
+        #   (or referenced by) the pdfalto.exe output.
+        #
+        # Why MinGW uses different system libraries than Linux:
+        #   On Linux, programs use "dl" (dynamic loader — for loading shared
+        #   libraries at runtime) and "pthread" (POSIX threads — for running
+        #   code in parallel). These are Unix concepts that do not exist on
+        #   Windows. Instead, Windows has its own system libraries:
+        #
+        #   ole32  -- Provides COM (Component Object Model), which is Windows'
+        #             system for letting programs share code and data. Some
+        #             Windows APIs that libxml2 uses internally require COM.
+        #
+        #   uuid   -- Provides functions for working with UUIDs (Universally
+        #             Unique Identifiers) — 128-bit labels used throughout
+        #             Windows to identify COM objects, file types, etc.
+        #
+        #   ws2_32 -- The Windows Sockets 2 library, which provides network
+        #             communication (TCP/IP). libxml2 can fetch XML schemas
+        #             over the network, so it needs socket support even though
+        #             pdfalto itself does not use networking.
+        #
+        # Note: "dl" and "pthread" are deliberately absent here — linking them
+        # on Windows would cause errors because they do not exist.
+        # ─────────────────────────────────────────────────────────────────────
+        target_link_libraries(pdfalto ${PNG_LIBRARY} ${ZLIB_LIBRARY} ${XML_LIBRARY} splash xpdf goo fofi ${ICUUC_LIBRARY} ${ICUDATA_LIBRARY} ${FREETYPE_LIBRARY} ole32 uuid ws2_32)
+    elseif (HAVE_FONTCONFIG)
         target_link_libraries(pdfalto ${PNG_LIBRARY} ${ZLIB_LIBRARY} ${XML_LIBRARY} splash xpdf goo fofi ${ICUUC_LIBRARY} ${ICUDATA_LIBRARY} ${FREETYPE_LIBRARY} dl ${FONTCONFIG_LIBRARY} pthread)
     else ()
         target_link_libraries(pdfalto ${PNG_LIBRARY} ${ZLIB_LIBRARY} ${XML_LIBRARY} splash xpdf goo fofi ${ICUUC_LIBRARY} ${ICUDATA_LIBRARY} ${FREETYPE_LIBRARY} dl pthread)
     endif ()
 endif ()
 
-target_include_directories(
-        pdfalto
-        PUBLIC ${LIBXML_SUBDIR}/include
-        PUBLIC ${FREETYPE_INCLUDE_DIR}
-        PUBLIC ${PNG_INCLUDE_DIRS}
-        PUBLIC ${ZLIB_INCLUDE_DIRS}
-        PUBLIC ${XPDF_SUBDIR}
-        PUBLIC ${XPDF_SUBDIR}/goo
-        PUBLIC ${XPDF_SUBDIR}/fofi
-        PUBLIC ${XPDF_SUBDIR}/xpdf
-        PUBLIC ${XPDF_BUILD_DIR}
-        PUBLIC ${ICU_SUBDIR}/include
-)
+# ── WINDOWS/MinGW SUPPORT: reduced include directories ───────────────────────
+#
+# What target_include_directories does:
+#   It tells the compiler "when the source code says #include <SomeFile.h>,
+#   also search in these folders to find that file." Without this, the compiler
+#   only searches its default system folders.
+#
+# Why MinGW has a shorter list:
+#   On Linux/Mac (the "else" branch below), the compiler needs to be pointed at
+#   ALL vendored library headers — libxml2, freetype, png, zlib, ICU — because
+#   those headers are bundled in the source tree and are not installed on the
+#   system.
+#
+#   On MinGW/Windows, those same libraries were installed via MSYS2's package
+#   manager, and their headers are already in the system include path (added
+#   earlier by the "include_directories" call in the pkg-config block above).
+#   Pointing the compiler at the vendored copies as well would create
+#   confusion: the compiler might pick the wrong version of a header, or —
+#   worse — mix vendored headers with system-installed compiled code, causing
+#   subtle build failures.
+#
+#   The xpdf headers (xpdf, goo, fofi) ARE still listed here because xpdf is
+#   always built from the vendored source tree on every platform — it is not
+#   available as a system package. The XPDF_BUILD_DIR entry points to the
+#   generated file aconf.h (created by CMake during the xpdf build step), which
+#   contains platform-specific configuration settings.
+# ─────────────────────────────────────────────────────────────────────────────
+if (MINGW)
+    # MinGW: system headers via pkg-config (already added via include_directories above)
+    # Only add xpdf paths (vendored, no conflict) + generated aconf.h
+    target_include_directories(
+            pdfalto
+            PUBLIC ${XPDF_SUBDIR}
+            PUBLIC ${XPDF_SUBDIR}/goo
+            PUBLIC ${XPDF_SUBDIR}/fofi
+            PUBLIC ${XPDF_SUBDIR}/xpdf
+            PUBLIC ${XPDF_BUILD_DIR}
+    )
+else ()
+    target_include_directories(
+            pdfalto
+            PUBLIC ${LIBXML_SUBDIR}/include
+            PUBLIC ${FREETYPE_INCLUDE_DIR}
+            PUBLIC ${PNG_INCLUDE_DIRS}
+            PUBLIC ${ZLIB_INCLUDE_DIRS}
+            PUBLIC ${XPDF_SUBDIR}
+            PUBLIC ${XPDF_SUBDIR}/goo
+            PUBLIC ${XPDF_SUBDIR}/fofi
+            PUBLIC ${XPDF_SUBDIR}/xpdf
+            PUBLIC ${XPDF_BUILD_DIR}
+            PUBLIC ${ICU_SUBDIR}/include
+    )
+endif ()
