@@ -999,6 +999,10 @@ public:
      * @param fullFontName To know if the fullFontName option is selected */
     void dump(GBool noLineNumbers, GBool fullFontName, const vector<bool> &lineNumberStatus);
 
+    xmlNodePtr getPageNode() { return page; }
+
+    GBool isCutter() { return cutter; }
+
     /** Dump contents of the current page following the reading order.
      * @param blocks To know if the blocks option is selected
      * @param fullFontName To know if the fullFontName option is selected */
@@ -1834,6 +1838,11 @@ private:
     GHash *unicode_map;
 
     vector<Unicode> placeholders;
+
+    /** Per-page streaming: xmlElemDump of each finished <Page> is appended here,
+     *  then the page node is freed from the DOM. The final file is assembled in
+     *  the destructor by splicing this stream into the serialized doc. */
+    FILE *pagesStream;
 
     void beginActualText(GfxState *state, Unicode *u, int uLen);
 
