@@ -8185,6 +8185,7 @@ XmlAltoOutputDev::XmlAltoOutputDev(GString *fileName, GString *fileNamePdf,
     dataDir = NULL;
     nsURI = NULL;
     lPictureReferences = NULL;
+    pagesStream = NULL;
     GString *imgDirName = NULL;
     Catalog *myCatalog;
 
@@ -8405,7 +8406,70 @@ XmlAltoOutputDev::~XmlAltoOutputDev() {
 
     if (doc) {
         if (myfilename) {
-            xmlSaveFile(myfilename->getCString(), doc);
+            if (pagesStream != NULL) {
+                // Streaming mode: doc has an empty <Layout/>; splice pages in.
+                xmlChar *docbuf = NULL;
+                int docbuflen = 0;
+                xmlDocDumpFormatMemoryEnc(doc, &docbuf, &docbuflen, "UTF-8", 0);
+                if (docbuf != NULL) {
+                    // Find the Layout element output. xmlDocDumpFormatMemory
+                    // renders an empty Layout as "<Layout/>". Replace that
+                    // with <Layout>{pages}</Layout>.
+                    const char *needle = "<Layout/>";
+                    const char *open_fallback = "<Layout>";  // in case namespace or attrs appear
+                    const char *close_fallback = "</Layout>";
+                    char *hit = strstr((char *)docbuf, needle);
+                    FILE *out = fopen(myfilename->getCString(), "wb");
+                    if (out != NULL) {
+                        fflush(pagesStream);
+                        if (hit != NULL) {
+                            // Write everything up to and including "<Layout>"
+                            fwrite(docbuf, 1, (size_t)(hit - (char *)docbuf), out);
+                            fwrite("<Layout>\n", 1, 9, out);
+                            // Copy pages
+                            fseek(pagesStream, 0, SEEK_SET);
+                            char copybuf[65536];
+                            size_t n;
+                            while ((n = fread(copybuf, 1, sizeof(copybuf), pagesStream)) > 0) {
+                                fwrite(copybuf, 1, n, out);
+                            }
+                            // Write "</Layout>" + remainder after "<Layout/>"
+                            fwrite("</Layout>", 1, 9, out);
+                            fwrite(hit + strlen(needle), 1,
+                                   docbuflen - (hit + strlen(needle) - (char *)docbuf), out);
+                        } else {
+                            // Fallback: handle "<Layout></Layout>" form (same namespace,
+                            // formatted output). Splice in just before "</Layout>".
+                            char *open_hit = strstr((char *)docbuf, open_fallback);
+                            char *close_hit = open_hit ? strstr(open_hit, close_fallback) : NULL;
+                            if (open_hit != NULL && close_hit != NULL) {
+                                size_t open_end = (size_t)(open_hit - (char *)docbuf) + strlen(open_fallback);
+                                fwrite(docbuf, 1, open_end, out);
+                                fputc('\n', out);
+                                fseek(pagesStream, 0, SEEK_SET);
+                                char copybuf[65536];
+                                size_t n;
+                                while ((n = fread(copybuf, 1, sizeof(copybuf), pagesStream)) > 0) {
+                                    fwrite(copybuf, 1, n, out);
+                                }
+                                fwrite(close_hit, 1,
+                                       docbuflen - (close_hit - (char *)docbuf), out);
+                            } else {
+                                // Couldn't locate Layout marker: bail out and write doc as-is.
+                                // Pages will be lost, but output is still valid XML.
+                                fprintf(stderr, "pdfalto: warning: could not locate <Layout> in serialized doc; pages not streamed into final file.\n");
+                                fwrite(docbuf, 1, docbuflen, out);
+                            }
+                        }
+                        fclose(out);
+                    }
+                    xmlFree(docbuf);
+                }
+                fclose(pagesStream);
+                pagesStream = NULL;
+            } else {
+                xmlSaveFile(myfilename->getCString(), doc);
+            }
         }
         xmlFreeDoc(doc);
     }
@@ -8804,6 +8868,23 @@ void XmlAltoOutputDev::endPage() {
     }
 
     text->endPage(dataDir);
+
+    // Stream the completed page out of the DOM to bound peak memory.
+    // Only active for the non-cutter path (the cutter path manages per-page
+    // docs itself). This keeps <Layout> empty in memory — the final file
+    // is assembled in ~XmlAltoOutputDev.
+    xmlNodePtr pageNode = text->getPageNode();
+    if (!text->isCutter() && pageNode != NULL && pageNode->parent != NULL) {
+        if (pagesStream == NULL) {
+            pagesStream = tmpfile();
+        }
+        if (pagesStream != NULL) {
+            xmlElemDump(pagesStream, doc, pageNode);
+            fputc('\n', pagesStream);
+            xmlUnlinkNode(pageNode);
+            xmlFreeNode(pageNode);
+        }
+    }
 }
 
 vector<bool> XmlAltoOutputDev::getLineNumberStatus() {
