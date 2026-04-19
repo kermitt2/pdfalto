@@ -31,6 +31,7 @@ using namespace std;
 #include <stack>
 #include <vector>
 #include <string>
+#include <unordered_map>
 #include <libxml/xmlmemory.h>
 #include <libxml/parser.h>
 #include <splash/SplashTypes.h>
@@ -1241,8 +1242,11 @@ public:
 
     vector<Image*> listeImages;
 
-    /** The list of all recognized font styles*/
+    /** The list of all recognized font styles (ordered, output preserves order). */
     vector<TextFontStyleInfo*> fontStyles;
+
+    /** Signature -> index into fontStyles, for O(1) dedupe. */
+    unordered_map<std::string, int> fontStylesIndex;
 
     GList *blocks;
 
@@ -1838,6 +1842,7 @@ private:
     GHash *unicode_map;
 
     vector<Unicode> placeholders;
+    size_t placeholderIdx;
 
     /** Per-page streaming: xmlElemDump of each finished <Page> is appended here,
      *  then the page node is freed from the DOM. The final file is assembled in

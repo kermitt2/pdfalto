@@ -1078,7 +1078,7 @@ TextRawWord::TextRawWord(GfxState *state, double x0, double y0,
     }
 
     //text = NULL;
-    chars = new GList();
+    chars = new GList(8);
     charPos = NULL;
     edge = NULL;
     len = size = 0;
@@ -1830,7 +1830,7 @@ TextPage::TextPage(GBool verboseA, Catalog *catalog, xmlNodePtr node,
         readingOrder = 0;
     }
     chars = new GList();
-    words = new GList();
+    words = new GList(256);
 
     curRot = 0;
     diagonal = gFalse;
@@ -1911,7 +1911,7 @@ bool TextPage::getLineNumber() {
 
 void TextPage::startPage(int pageNum, GfxState *state, GBool cut) {
     clear();
-    words = new GList();
+    words = new GList(256);
     char tmp[20];
     cutter = cut;
     num = pageNum;
@@ -2064,7 +2064,7 @@ void TextPage::clear() {
 
     if (words->getLength() > 0) {
         deleteGList(words, TextRawWord);
-        words = new GList();
+        words = new GList(256);
 //        while (rawWords) {
 //            word = rawWords;
 //            rawWords = rawWords->next;
@@ -3105,23 +3105,38 @@ void TextPage::addAttributsNode(xmlNodePtr node, IWord *word, TextFontStyleInfo 
     snprintf(tmp, sizeof(tmp), ATTR_NUMFORMAT, word->yMax - word->yMin);
     xmlNewProp(node, (const xmlChar *) ATTR_HEIGHT, (const xmlChar *) tmp);
 
-    GBool contains = gFalse;
-
-    for (int x = 0; x < fontStyles.size(); x++) {
-        if (fontStyleInfo->cmp(fontStyles[x])) {
-            contains = gTrue;
-            fontStyleInfo->setId(x);
-            break;
-        }
-    }
+    // O(1) dedupe via signature string. The cmp() method compares fontName,
+    // fontSize (exact), fontColor, and five booleans — so we encode them the
+    // same way in the signature. "%.17g" for fontSize guarantees round-trip
+    // equality so we never merge what cmp() would consider distinct.
+    char fsbuf[48];
+    snprintf(fsbuf, sizeof(fsbuf), "%.17g", fontStyleInfo->getFontSize());
+    std::string sig;
+    sig.reserve(64);
+    GString *fn = fontStyleInfo->getFontNameCS();
+    sig.append(fn ? fn->getCString() : "");
+    sig.push_back('|');
+    sig.append(fsbuf);
+    sig.push_back('|');
+    GString *fc = fontStyleInfo->getFontColor();
+    sig.append(fc ? fc->getCString() : "");
+    sig.push_back('|');
+    sig.push_back(fontStyleInfo->getFontType()    ? '1' : '0');
+    sig.push_back(fontStyleInfo->getFontWidth()   ? '1' : '0');
+    sig.push_back(fontStyleInfo->isBold()         ? '1' : '0');
+    sig.push_back(fontStyleInfo->isItalic()       ? '1' : '0');
+    sig.push_back(fontStyleInfo->isSubscript()    ? '1' : '0');
+    sig.push_back(fontStyleInfo->isSuperscript()  ? '1' : '0');
 
     int styleId;
-    if (!contains) {
-        styleId = fontStyles.size();
+    auto it = fontStylesIndex.find(sig);
+    if (it == fontStylesIndex.end()) {
+        styleId = (int)fontStyles.size();
         fontStyleInfo->setId(styleId);
         fontStyles.push_back(fontStyleInfo);
+        fontStylesIndex.emplace(std::move(sig), styleId);
     } else {
-        styleId = fontStyleInfo->getId();
+        styleId = it->second;
         // duplicate of an already-registered style; drop it (fontStyles owns the original)
         delete fontStyleInfo;
     }
@@ -8201,6 +8216,7 @@ XmlAltoOutputDev::XmlAltoOutputDev(GString *fileName, GString *fileNamePdf,
     nT3Fonts = 0;
 
     unicode_map = new GHash(gTrue);
+    placeholderIdx = 0;
     //initialise some special unicodes 9 to begin with as placeholders, from https://unicode.org/charts/PDF/U2B00.pdf
     placeholders.push_back((Unicode) 9724);
     placeholders.push_back((Unicode) 9650);
@@ -9529,9 +9545,9 @@ void XmlAltoOutputDev::drawChar(GfxState *state, double x, double y, double dx,
             // do map every char to a unicode, depending on charcode and font name
             Unicode mapped_unicode = unicode_map->lookupInt(fontName);
             if (!mapped_unicode) {
-                mapped_unicode = placeholders[0];
-                if (placeholders.size() > 1) {
-                    placeholders.erase(placeholders.begin());
+                mapped_unicode = placeholders[placeholderIdx];
+                if (placeholderIdx + 1 < placeholders.size()) {
+                    placeholderIdx++;
                 }
                 unicode_map->add(fontName, mapped_unicode);
                 // unicode_map owns fontName now (GHash constructed with deleteKeys=true)
