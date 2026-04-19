@@ -9557,11 +9557,170 @@ void XmlAltoOutputDev::drawChar(GfxState *state, double x, double y, double dx,
             u[0] = mapped_unicode;
             uLen = 1;
             isNonUnicodeGlyph = gTrue;
+
+            // Record the glyph metadata for the OCR sidecar. Bbox is
+            // computed in page space; y is kept in xpdf's bottom-up
+            // convention (matching state->transform) — downstream
+            // consumers that need ALTO's top-down frame should flip using
+            // the page height. Height uses the font's ascent/descent
+            // scaled by the current font size, mirroring the computation
+            // in TextRawWord::addChar for a consistent bbox.
+            double rx, ry, rw, rh;
+            state->transform(x, y, &rx, &ry);
+            state->transformDelta(dx, dy, &rw, &rh);
+            double fs = state->getFontSize();
+            GfxFont *gfxFont = state->getFont();
+            double asc = gfxFont && gfxFont->getAscent() != 0.0
+                         ? gfxFont->getAscent() * fs : 0.75 * fs;
+            double desc = gfxFont && gfxFont->getDescent() != 0.0
+                          ? gfxFont->getDescent() * fs : -0.25 * fs;
+            double x0 = rx, x1 = rx + rw;
+            double y0 = ry - asc, y1 = ry - desc;
+            double rxMin = x0 < x1 ? x0 : x1;
+            double rxMax = x0 < x1 ? x1 : x0;
+            double ryMin = y0 < y1 ? y0 : y1;
+            double ryMax = y0 < y1 ? y1 : y0;
+            const char *cleanFontName = NULL;
+            GString *rawFontName = gfxFont ? gfxFont->getName() : NULL;
+            if (rawFontName) {
+                cleanFontName = rawFontName->getCString();
+            }
+            recordNonUnicodeGlyph(text->getPageNumber(),
+                                  rxMin, ryMin, rxMax, ryMax,
+                                  mapped_unicode, c, cleanFontName);
         }
     } else if(uLen > 1 && (globalParams->getTextEncodingName()->cmp(ENCODING_UTF8)==0)&& !isUTF8(u, uLen))
         return;
 
     text->addChar(state, x, y, dx, dy, c, nBytes, u, uLen, splashFont, isNonUnicodeGlyph);
+}
+
+void XmlAltoOutputDev::recordNonUnicodeGlyph(int page,
+                                             double xMin, double yMin,
+                                             double xMax, double yMax,
+                                             Unicode placeholder,
+                                             CharCode charCode,
+                                             const char *fontName) {
+    std::string font = fontName ? fontName : "";
+    // Case-insensitive dedup: some PDFs emit two GfxFont instances for
+    // the same logical font that differ only by case in their name (e.g.
+    // "AMDONF+..." and "amdonf+..."). Collapse them in the sidecar.
+    std::string keyFont = font;
+    for (char &kc : keyFont) {
+        kc = (char) tolower((unsigned char) kc);
+    }
+    std::string key = keyFont + "\x1f" + std::to_string((unsigned long)charCode);
+    auto it = ocrGlyphIndex.find(key);
+    if (it == ocrGlyphIndex.end()) {
+        OcrGlyph g;
+        g.placeholder = placeholder;
+        g.charCode = charCode;
+        g.fontName = font;
+        ocrGlyphs.push_back(std::move(g));
+        it = ocrGlyphIndex.emplace(key, ocrGlyphs.size() - 1).first;
+    }
+    OcrGlyphInstance inst{page, xMin, yMin, xMax, yMax};
+    ocrGlyphs[it->second].occurrences.push_back(inst);
+}
+
+namespace {
+
+void jsonAppendEscaped(std::string &out, const std::string &s) {
+    out.push_back('"');
+    for (char c : s) {
+        switch (c) {
+            case '"':  out += "\\\""; break;
+            case '\\': out += "\\\\"; break;
+            case '\b': out += "\\b"; break;
+            case '\f': out += "\\f"; break;
+            case '\n': out += "\\n"; break;
+            case '\r': out += "\\r"; break;
+            case '\t': out += "\\t"; break;
+            default:
+                if (static_cast<unsigned char>(c) < 0x20) {
+                    char buf[8];
+                    snprintf(buf, sizeof(buf), "\\u%04x", (unsigned char)c);
+                    out += buf;
+                } else {
+                    out.push_back(c);
+                }
+        }
+    }
+    out.push_back('"');
+}
+
+void jsonAppendNumber(std::string &out, double v) {
+    char buf[32];
+    snprintf(buf, sizeof(buf), "%.3f", v);
+    out += buf;
+}
+
+} // namespace
+
+// Emits <xml>_data/ocr-regions.json so an external pipeline can render the
+// flagged bboxes (e.g. via pdftoppm) and OCR them. Deliberately does not
+// rasterise here: keeps pdfalto dependency-free and leaves DPI/format/OCR
+// engine choices to the caller. Placeholder codepoints in the JSON match
+// the ones pdfalto wrote into the ALTO <String CONTENT>, so a corrections
+// step can replace them by (placeholder, page, bbox) lookup.
+void XmlAltoOutputDev::writeOcrSidecar() {
+    if (ocrGlyphs.empty() || !dataDir) {
+        return;
+    }
+#ifdef WIN32
+    _mkdir(dataDir->getCString());
+#else
+    mkdir(dataDir->getCString(), 00777);
+#endif
+
+    GString *path = new GString(dataDir);
+    path->append("/ocr-regions.json");
+
+    FILE *f = fopen(path->getCString(), "wb");
+    if (!f) {
+        fprintf(stderr, "pdfalto: could not open OCR sidecar for writing: %s\n",
+                path->getCString());
+        delete path;
+        return;
+    }
+
+    std::string out;
+    out += "{\n  \"version\": 1,\n  \"glyphs\": [\n";
+    for (size_t gi = 0; gi < ocrGlyphs.size(); ++gi) {
+        const OcrGlyph &g = ocrGlyphs[gi];
+        out += "    {\n";
+        out += "      \"placeholder\": ";
+        out += std::to_string((unsigned long)g.placeholder);
+        out += ",\n      \"charCode\": ";
+        out += std::to_string((unsigned long)g.charCode);
+        out += ",\n      \"fontName\": ";
+        jsonAppendEscaped(out, g.fontName);
+        out += ",\n      \"occurrences\": [\n";
+        for (size_t oi = 0; oi < g.occurrences.size(); ++oi) {
+            const OcrGlyphInstance &inst = g.occurrences[oi];
+            out += "        {\"page\": ";
+            out += std::to_string(inst.page);
+            out += ", \"xMin\": ";
+            jsonAppendNumber(out, inst.xMin);
+            out += ", \"yMin\": ";
+            jsonAppendNumber(out, inst.yMin);
+            out += ", \"xMax\": ";
+            jsonAppendNumber(out, inst.xMax);
+            out += ", \"yMax\": ";
+            jsonAppendNumber(out, inst.yMax);
+            out += "}";
+            if (oi + 1 < g.occurrences.size()) out += ",";
+            out += "\n";
+        }
+        out += "      ]\n    }";
+        if (gi + 1 < ocrGlyphs.size()) out += ",";
+        out += "\n";
+    }
+    out += "  ]\n}\n";
+
+    fwrite(out.data(), 1, out.size(), f);
+    fclose(f);
+    delete path;
 }
 
 void XmlAltoOutputDev::updateCTM(GfxState *state, double m11, double m12,

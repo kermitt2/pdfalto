@@ -1844,6 +1844,33 @@ private:
     vector<Unicode> placeholders;
     size_t placeholderIdx;
 
+    struct OcrGlyphInstance {
+        int page;
+        double xMin, yMin, xMax, yMax;
+    };
+
+    struct OcrGlyph {
+        Unicode placeholder;
+        CharCode charCode;
+        std::string fontName;
+        std::vector<OcrGlyphInstance> occurrences;
+    };
+
+    std::vector<OcrGlyph> ocrGlyphs;
+    std::unordered_map<std::string, size_t> ocrGlyphIndex;
+
+    void recordNonUnicodeGlyph(int page,
+                               double xMin, double yMin,
+                               double xMax, double yMax,
+                               Unicode placeholder,
+                               CharCode charCode,
+                               const char *fontName);
+
+public:
+    void writeOcrSidecar();
+
+private:
+
     /** Per-page streaming: xmlElemDump of each finished <Page> is appended here,
      *  then the page node is freed from the DOM. The final file is assembled in
      *  the destructor by splicing this stream into the serialized doc. */
