@@ -470,6 +470,8 @@ public:
              TextFontInfo *fontA, double fontSizeA, SplashFont *splashFontA,
              double colorRA, double colorGA, double colorBA, GBool isNonUnicodeGlyphA);
 
+    ~TextChar();
+
     static int cmpX(const void *p1, const void *p2);
     static int cmpY(const void *p1, const void *p2);
 
@@ -995,7 +997,7 @@ public:
     /** Dump contents of the current page
      * @param blocks To know if the blocks option is selected
      * @param fullFontName To know if the fullFontName option is selected */
-    void dump(GBool noLineNumbers, GBool fullFontName, vector<bool> lineNumberStatus);
+    void dump(GBool noLineNumbers, GBool fullFontName, const vector<bool> &lineNumberStatus);
 
     /** Dump contents of the current page following the reading order.
      * @param blocks To know if the blocks option is selected
