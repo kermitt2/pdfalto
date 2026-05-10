@@ -5524,6 +5524,11 @@ void TextPage::dump(GBool noLineNumbers, GBool fullFontName, vector<bool> lineNu
     blocks = new GList(); // these are blocks in alto schema
     vector<TextParagraph*> originalBlocks; // only used when reading order is selected
 
+    // PL: page-level LTR detection — gates the LTR-specific column reorder.
+    // Per-word primaryLR (set in addWord) reflects only the last word, so we
+    // recompute over the full page char list, mirroring dumpInReadingOrder.
+    GBool pageLR = checkPrimaryLR(chars);
+
     UnicodeMap *uMap;
 
     TextFontStyleInfo *fontStyleInfo;
@@ -5917,7 +5922,7 @@ void TextPage::dump(GBool noLineNumbers, GBool fullFontName, vector<bool> lineNu
                         paragraph->setXMax(paragraph->getXMin() + maxBlockLineWidth);
 
                         // adding previous block to the page element
-                        if(readingOrder && num == 1) {
+                        if (readingOrder) {
                             addBlockInTopDownOrder(paragraph);
                             originalBlocks.push_back(paragraph);
                         } else
@@ -5988,7 +5993,7 @@ void TextPage::dump(GBool noLineNumbers, GBool fullFontName, vector<bool> lineNu
                             paragraph->setYMax(paragraph->getYMin() + blockHeight);
 
                             // adding previous block to the page element
-                            if(readingOrder && num == 1) {
+                            if (readingOrder) {
                                 addBlockInTopDownOrder(paragraph);
                                 originalBlocks.push_back(paragraph);
                             } else
@@ -6022,7 +6027,7 @@ void TextPage::dump(GBool noLineNumbers, GBool fullFontName, vector<bool> lineNu
                 endPage = gFalse;
 
                 if (paragraph != NULL) {
-                    if(readingOrder && num == 1) {
+                    if (readingOrder) {
                         addBlockInTopDownOrder(paragraph);
                         originalBlocks.push_back(paragraph);
                     } else
@@ -6073,17 +6078,11 @@ void TextPage::dump(GBool noLineNumbers, GBool fullFontName, vector<bool> lineNu
         }
     }
 
-    if(readingOrder && num == 1) {
+    // PL: column-aware reorder embeds an LTR assumption (smaller x = earlier
+    // in reading order, see blocksInReadingOrder). Gate on page LTR detection
+    // so RTL pages keep PDF stream order rather than getting mirrored output.
+    if (readingOrder && pageLR) {
         blocksInReadingOrder(originalBlocks);
-        /*bool readingOrderIssue = detectReadingOrderIssue(originalBlocks);
-        if (readingOrderIssue) {
-            blocksInReadingOrder(originalBlocks);
-        } else {
-            // restore original pdf stream order
-            for(int k=0; k<originalBlocks.size();k++) {
-                blocks->put(k, originalBlocks[k]);
-            }
-        }*/
     }
 
     // if no line number was found in the first half of the document and the number of pages of the document is large enough,
