@@ -1008,6 +1008,11 @@ public:
 
     GBool checkPrimaryLR(GList *charsA);
 
+    // Decide if a TextLine should be emitted in right-to-left reading order.
+    // Returns gTrue → caller should reverse word iteration and per-word char iteration.
+    // Returns gFalse for LTR-dominant or empty lines (LTR is the fall-through default).
+    GBool isLineRTL(TextLine *line);
+
     TextBlock *splitChars(GList *charsA);
 
     void insertClippedChars(GList *clippedChars, TextBlock *tree);

@@ -67,7 +67,12 @@ namespace ConstantsXML {
 	const char *ATTR_ID = "ID";
 	// This attribute gives the reading order : right->left (value 0) or left->right (value 1)
 	const char *ATTR_TYPE = "TYPE";
-	
+
+	const char *ATTR_LANG = "LANG";
+	const char *ATTR_WRITING_DIRECTION = "WRITING_DIRECTION";
+	const char *sLTR = "ltr";
+	const char *sRTL = "rtl";
+
 	const char *sTRUE = "true";
 	const char *sFALSE = "false";
 

@@ -56,6 +56,12 @@ namespace ConstantsXML {
 	extern const char *ATTR_ID;
 	// This attribute gives the reading order : right->left (value 0) or left->right (value 1)
 	extern const char *ATTR_TYPE;
+	// ALTO v3 LANG attribute on String/TextLine (ISO 639-1, e.g. "ar")
+	extern const char *ATTR_LANG;
+	// ALTO v3 WRITING_DIRECTION attribute on TextLine ("ltr" | "rtl")
+	extern const char *ATTR_WRITING_DIRECTION;
+	extern const char *sLTR;
+	extern const char *sRTL;
 	extern const char *sTRUE;
 	extern const char *sFALSE;
 	// Attributs about details informations

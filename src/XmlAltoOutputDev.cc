@@ -2964,20 +2964,20 @@ void TextPage::addAttributTypeReadingOrder(xmlNodePtr node, char *tmp,
         return;
     }
 
-    int nbLeft = 0;
-    int nbRight = 0;
+    int nbLTR = 0;
+    int nbRTL = 0;
 
-    // Recover the reading order for each characters of the word
+    // Count strong-direction characters in the word.
     for (int i = 0; i < word->len; ++i) {
-        if (unicodeTypeR(((TextChar *) word->chars->get(i))->c)) {
-            nbLeft++;
-        } else {
-            nbRight++;
+        Unicode c = ((TextChar *) word->chars->get(i))->c;
+        if (unicodeTypeR(c)) {
+            ++nbRTL;
+        } else if (unicodeTypeL(c)) {
+            ++nbLTR;
         }
     }
-    // IF there is more character where the reading order is left to right
-    // then we add the type attribute with a true value
-    if (nbRight < nbLeft) {
+    // ConstantsXML says TYPE="1" = left->right. Emit it when LTR chars dominate.
+    if (nbLTR > nbRTL) {
         sprintf(tmp, "%d", gTrue);
         xmlNewProp(node, (const xmlChar *) ATTR_TYPE, (const xmlChar *) tmp);
     }
@@ -3030,6 +3030,9 @@ void TextPage::addAttributsNode(xmlNodePtr node, IWord *word, TextFontStyleInfo 
         text[i] = ((TextChar *) word->chars->get(i))->c;
     }
     primaryLR = checkPrimaryLR(word->chars);
+    // dumpFragment handles RTL char reordering internally (see its !primaryLR
+    // branch ~L7294 which walks text[] from len-1 down to 0). Do NOT pre-reverse
+    // text[] here — that would double-reverse and yield visual (wrong) order.
     dumpFragment(text, word->len, uMap, stringTemp);
     if (verbose) {
         printf("token : %s\n", stringTemp->getCString());
@@ -3040,6 +3043,27 @@ void TextPage::addAttributsNode(xmlNodePtr node, IWord *word, TextFontStyleInfo 
     xmlNewProp(node, (const xmlChar *) ATTR_TOKEN_CONTENT,
                (const xmlChar *)stringTemp->getCString());
     delete stringTemp;
+
+    // Emit LANG="ar" only when the word is dominated by the Arabic Unicode blocks
+    // (basic 0600-06FF, supplement, presentation forms). Avoids mislabeling Hebrew/etc.
+    if (!primaryLR) {
+        int arabicCount = 0, otherStrongCount = 0;
+        for (int i = 0; i < word->len; i++) {
+            Unicode c = ((TextChar *) word->chars->get(i))->c;
+            if ((c >= 0x0600 && c <= 0x06FF) ||
+                (c >= 0x0750 && c <= 0x077F) ||
+                (c >= 0x08A0 && c <= 0x08FF) ||
+                (c >= 0xFB50 && c <= 0xFDFF) ||
+                (c >= 0xFE70 && c <= 0xFEFF)) {
+                ++arabicCount;
+            } else if (unicodeTypeL(c) || unicodeTypeR(c)) {
+                ++otherStrongCount;
+            }
+        }
+        if (arabicCount > otherStrongCount) {
+            xmlNewProp(node, (const xmlChar *) ATTR_LANG, (const xmlChar *) "ar");
+        }
+    }
 
     GString *gsFontName = new GString();
     if (word->getFontName()) {
@@ -3507,6 +3531,32 @@ GBool TextPage::checkPrimaryLR(GList *charsA) {
         }
     }
     return lrCount >= 0;
+}
+
+// Decide if a single TextLine should be emitted as RTL.
+// Strategy (majority of strong-direction chars across the line's words): mirrors
+// checkPrimaryLR but scoped per-line, so mixed pages (e.g. Latin title + Arabic
+// body) get correct per-line direction.
+// Uses TextRawWord because that's the type stored in line->words in the active
+// dump() path (TextWord is the disabled #if 0'd version).
+GBool TextPage::isLineRTL(TextLine *line) {
+    if (!line || !line->words || line->words->getLength() == 0) {
+        return gFalse;
+    }
+    int lrCount = 0;
+    for (int wi = 0; wi < line->words->getLength(); ++wi) {
+        IWord *w = (IWord *) line->words->get(wi);
+        if (!w || !w->chars) continue;
+        for (int ci = 0; ci < w->chars->getLength(); ++ci) {
+            Unicode c = ((TextChar *) w->chars->get(ci))->c;
+            if (unicodeTypeL(c)) {
+                ++lrCount;
+            } else if (unicodeTypeR(c)) {
+                --lrCount;
+            }
+        }
+    }
+    return lrCount < 0;
 }
 
 // Split the characters into trees of TextBlocks, one tree for each
@@ -6271,6 +6321,15 @@ void TextPage::dump(GBool noLineNumbers, GBool fullFontName, vector<bool> lineNu
             nodeline = xmlNewNode(NULL, (const xmlChar *) TAG_TEXT);
             nodeline->type = XML_ELEMENT_NODE;
 
+            // Per-line direction: governs word iteration order, inter-word spacing
+            // geometry, and the WRITING_DIRECTION attribute. LTR lines fall through
+            // to existing behavior; only RTL lines change.
+            GBool lineRTL = isLineRTL(line1);
+            if (lineRTL) {
+                xmlNewProp(nodeline, (const xmlChar *) ATTR_WRITING_DIRECTION,
+                           (const xmlChar *) sRTL);
+            }
+
             snprintf(tmp, sizeof(tmp),ATTR_NUMFORMAT, line1->getXMax() - line1->getXMin());
             xmlNewProp(nodeline, (const xmlChar*)ATTR_WIDTH, (const xmlChar*)tmp);
             snprintf(tmp, sizeof(tmp),ATTR_NUMFORMAT, line1->getYMax() - line1->getYMin());
@@ -6296,10 +6355,17 @@ void TextPage::dump(GBool noLineNumbers, GBool fullFontName, vector<bool> lineNu
 
 
             bool nonEmptyLine = false;
-            for (wordI = 0; wordI < line1->words->getLength(); wordI++) {
+            int wordCount = line1->words->getLength();
+            for (int order = 0; order < wordCount; order++) {
+                // wordI = storage index (X-ascending); order = reading-order index.
+                // For RTL we walk storage in reverse so XML emission matches reading order.
+                wordI = lineRTL ? (wordCount - 1 - order) : order;
+                int nextWordI = lineRTL ? (wordI - 1) : (wordI + 1);
+                bool hasNext = lineRTL ? (nextWordI >= 0) : (nextWordI < wordCount);
+
                 word = (TextRawWord *) line1->words->get(wordI);
-                if (wordI < line1->words->getLength() - 1)
-                    nextWord = (TextRawWord *) line1->words->get(wordI + 1);
+                if (hasNext)
+                    nextWord = (TextRawWord *) line1->words->get(nextWordI);
                 else
                     nextWord = NULL;
 
@@ -6311,18 +6377,20 @@ void TextPage::dump(GBool noLineNumbers, GBool fullFontName, vector<bool> lineNu
 
                 // determine if the current token is superscript of subscript: a general constraint for superscript and subscript
                 // is that the scripted tokens have a font size smaller than the tokens on the line baseline.
+                // "first/last in line" tests use the reading-order index `order` so
+                // super/subscript detection works for both LTR and RTL lines.
 
                 // superscript
                 if (currentLineBaseLine != 0 &&
-                    wordI > 0 &&
+                    order > 0 &&
                     word->base < currentLineBaseLine &&
                     word->yMax > currentLineYmin &&
                     word->fontSize < lineFontSize) {
                     // superscript: general case, not at the beginning of a line
                     fontStyleInfo->setIsSuperscript(gTrue);
                 }
-                else if (wordI == 0 &&
-                    wordI < line1->words->getLength() - 1 &&
+                else if (order == 0 &&
+                    order < wordCount - 1 &&
                     nextWord != NULL &&
                     word->base < nextWord->base &&
                     word->yMax > nextWord->yMin &&
@@ -6337,15 +6405,15 @@ void TextPage::dump(GBool noLineNumbers, GBool fullFontName, vector<bool> lineNu
                     currentLineYmin = nextWord->yMin;
                     currentLineYmax = nextWord->yMax;
                 }
-                else if (wordI > 0 &&
+                else if (order > 0 &&
                     word->base > currentLineBaseLine &&
                     word->yMin < currentLineYmax &&
                     word->fontSize < lineFontSize) {
                     // common subscript, not at the beginning of a line
                     fontStyleInfo->setIsSubscript(gTrue);
                 }
-                else if (wordI == 0 &&
-                    wordI < line1->words->getLength() - 1 &&
+                else if (order == 0 &&
+                    order < wordCount - 1 &&
                     nextWord != NULL &&
                     word->base > nextWord->base &&
                     word->yMin < nextWord->yMax &&
@@ -6364,15 +6432,15 @@ void TextPage::dump(GBool noLineNumbers, GBool fullFontName, vector<bool> lineNu
                 // single-word line: compare against previous word's baseline since there's no
                 // neighbor on the same line to compare with. This handles footnote reference numbers
                 // that end up alone on their TextLine due to PDF content stream ordering.
-                else if (wordI == 0 &&
-                    line1->words->getLength() == 1 &&
+                else if (order == 0 &&
+                    wordCount == 1 &&
                     previousWordBaseLine != 0 &&
                     word->fontSize < lineFontSize &&
                     word->base < previousWordBaseLine) {
                     fontStyleInfo->setIsSuperscript(gTrue);
                 }
-                else if (wordI == 0 &&
-                    line1->words->getLength() == 1 &&
+                else if (order == 0 &&
+                    wordCount == 1 &&
                     previousWordBaseLine != 0 &&
                     word->fontSize < lineFontSize &&
                     word->base > previousWordBaseLine) {
@@ -6456,16 +6524,21 @@ void TextPage::dump(GBool noLineNumbers, GBool fullFontName, vector<bool> lineNu
                     xmlAddChild(nodeline, node);
                     nonEmptyLine = true;
 
-                    if (wordI < line1->words->getLength() - 1 and (word->spaceAfter == gTrue)) {
+                    if (order < wordCount - 1 and (word->spaceAfter == gTrue)) {
                         xmlNodePtr spacingNode = xmlNewNode(NULL, (const xmlChar *) TAG_SPACING);
                         spacingNode->type = XML_ELEMENT_NODE;
-                        snprintf(tmp, sizeof(tmp), ATTR_NUMFORMAT, (nextWord->xMin - word->xMax));
+                        // Gap geometry depends on reading order: for LTR the next word
+                        // sits to the right of the current; for RTL it sits to the left.
+                        double gapWidth = lineRTL ? (word->xMin - nextWord->xMax)
+                                                  : (nextWord->xMin - word->xMax);
+                        double gapX     = lineRTL ? nextWord->xMax : word->xMax;
+                        snprintf(tmp, sizeof(tmp), ATTR_NUMFORMAT, gapWidth);
                         xmlNewProp(spacingNode, (const xmlChar *) ATTR_WIDTH,
                                    (const xmlChar *) tmp);
                         snprintf(tmp, sizeof(tmp), ATTR_NUMFORMAT, (word->yMin));
                         xmlNewProp(spacingNode, (const xmlChar *) ATTR_Y,
                                    (const xmlChar *) tmp);
-                        snprintf(tmp, sizeof(tmp), ATTR_NUMFORMAT, (word->xMax));
+                        snprintf(tmp, sizeof(tmp), ATTR_NUMFORMAT, gapX);
                         xmlNewProp(spacingNode, (const xmlChar *) ATTR_X,
                                    (const xmlChar *) tmp);
 
