@@ -3030,6 +3030,57 @@ void TextPage::addAttributsNode(xmlNodePtr node, IWord *word, TextFontStyleInfo 
         text[i] = ((TextChar *) word->chars->get(i))->c;
     }
     primaryLR = checkPrimaryLR(word->chars);
+
+    // Fix MS Word LTSC's Arabic alif-lam shaping bug. The producer emits the
+    // ل (lam) of the definite article "ال" one position too far right in the
+    // glyph stream, yielding extractions like "واملحفوظات" instead of
+    // "والمحفوظات", or "االصطناعي" instead of "الاصطناعي". The corruption is
+    // deterministic — a one-position displacement — so the fix is a swap of
+    // logical positions [1] and [2] of the word body (optionally past one
+    // proclitic prefix و/ف/ب/ل/ك), applied only when:
+    //   - position 0 of the body = ا (alef U+0627)
+    //   - position 1 = an Arabic letter that ISN'T ل (so we don't disturb
+    //     legitimate double-lam words like اللطيف / al-Latif)
+    //   - position 2 = ل (U+0644)
+    // text[] is in storage (X-ascending) order, which for RTL is reverse of
+    // logical order. So logical position L maps to storage index (n-1-L).
+    if (!primaryLR && word->len >= 3) {
+        // Cheap Arabic-script majority check (avoid touching Hebrew etc.)
+        int arabicChars = 0;
+        for (int i = 0; i < word->len; i++) {
+            Unicode c = text[i];
+            if ((c >= 0x0600 && c <= 0x06FF) ||
+                (c >= 0xFB50 && c <= 0xFDFF) ||
+                (c >= 0xFE70 && c <= 0xFEFF)) {
+                ++arabicChars;
+            }
+        }
+        if (arabicChars * 2 >= word->len) {
+            int n = word->len;
+            // Optional one-letter proclitic at logical position 0
+            // (و=0648 ف=0641 ب=0628 ل=0644 ك=0643).
+            int prefixLen = 0;
+            Unicode procl = text[n - 1];
+            if (n >= 4 && (procl == 0x0648 || procl == 0x0641 ||
+                           procl == 0x0628 || procl == 0x0644 ||
+                           procl == 0x0643)) {
+                prefixLen = 1;
+            }
+            int pAlef = n - 1 - prefixLen;       // logical pos prefixLen
+            int pMid  = pAlef - 1;               // logical pos prefixLen+1
+            int pLam  = pAlef - 2;               // logical pos prefixLen+2
+            if (pLam >= 0 &&
+                text[pAlef] == 0x0627 &&
+                text[pLam]  == 0x0644 &&
+                text[pMid]  != 0x0644 &&
+                text[pMid] >= 0x0600 && text[pMid] <= 0x06FF) {
+                Unicode swap = text[pMid];
+                text[pMid] = text[pLam];
+                text[pLam] = swap;
+            }
+        }
+    }
+
     // dumpFragment handles RTL char reordering internally (see its !primaryLR
     // branch ~L7294 which walks text[] from len-1 down to 0). Do NOT pre-reverse
     // text[] here — that would double-reverse and yield visual (wrong) order.
