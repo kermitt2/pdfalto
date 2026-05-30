@@ -1333,6 +1333,13 @@ void TextRawWord::merge(TextRawWord *word) {
     edge[len + word->len] = word->edge[word->len];
     len += word->len;
     charLen += word->charLen;
+
+    // The TextChar pointers appended above are now owned by this word; detach
+    // them from the source so ~TextRawWord does not free the same chars twice.
+    // delete on the old GList frees only the list container, not its elements.
+    GList *mergedChars = word->chars;
+    word->chars = new GList();
+    delete mergedChars;
 }
 
 inline int TextRawWord::primaryCmp(TextRawWord *word) {
@@ -8449,6 +8456,9 @@ XmlAltoOutputDev::~XmlAltoOutputDev() {
     if (dataDir) {
         delete dataDir;
     }
+    if (fileNamePDF) {
+        delete fileNamePDF;
+    }
 }
 
 void XmlAltoOutputDev::beginActualText(GfxState *state, Unicode *u, int uLen) {
@@ -8527,27 +8537,35 @@ void XmlAltoOutputDev::addMetadataInfo(PDFDocXrce *pdfdocxrce) {
 
         content = getInfoString(info.getDict(), "Title");
         setNodeContentEncoded(titleNode, (const xmlChar *) content->getCString());
+        delete content;
 
         content = getInfoString(info.getDict(), "Subject");
         setNodeContentEncoded(subjectNode, (const xmlChar *) content->getCString());
+        delete content;
 
         content = getInfoString(info.getDict(), "Keywords");
         setNodeContentEncoded(keywordsNode, (const xmlChar *) content->getCString());
+        delete content;
 
         content = getInfoString(info.getDict(), "Author");
         setNodeContentEncoded(authorNode, (const xmlChar *) content->getCString());
+        delete content;
 
         content = getInfoString(info.getDict(), "Creator");
         setNodeContentEncoded(creatorNode, (const xmlChar *) content->getCString());
+        delete content;
 
         content = getInfoString(info.getDict(), "Producer");
         setNodeContentEncoded(producerNode, (const xmlChar *) content->getCString());
+        delete content;
 
         content = getInfoDate(info.getDict(), "CreationDate");
         setNodeContentEncoded(creationDateNode, (const xmlChar *) content->getCString());
+        delete content;
 
         content = getInfoDate(info.getDict(), "ModDate");
         setNodeContentEncoded(modDateNode, (const xmlChar *) content->getCString());
+        delete content;
     }
     info.free();
 }

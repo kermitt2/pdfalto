@@ -114,6 +114,7 @@ AnnotsXrce::AnnotsXrce(Object &objA, xmlNodePtr docrootA, Catalog *catalog, doub
                                     //to unicode first
                                     news = toUnicode(dest, uMap);
                                     setNodeContentEncoded(nodeActionDEST, (const xmlChar *) news->getCString());
+                                    delete news;
                                     xmlAddChild(nodeActionAction, nodeActionDEST);
                                 }
                             }
@@ -131,6 +132,7 @@ AnnotsXrce::AnnotsXrce(Object &objA, xmlNodePtr docrootA, Catalog *catalog, doub
                                 nodeActionDEST = xmlNewNode(NULL, (const xmlChar *) TAG_DEST);
                                 nodeActionDEST->type = XML_ELEMENT_NODE;
                                 setNodeContentEncoded(nodeActionDEST, (const xmlChar *) news->getCString());
+                                delete news;
                                 xmlAddChild(nodeActionAction, nodeActionDEST);
                             } else {
                                 xmlNewProp(nodeActionAction, (const xmlChar *) ATTR_ANNOTS_TYPE,
@@ -346,6 +348,7 @@ AnnotsXrce::AnnotsXrce(Object &objA, xmlNodePtr docrootA, Catalog *catalog, doub
                     nodeAUTH->type = XML_ELEMENT_NODE;
                     news = toUnicode(objT.getString(), uMap);
                     setNodeContentEncoded(nodeAUTH, (const xmlChar *) news->getCString());
+                    delete news;
                     xmlAddChild(nodeAnnot, nodeAUTH);
                 }
             }
@@ -384,6 +387,7 @@ AnnotsXrce::AnnotsXrce(Object &objA, xmlNodePtr docrootA, Catalog *catalog, doub
                     //to unicode first
                     news = toUnicode(objContents.getString(), uMap);
                     setNodeContentEncoded(nodeContent, (const xmlChar *) news->getCString());
+                    delete news;
                     xmlAddChild(nodePopup, nodeContent);
                 }
             }
@@ -397,6 +401,7 @@ AnnotsXrce::AnnotsXrce(Object &objA, xmlNodePtr docrootA, Catalog *catalog, doub
                         news = toUnicode(objContents.getString(), uMap);
 //  		  				printf("contents: %s\n",news->getCString());
                         setNodeContentEncoded(nodeContent, (const xmlChar *) news->getCString());
+                        delete news;
                         xmlAddChild(nodePopup, nodeContent);
                     }
                 }
