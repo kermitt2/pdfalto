@@ -15,6 +15,16 @@ using namespace ConstantsXML;
 #include <libxml/xmlmemory.h>
 #include <libxml/parser.h>
 
+// Encode str's XML entities, set the result as node's content, and free the
+// buffer that xmlEncodeEntitiesReentrant allocates. The caller owns that buffer
+// (it is xmlMalloc'd) and xmlNodeSetContent copies rather than adopting it, so
+// it must be released here. xmlFree(NULL) is a safe no-op.
+static void setNodeContentEncoded(xmlNodePtr node, const xmlChar *str) {
+    xmlChar *encoded = xmlEncodeEntitiesReentrant(node->doc, str);
+    xmlNodeSetContent(node, encoded);
+    xmlFree(encoded);
+}
+
 AnnotsXrce::AnnotsXrce(Object &objA, xmlNodePtr docrootA, Catalog *catalog, double *ctmA, int pageNumA) {
 
     idAnnot = 1;
@@ -103,9 +113,8 @@ AnnotsXrce::AnnotsXrce(Object &objA, xmlNodePtr docrootA, Catalog *catalog, doub
                                     nodeActionDEST->type = XML_ELEMENT_NODE;
                                     //to unicode first
                                     news = toUnicode(dest, uMap);
-                                    xmlNodeSetContent(nodeActionDEST,
-                                                      (const xmlChar *) xmlEncodeEntitiesReentrant(nodeActionDEST->doc,
-                                                                                                   (const xmlChar *) news->getCString()));
+                                    setNodeContentEncoded(nodeActionDEST, (const xmlChar *) news->getCString());
+                                    delete news;
                                     xmlAddChild(nodeActionAction, nodeActionDEST);
                                 }
                             }
@@ -122,9 +131,8 @@ AnnotsXrce::AnnotsXrce(Object &objA, xmlNodePtr docrootA, Catalog *catalog, doub
                                 news = toUnicode(goto_link->getFileName(), uMap);
                                 nodeActionDEST = xmlNewNode(NULL, (const xmlChar *) TAG_DEST);
                                 nodeActionDEST->type = XML_ELEMENT_NODE;
-                                xmlNodeSetContent(nodeActionDEST,
-                                                  (const xmlChar *) xmlEncodeEntitiesReentrant(nodeActionAction->doc,
-                                                                                               (const xmlChar *) news->getCString()));
+                                setNodeContentEncoded(nodeActionDEST, (const xmlChar *) news->getCString());
+                                delete news;
                                 xmlAddChild(nodeActionAction, nodeActionDEST);
                             } else {
                                 xmlNewProp(nodeActionAction, (const xmlChar *) ATTR_ANNOTS_TYPE,
@@ -339,8 +347,8 @@ AnnotsXrce::AnnotsXrce(Object &objA, xmlNodePtr docrootA, Catalog *catalog, doub
                     nodeAUTH = xmlNewNode(NULL, (const xmlChar *) TAG_AUTHOR);
                     nodeAUTH->type = XML_ELEMENT_NODE;
                     news = toUnicode(objT.getString(), uMap);
-                    xmlNodeSetContent(nodeAUTH, (const xmlChar *) xmlEncodeEntitiesReentrant(nodeAUTH->doc,
-                                                                                             (const xmlChar *) news->getCString()));
+                    setNodeContentEncoded(nodeAUTH, (const xmlChar *) news->getCString());
+                    delete news;
                     xmlAddChild(nodeAnnot, nodeAUTH);
                 }
             }
@@ -378,8 +386,8 @@ AnnotsXrce::AnnotsXrce(Object &objA, xmlNodePtr docrootA, Catalog *catalog, doub
                     nodeContent->type = XML_ELEMENT_NODE;
                     //to unicode first
                     news = toUnicode(objContents.getString(), uMap);
-                    xmlNodeSetContent(nodeContent, (const xmlChar *) xmlEncodeEntitiesReentrant(nodeContent->doc,
-                                                                                                (const xmlChar *) news->getCString()));
+                    setNodeContentEncoded(nodeContent, (const xmlChar *) news->getCString());
+                    delete news;
                     xmlAddChild(nodePopup, nodeContent);
                 }
             }
@@ -392,8 +400,8 @@ AnnotsXrce::AnnotsXrce(Object &objA, xmlNodePtr docrootA, Catalog *catalog, doub
                         //to unicode first
                         news = toUnicode(objContents.getString(), uMap);
 //  		  				printf("contents: %s\n",news->getCString());
-                        xmlNodeSetContent(nodeContent, (const xmlChar *) xmlEncodeEntitiesReentrant(nodeContent->doc,
-                                                                                                    (const xmlChar *) news->getCString()));
+                        setNodeContentEncoded(nodeContent, (const xmlChar *) news->getCString());
+                        delete news;
                         xmlAddChild(nodePopup, nodeContent);
                     }
                 }

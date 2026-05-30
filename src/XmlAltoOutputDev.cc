@@ -108,6 +108,20 @@ using namespace icu;
 //#endif
 
 //------------------------------------------------------------------------
+// helpers
+//------------------------------------------------------------------------
+
+// Encode str's XML entities, set the result as node's content, and free the
+// buffer that xmlEncodeEntitiesReentrant allocates. The caller owns that buffer
+// (it is xmlMalloc'd) and xmlNodeSetContent copies rather than adopting it, so
+// it must be released here. xmlFree(NULL) is a safe no-op.
+static void setNodeContentEncoded(xmlNodePtr node, const xmlChar *str) {
+    xmlChar *encoded = xmlEncodeEntitiesReentrant(node->doc, str);
+    xmlNodeSetContent(node, encoded);
+    xmlFree(encoded);
+}
+
+//------------------------------------------------------------------------
 // parameters
 //------------------------------------------------------------------------
 
@@ -427,12 +441,20 @@ Image::Image(double xPosition, double yPosition, double width,
 }
 
 Image::~Image() {
-
+    if (imageId) delete imageId;
+    if (imageSid) delete imageSid;
+    if (hrefImage) delete hrefImage;
+    if (clipZone) delete clipZone;
+    if (type) delete type;
 }
 
 //------------------------------------------------------------------------
 // TextChar
 //------------------------------------------------------------------------
+
+TextChar::~TextChar() {
+    if (state) delete state;
+}
 
 TextChar::TextChar(GfxState *stateA, Unicode cA, CharCode charCodeA, int charPosA, int charLenA,
                    double xMinA, double yMinA, double xMaxA, double yMaxA,
@@ -1089,14 +1111,9 @@ TextRawWord::TextRawWord(GfxState *state, double x0, double y0,
 }
 
 TextRawWord::~TextRawWord() {
-    //gfree(text);
     gfree(edge);
-
-    // Since chars are not owned by TextRawWord, we avoid deleting them brutally with deleteGList.
-    // Instead, we cleanup the pointer to the list.
-    // deleteGList(chars, TextChar);
     if (chars) {
-        delete chars;    // Delete the list itself
+        deleteGList(chars, TextChar);
         chars = nullptr;
     }
 }
@@ -1236,7 +1253,9 @@ void TextRawWord::addChar(GfxState *state, double x, double y, double dx,
         }
 
         GBool clipped = gFalse;
-        GfxState *charState = state->copy();
+        // copy(gTrue) deep-copies the path too — required so ~TextChar can safely
+        // delete the state without double-freeing a path shared with the source state.
+        GfxState *charState = state->copy(gTrue);
         //this is workaround since copy doesnt is not deep
         charState->setCTM(state->getCTM()[0], state->getCTM()[1], state->getCTM()[2], state->getCTM()[3],
                           state->getCTM()[4], state->getCTM()[5]);
@@ -1312,6 +1331,13 @@ void TextRawWord::merge(TextRawWord *word) {
     edge[len + word->len] = word->edge[word->len];
     len += word->len;
     charLen += word->charLen;
+
+    // The TextChar pointers appended above are now owned by this word; detach
+    // them from the source so ~TextRawWord does not free the same chars twice.
+    // delete on the old GList frees only the list container, not its elements.
+    GList *mergedChars = word->chars;
+    word->chars = new GList();
+    delete mergedChars;
 }
 
 inline int TextRawWord::primaryCmp(TextRawWord *word) {
@@ -1880,6 +1906,10 @@ TextPage::~TextPage() {
     deleteGList(chars, TextChar);
     deleteGList(words, TextRawWord);
     deleteGList(fonts, TextFontInfo);
+    for (TextFontStyleInfo *p : fontStyles) {
+        delete p;
+    }
+    fontStyles.clear();
     if (namespaceURI) {
         delete namespaceURI;
     }
@@ -2000,14 +2030,17 @@ void TextPage::startPage(int pageNum, GfxState *state, GBool cut) {
                 if (dict->lookup("Subtype", &objSubtype)->isName()) {
                     // It can be 'Highlight' or 'Underline' or 'Link' (Subtype 'Squiggly' or 'StrikeOut' are not supported)
                     if (!strcmp(objSubtype.getName(), "Highlight")) {
+                        dict->incRef();
                         highlightedObject.push_back(dict);
                     }
                     if (!strcmp(objSubtype.getName(), "Underline")) {
+                        dict->incRef();
                         underlineObject.push_back(dict);
                     }
                 }
                 objSubtype.free();
             }
+            kid.free();
         }
     }
     objAnnot.free();
@@ -2026,7 +2059,13 @@ void TextPage::endPage(GString *dataDir) {
     if (curWord) {
         endWord();
     }
+    for (Dict *d : highlightedObject) {
+        if (!d->decRef()) delete d;
+    }
     highlightedObject.clear();
+    for (Dict *d : underlineObject) {
+        if (!d->decRef()) delete d;
+    }
     underlineObject.clear();
 }
 
@@ -2685,7 +2724,7 @@ void TextPage::addCharToPageChars(GfxState *state, double x, double y, double dx
             } else {
                 j = i;
             }
-            chars->append(new TextChar(state->copy(), u[j], c, charPos, nBytes, xMin, yMin, xMax, yMax,
+            chars->append(new TextChar(state->copy(gTrue), u[j], c, charPos, nBytes, xMin, yMin, xMax, yMax,
                                        curRot, clipped,
                                        state->getRender() == 3 || alpha < 0.001,
                                        curFont, curFontSize, splashFont,
@@ -3008,7 +3047,7 @@ void TextPage::addAttributsNodeVerbose(xmlNodePtr node, char *tmp,
     xmlNewProp(node, (const xmlChar *) ATTR_CHAR_SPACE, (const xmlChar *) tmp);
 }
 
-void TextPage::addAttributsNode(xmlNodePtr node, IWord *word, TextFontStyleInfo *fontStyleInfo, UnicodeMap *uMap,
+bool TextPage::addAttributsNode(xmlNodePtr node, IWord *word, TextFontStyleInfo *fontStyleInfo, UnicodeMap *uMap,
                                 GBool fullFontName) {
     char tmp[10];
 
@@ -3095,15 +3134,23 @@ void TextPage::addAttributsNode(xmlNodePtr node, IWord *word, TextFontStyleInfo 
         }
     }
 
+    int styleId;
+    bool retained;
     if (!contains) {
-        fontStyleInfo->setId(fontStyles.size());
+        styleId = fontStyles.size();
+        fontStyleInfo->setId(styleId);
         fontStyles.push_back(fontStyleInfo);
+        retained = true;
+    } else {
+        // duplicate of an already-registered style; getId() was set in the cmp loop above.
+        // The caller still owns fontStyleInfo and frees it after its post-call reads.
+        styleId = fontStyleInfo->getId();
+        retained = false;
     }
 
-    // PL: this should be present only of !contain ???
-    // otherwise duplicated fonts
-    snprintf(tmp, sizeof(tmp), "font%d", fontStyleInfo->getId());
+    snprintf(tmp, sizeof(tmp), "font%d", styleId);
     xmlNewProp(node, (const xmlChar *) ATTR_STYLEREFS, (const xmlChar *) tmp);
+    return retained;
 }
 
 /*
@@ -4927,7 +4974,7 @@ void TextPage::dumpInReadingOrder(GBool noLineNumbers, GBool fullFontName) {
                         addAttributsNodeVerbose(node, tmp, word);
                     }
 
-                    addAttributsNode(node, word, fontStyleInfo, uMap, fullFontName);
+                    bool fontStyleRetained = addAttributsNode(node, word, fontStyleInfo, uMap, fullFontName);
                     addAttributTypeReadingOrder(node, tmp, word);
 
 //                    encodeFragment(line->text, n, uMap, primaryLR, s);
@@ -5010,6 +5057,9 @@ void TextPage::dumpInReadingOrder(GBool noLineNumbers, GBool fullFontName) {
                     previousWordBaseLine = word->base;
                     previousWordYmin = word->yMin;
                     previousWordYmax = word->yMax;
+
+                    // last read of fontStyleInfo done above; free it if addAttributsNode didn't keep it
+                    if (!fontStyleRetained) delete fontStyleInfo;
 
                     free(tmp);
                 }
@@ -5517,7 +5567,7 @@ bool TextPage::markLineNumber() {
     return true;
 }
 
-void TextPage::dump(GBool noLineNumbers, GBool fullFontName, vector<bool> lineNumberStatus) {
+void TextPage::dump(GBool noLineNumbers, GBool fullFontName, const vector<bool> &lineNumberStatus) {
     // Output the page in raw (content stream) order
     blocks = new GList(); // these are blocks in alto schema
     vector<TextParagraph*> originalBlocks; // only used when reading order is selected
@@ -6225,11 +6275,13 @@ void TextPage::dump(GBool noLineNumbers, GBool fullFontName, vector<bool> lineNu
                 if (verbose) {
                     addAttributsNodeVerbose(node, tmp, word);
                 }
-                addAttributsNode(node, word, fontStyleInfo, uMap, fullFontName);
+                bool fontStyleRetained = addAttributsNode(node, word, fontStyleInfo, uMap, fullFontName);
                 addAttributTypeReadingOrder(node, tmp, word);
 
                 xmlAddChild(nodeline, node);
                 xmlAddChild(nodeblocks, nodeline);
+
+                if (!fontStyleRetained) delete fontStyleInfo;
             }
 
             xmlAddChild(printSpace, nodeblocks);
@@ -6384,7 +6436,7 @@ void TextPage::dump(GBool noLineNumbers, GBool fullFontName, vector<bool> lineNu
                 if (verbose) {
                     addAttributsNodeVerbose(node, tmp, word);
                 }
-                addAttributsNode(node, word, fontStyleInfo, uMap, fullFontName);
+                bool fontStyleRetained = addAttributsNode(node, word, fontStyleInfo, uMap, fullFontName);
                 addAttributTypeReadingOrder(node, tmp, word);
 
 //                    encodeFragment(line->text, n, uMap, primaryLR, s);
@@ -6479,6 +6531,9 @@ void TextPage::dump(GBool noLineNumbers, GBool fullFontName, vector<bool> lineNu
                 previousWordBaseLine = word->base;
                 previousWordYmin = word->yMin;
                 previousWordYmax = word->yMax;
+
+                // last read of fontStyleInfo done above; free it if addAttributsNode didn't keep it
+                if (!fontStyleRetained) delete fontStyleInfo;
             }
 
             if (nonEmptyLine)
@@ -8146,7 +8201,14 @@ XmlAltoOutputDev::XmlAltoOutputDev(GString *fileName, GString *fileNamePdf,
     doc = NULL;
     docroot = NULL;
     verbose = verboseA;
-    GString *imgDirName;
+    baseFileName = NULL;
+    unicode_map = NULL;
+    fileNamePDF = NULL;
+    myfilename = NULL;
+    dataDir = NULL;
+    nsURI = NULL;
+    lPictureReferences = NULL;
+    GString *imgDirName = NULL;
     Catalog *myCatalog;
 
     if (parameters->getReadingOrder() == gTrue)
@@ -8271,9 +8333,7 @@ XmlAltoOutputDev::XmlAltoOutputDev(GString *fileName, GString *fileNamePdf,
     // adding the processing description
     xmlNodePtr nodeMeasurementUnit = xmlNewNode(NULL, (const xmlChar *) TAG_MEASUREMENTUNIT);
     nodeMeasurementUnit->type = XML_ELEMENT_NODE;
-    xmlNodeSetContent(nodeMeasurementUnit,
-                      (const xmlChar *) xmlEncodeEntitiesReentrant(nodeMeasurementUnit->doc,
-                                                                   (const xmlChar *) MEASUREMENT_UNIT));
+    setNodeContentEncoded(nodeMeasurementUnit, (const xmlChar *) MEASUREMENT_UNIT);
     xmlAddChild(nodeDescription, nodeMeasurementUnit);
 
     xmlNodePtr nodeSourceImageInformation = xmlNewNode(NULL, (const xmlChar *) TAG_SOURCE_IMAGE_INFO);
@@ -8286,14 +8346,10 @@ XmlAltoOutputDev::XmlAltoOutputDev(GString *fileName, GString *fileNamePdf,
     if (!(uMap = globalParams->getTextEncoding())) {
         return;
     }
-    GString *title;
-    title = new GString();
-    title = toUnicode(fileNamePDF, uMap);
-//	dumpFragment((Unicode*)fileNamePDF, fileNamePDF->getLength(), uMap, title);
-    xmlNodeSetContent(nodeNameFilePdf,
-                      (const xmlChar *) xmlEncodeEntitiesReentrant(nodeNameFilePdf->doc,
-                                                                   (const xmlChar *) title->getCString()));
+    GString *title = toUnicode(fileNamePDF, uMap);
+    setNodeContentEncoded(nodeNameFilePdf, (const xmlChar *) title->getCString());
     xmlAddChild(nodeSourceImageInformation, nodeNameFilePdf);
+    delete title;
 
     xmlNodePtr nodeOCRProcessing = xmlNewNode(NULL, (const xmlChar *) TAG_OCRPROCESSING);
     nodeOCRProcessing->type = XML_ELEMENT_NODE;
@@ -8312,8 +8368,7 @@ XmlAltoOutputDev::XmlAltoOutputDev(GString *fileName, GString *fileNamePdf,
     time(&t);
     char tstamp[sizeof "YYYY-MM-DDTHH:MM:SSZ"];
     strftime(tstamp, sizeof tstamp, "%FT%TZ", gmtime(&t));
-    xmlNodeSetContent(nodeProcessingDate, (const xmlChar *) xmlEncodeEntitiesReentrant(
-            nodeProcessingDate->doc, (const xmlChar *) tstamp));
+    setNodeContentEncoded(nodeProcessingDate, (const xmlChar *) tstamp);
 
     xmlNodePtr nodeProcessingSoftware = xmlNewNode(NULL, (const xmlChar *) TAG_PROCESSINGSOFTWARE);
     nodeProcessingSoftware->type = XML_ELEMENT_NODE;
@@ -8321,39 +8376,36 @@ XmlAltoOutputDev::XmlAltoOutputDev(GString *fileName, GString *fileNamePdf,
 
     xmlNodePtr nodeSoftwareCreator = xmlNewNode(NULL, (const xmlChar *) TAG_SOFTWARE_CREATOR);
     nodeSoftwareCreator->type = XML_ELEMENT_NODE;
-    xmlNodeSetContent(nodeSoftwareCreator,
-                      (const xmlChar *) xmlEncodeEntitiesReentrant(nodeSoftwareCreator->doc,
-                                                                   (const xmlChar *) PDFALTO_CREATOR));
+    setNodeContentEncoded(nodeSoftwareCreator, (const xmlChar *) PDFALTO_CREATOR);
     xmlAddChild(nodeProcessingSoftware, nodeSoftwareCreator);
 
     xmlNodePtr nodeSoftwareName = xmlNewNode(NULL, (const xmlChar *) TAG_SOFTWARE_NAME);
     nodeSoftwareName->type = XML_ELEMENT_NODE;
-    xmlNodeSetContent(nodeSoftwareName,
-                      (const xmlChar *) xmlEncodeEntitiesReentrant(nodeSoftwareName->doc,
-                                                                   (const xmlChar *) PDFALTO_NAME));
+    setNodeContentEncoded(nodeSoftwareName, (const xmlChar *) PDFALTO_NAME);
     xmlAddChild(nodeProcessingSoftware, nodeSoftwareName);
 //    xmlNewProp(nodeProcess, (const xmlChar*)ATTR_CMD,
 //               (const xmlChar*)cmdA->getCString());
 
     xmlNodePtr nodeSoftwareVersion = xmlNewNode(NULL, (const xmlChar *) TAG_SOFTWARE_VERSION);
     nodeSoftwareVersion->type = XML_ELEMENT_NODE;
-    xmlNodeSetContent(nodeSoftwareVersion,
-                      (const xmlChar *) xmlEncodeEntitiesReentrant(nodeSoftwareName->doc,
-                                                                   (const xmlChar *) PDFALTO_VERSION));
+    setNodeContentEncoded(nodeSoftwareVersion, (const xmlChar *) PDFALTO_VERSION);
     xmlAddChild(nodeProcessingSoftware, nodeSoftwareVersion);
 
     needClose = gFalse;
 
     delete fileNamePDF;
+    fileNamePDF = NULL;
 
-    //
     text = new TextPage(verbose, catalog, nodeLayout, imgDirName, baseFileName, nsURI);
+    // TextPage copies imgDirName into its own dataDirectory; we own the original.
+    if (imgDirName) {
+        delete imgDirName;
+        imgDirName = NULL;
+    }
 }
 
 XmlAltoOutputDev::~XmlAltoOutputDev() {
-    int j;
-
-    for (j = 0; j < nT3Fonts; ++j) {
+    for (int j = 0; j < nT3Fonts; ++j) {
         delete t3FontCache[j];
     }
     if (fontEngine) {
@@ -8363,17 +8415,39 @@ XmlAltoOutputDev::~XmlAltoOutputDev() {
         delete splash;
     }
 
-    xmlSaveFile(myfilename->getCString(), doc);
-    xmlFreeDoc(doc);
+    if (doc) {
+        if (myfilename) {
+            xmlSaveFile(myfilename->getCString(), doc);
+        }
+        xmlFreeDoc(doc);
+    }
 
-    for (int i = 0; i < lPictureReferences->getLength(); i++) {
-        delete ((PictureReference *) lPictureReferences->get(i));
+    if (lPictureReferences) {
+        for (int i = 0; i < lPictureReferences->getLength(); i++) {
+            delete ((PictureReference *) lPictureReferences->get(i));
+        }
+        delete lPictureReferences;
     }
     if (text) {
         delete text;
     }
     if (nsURI) {
         delete nsURI;
+    }
+    if (unicode_map) {
+        delete unicode_map;
+    }
+    if (baseFileName) {
+        delete baseFileName;
+    }
+    if (myfilename) {
+        delete myfilename;
+    }
+    if (dataDir) {
+        delete dataDir;
+    }
+    if (fileNamePDF) {
+        delete fileNamePDF;
     }
 }
 
@@ -8397,7 +8471,6 @@ void XmlAltoOutputDev::endActualText(GfxState *state) {
 }
 
 void XmlAltoOutputDev::initMetadataInfoDoc() {
-    char *tmp = (char *) malloc(10 * sizeof(char));
     docMetadata = xmlNewDoc((const xmlChar *) VERSION);
     globalParams->setTextEncoding((char *) ENCODING_UTF8);
     docMetadataRoot = xmlNewNode(NULL, (const xmlChar *) TAG_METADATA);
@@ -8453,36 +8526,36 @@ void XmlAltoOutputDev::addMetadataInfo(PDFDocXrce *pdfdocxrce) {
     if (info.isDict()) {
 
         content = getInfoString(info.getDict(), "Title");
-        xmlNodeSetContent(titleNode, (const xmlChar *) xmlEncodeEntitiesReentrant(
-                titleNode->doc, (const xmlChar *) content->getCString()));
+        setNodeContentEncoded(titleNode, (const xmlChar *) content->getCString());
+        delete content;
 
         content = getInfoString(info.getDict(), "Subject");
-        xmlNodeSetContent(subjectNode, (const xmlChar *) xmlEncodeEntitiesReentrant(
-                subjectNode->doc, (const xmlChar *) content->getCString()));
+        setNodeContentEncoded(subjectNode, (const xmlChar *) content->getCString());
+        delete content;
 
         content = getInfoString(info.getDict(), "Keywords");
-        xmlNodeSetContent(keywordsNode, (const xmlChar *) xmlEncodeEntitiesReentrant(
-                keywordsNode->doc, (const xmlChar *) content->getCString()));
+        setNodeContentEncoded(keywordsNode, (const xmlChar *) content->getCString());
+        delete content;
 
         content = getInfoString(info.getDict(), "Author");
-        xmlNodeSetContent(authorNode, (const xmlChar *) xmlEncodeEntitiesReentrant(
-                authorNode->doc, (const xmlChar *) content->getCString()));
+        setNodeContentEncoded(authorNode, (const xmlChar *) content->getCString());
+        delete content;
 
         content = getInfoString(info.getDict(), "Creator");
-        xmlNodeSetContent(creatorNode, (const xmlChar *) xmlEncodeEntitiesReentrant(
-                creatorNode->doc, (const xmlChar *) content->getCString()));
+        setNodeContentEncoded(creatorNode, (const xmlChar *) content->getCString());
+        delete content;
 
         content = getInfoString(info.getDict(), "Producer");
-        xmlNodeSetContent(producerNode, (const xmlChar *) xmlEncodeEntitiesReentrant(
-                producerNode->doc, (const xmlChar *) content->getCString()));
+        setNodeContentEncoded(producerNode, (const xmlChar *) content->getCString());
+        delete content;
 
         content = getInfoDate(info.getDict(), "CreationDate");
-        xmlNodeSetContent(creationDateNode, (const xmlChar *) xmlEncodeEntitiesReentrant(
-                creationDateNode->doc, (const xmlChar *) content->getCString()));
+        setNodeContentEncoded(creationDateNode, (const xmlChar *) content->getCString());
+        delete content;
 
         content = getInfoDate(info.getDict(), "ModDate");
-        xmlNodeSetContent(modDateNode, (const xmlChar *) xmlEncodeEntitiesReentrant(
-                modDateNode->doc, (const xmlChar *) content->getCString()));
+        setNodeContentEncoded(modDateNode, (const xmlChar *) content->getCString());
+        delete content;
     }
     info.free();
 }
@@ -8520,7 +8593,7 @@ void XmlAltoOutputDev::addStyles() {
         strncpy(tmp, fontStyleInfo->getFontNameCS()->getCString(), sizeof(tmp)-1);
         tmp[sizeof(tmp)-1] = '\0';
         xmlNewProp(textStyleNode, (const xmlChar *) ATTR_FONTFAMILY, (const xmlChar *) tmp);
-        delete fontStyleInfo->getFontNameCS();
+        // fontName is owned by fontStyleInfo; ~TextFontStyleInfo frees it at document shutdown.
 
         snprintf(tmp, sizeof(tmp), "%.3f", fontStyleInfo->getFontSize());
         xmlNewProp(textStyleNode, (const xmlChar *) ATTR_FONTSIZE, (const xmlChar *) tmp);
@@ -8533,8 +8606,7 @@ void XmlAltoOutputDev::addStyles() {
 
         snprintf(tmp, sizeof(tmp), "%s", fontStyleInfo->getFontColor()->getCString());
         xmlNewProp(textStyleNode, (const xmlChar *) ATTR_FONTCOLOR, (const xmlChar *) (tmp+1));
-
-        delete fontStyleInfo->getFontColor();
+        // fontColor is owned by fontStyleInfo; ~TextFontStyleInfo frees it at document shutdown.
 
 
         GString *fontStyle = new GString("");
@@ -9376,25 +9448,29 @@ void XmlAltoOutputDev::drawChar(GfxState *state, double x, double y, double dx,
         //when len is gt 1 check if sequence is valid, if not replace by placeholder
             //&& globalParams->getApplyOCR())
             // as a first iteration for dictionnaries, placing a placeholder, which means creating a map based on the font-code mapping to unicode from : https://unicode.org/charts/PDF/U2B00.pdf
-            GString *fontName = new GString();
-            if (state->getFont()->getName()) { //AA : Here if fontName is NULL is problematic
+            GString *fontName;
+            if (state->getFont()->getName()) {
                 fontName = state->getFont()->getName()->copy();
-                fontName = fontName->lowerCase();
+                fontName->lowerCase();
+            } else {
+                fontName = new GString();
             }
-            GString *fontName_charcode = fontName->append(
-                    to_string(c).c_str());// for performance and simplicity only appending is done
+            fontName->append(to_string(c).c_str());
             if (globalParams->getPrintCommands()) {
                 printf("ToBeOCRISEChar: x=%.2f y=%.2f c=%3d=0x%02x='%c' u=%3d fontName=%s \n",
                        (double) x, (double) y, c, c, c, u[0], fontName->getCString());
             }
             // do map every char to a unicode, depending on charcode and font name
-            Unicode mapped_unicode = unicode_map->lookupInt(fontName_charcode);
+            Unicode mapped_unicode = unicode_map->lookupInt(fontName);
             if (!mapped_unicode) {
-                mapped_unicode = placeholders[0];//no special need for random
+                mapped_unicode = placeholders[0];
                 if (placeholders.size() > 1) {
                     placeholders.erase(placeholders.begin());
                 }
-                unicode_map->add(fontName_charcode, mapped_unicode);
+                unicode_map->add(fontName, mapped_unicode);
+                // unicode_map owns fontName now (GHash constructed with deleteKeys=true)
+            } else {
+                delete fontName;
             }
             u[0] = mapped_unicode;
             uLen = 1;
@@ -10191,9 +10267,7 @@ GBool XmlAltoOutputDev::dumpOutline(xmlNodePtr parentNode, GList *itemsA, PDFDoc
         nodeString = xmlNewNode(NULL, (const xmlChar *) TAG_STRING);
         nodeString->type = XML_ELEMENT_NODE;
         //   	  	xmlNodeSetContent(nodeString,(const xmlChar*)xmlEncodeEntitiesReentrant(nodeString->doc,(const xmlChar*)title->getCString()));
-        xmlNodeSetContent(nodeString,
-                          (const xmlChar *) xmlEncodeEntitiesReentrant(nodeString->doc,
-                                                                       (const xmlChar *) title->getCString()));
+        setNodeContentEncoded(nodeString, (const xmlChar *) title->getCString());
 
         xmlAddChild(nodeItem, nodeString);
 

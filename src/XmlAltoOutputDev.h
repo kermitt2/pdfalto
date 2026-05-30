@@ -470,6 +470,8 @@ public:
              TextFontInfo *fontA, double fontSizeA, SplashFont *splashFontA,
              double colorRA, double colorGA, double colorBA, GBool isNonUnicodeGlyphA);
 
+    ~TextChar();
+
     static int cmpX(const void *p1, const void *p2);
     static int cmpY(const void *p1, const void *p2);
 
@@ -995,7 +997,7 @@ public:
     /** Dump contents of the current page
      * @param blocks To know if the blocks option is selected
      * @param fullFontName To know if the fullFontName option is selected */
-    void dump(GBool noLineNumbers, GBool fullFontName, vector<bool> lineNumberStatus);
+    void dump(GBool noLineNumbers, GBool fullFontName, const vector<bool> &lineNumberStatus);
 
     /** Dump contents of the current page following the reading order.
      * @param blocks To know if the blocks option is selected
@@ -1121,7 +1123,9 @@ public:
      * @param yMaxRot The y value maximum coordinate of the left bottom corner word box (used for rotation 1 and 3)
      * @param xMinRot The x value minimum coordinate of the left bottom corner word box (used for rotation 1 and 3)
      * @param xMaxRot The x value maximum coordinate of the left bottom corner word box (used for rotation 1 and 3) */
-    void addAttributsNode(xmlNodePtr node, IWord *word, TextFontStyleInfo *fontStyleInfo, UnicodeMap *uMap, GBool fullFontName);
+    // Returns true if fontStyleInfo was retained (added to fontStyles and is now owned
+    // by TextPage); false if it was a duplicate the caller still owns and must free.
+    bool addAttributsNode(xmlNodePtr node, IWord *word, TextFontStyleInfo *fontStyleInfo, UnicodeMap *uMap, GBool fullFontName);
 
     /** Add the type attribute to TOKEN node for the reading order
      * @param node The current TOKEN node
