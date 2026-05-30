@@ -8528,27 +8528,20 @@ bool XmlAltoOutputDev::writeMainFile() {
                         fwrite(gt + 1, 1,
                                (size_t)(docbuflen - (gt + 1 - buf)), out);
                     } else {
-                        // <Layout ...> ... </Layout>: append the streamed pages
-                        // just before the closing tag. We write everything up to
-                        // (but not including) "</Layout>" so any pre-existing inner
-                        // content is preserved -- e.g. pages that stayed in the DOM
-                        // because streaming was disabled part-way through -- rather
-                        // than being dropped.
-                        char *close = strstr(gt, "</Layout>");
-                        if (close != NULL) {
-                            fwrite(buf, 1, (size_t)(close - buf), out);
-                            if (!copyStreamToFile(pagesStream, out)) {
-                                success = false;
-                            }
-                            fwrite(close, 1,
-                                   (size_t)(docbuflen - (close - buf)), out);
-                        } else {
-                            // Open tag but no close tag found: write as-is.
-                            // All streamed pages are dropped -- flag as failure.
-                            fprintf(stderr, "pdfalto: warning: could not locate closing </Layout> in serialized doc; pages not streamed into final file.\n");
-                            fwrite(buf, 1, docbuflen, out);
+                        // <Layout ...> ... </Layout>: insert the streamed pages
+                        // immediately after the opening start tag, then write the
+                        // rest of the document verbatim (any inline pages that
+                        // stayed in the DOM, plus </Layout> and whatever follows).
+                        // Streamed pages are always chronologically earlier than
+                        // any inline survivors (streaming only ever switches off,
+                        // never back on), so emitting them first preserves page
+                        // order, and existing inner content is never dropped.
+                        fwrite(buf, 1, (size_t)(gt + 1 - buf), out);
+                        if (!copyStreamToFile(pagesStream, out)) {
                             success = false;
                         }
+                        fwrite(gt + 1, 1,
+                               (size_t)(docbuflen - (gt + 1 - buf)), out);
                     }
                 } else {
                     // Couldn't locate <Layout>: bail out and write doc as-is.
