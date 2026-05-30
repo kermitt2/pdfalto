@@ -999,7 +999,11 @@ public:
      * @param fullFontName To know if the fullFontName option is selected */
     void dump(GBool noLineNumbers, GBool fullFontName, const vector<bool> &lineNumberStatus);
 
-    xmlNodePtr getPageNode() { return page; }
+    /** Transfer ownership of the current <Page> node to the caller. Unlinks the node
+     *  from the DOM and clears the internal pointer so TextPage no longer references
+     *  (and never frees) it. The caller becomes responsible for xmlFreeNode().
+     *  @return the detached node, or NULL if there is no live page node to detach. */
+    xmlNodePtr detachPageNode();
 
     GBool isCutter() { return cutter; }
 
@@ -1537,6 +1541,14 @@ public:
      * @return <code>true</code> if the file was successfully created, <code>false</code> else*/
     virtual GBool isOk() { return ok; }
 
+    /** Assemble and write the final ALTO file to myfilename. In streaming mode this
+     *  splices the buffered <Page> elements back into <Layout>. Must be called before
+     *  the object is destroyed so the caller can observe the result; the destructor
+     *  performs the write as a best-effort fallback only if this was never called.
+     *  @return <code>true</code> on success, <code>false</code> if a write/serialization
+     *          error occurred (the output file may be missing or truncated). */
+    bool writeMainFile();
+
     /** Does this device use upside-down coordinates?
      * (Upside-down means (0,0) is the top left corner of the page.)
      * @return <code>true</code> if this device use upside-down, <code>false</code> otherwise */
@@ -1845,6 +1857,10 @@ private:
      *  then the page node is freed from the DOM. The final file is assembled in
      *  the destructor by splicing this stream into the serialized doc. */
     FILE *pagesStream;
+
+    /** Set once writeMainFile() has produced the final output, so the destructor
+     *  does not write it a second time. */
+    bool mainFileWritten;
 
     void beginActualText(GfxState *state, Unicode *u, int uLen);
 

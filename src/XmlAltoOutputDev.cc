@@ -2069,6 +2069,20 @@ void TextPage::endPage(GString *dataDir) {
     underlineObject.clear();
 }
 
+xmlNodePtr TextPage::detachPageNode() {
+    // Hand the current <Page> node to the caller and stop tracking it here, so we
+    // never end up holding (or freeing) a node the caller has taken ownership of.
+    if (page == NULL) {
+        return NULL;
+    }
+    if (page->parent != NULL) {
+        xmlUnlinkNode(page);
+    }
+    xmlNodePtr detached = page;
+    page = NULL;
+    return detached;
+}
+
 void TextPage::clear() {
     //TextRawWord *word;
 
@@ -8209,6 +8223,7 @@ XmlAltoOutputDev::XmlAltoOutputDev(GString *fileName, GString *fileNamePdf,
     nsURI = NULL;
     lPictureReferences = NULL;
     pagesStream = NULL;
+    mainFileWritten = false;
     GString *imgDirName = NULL;
     Catalog *myCatalog;
 
@@ -8406,15 +8421,147 @@ XmlAltoOutputDev::XmlAltoOutputDev(GString *fileName, GString *fileNamePdf,
 }
 
 // Copy the full contents of a temp stream (rewound first) to the output file.
-// Used by the streaming-mode splice in ~XmlAltoOutputDev to inject the buffered
-// <Page> elements into the serialized document.
-static void copyStreamToFile(FILE *src, FILE *dst) {
-    fseek(src, 0, SEEK_SET);
+// Used by the streaming-mode splice in writeMainFile() to inject the buffered
+// <Page> elements into the serialized document. Returns false (after warning on
+// stderr) if any I/O step fails -- e.g. the stream cannot be rewound/read, or the
+// output write is short because the disk is full -- so the caller can surface a
+// non-zero exit status instead of silently emitting a truncated file.
+static bool copyStreamToFile(FILE *src, FILE *dst) {
+    if (fseek(src, 0, SEEK_SET) != 0) {
+        fprintf(stderr, "pdfalto: warning: could not rewind streamed-pages buffer; "
+                        "final output may be incomplete.\n");
+        return false;
+    }
     char copybuf[65536];
     size_t n;
     while ((n = fread(copybuf, 1, sizeof(copybuf), src)) > 0) {
-        fwrite(copybuf, 1, n, dst);
+        if (fwrite(copybuf, 1, n, dst) != n) {
+            fprintf(stderr, "pdfalto: warning: short write while assembling output "
+                            "(disk full?); final output is truncated.\n");
+            return false;
+        }
     }
+    if (ferror(src)) {
+        fprintf(stderr, "pdfalto: warning: read error on streamed-pages buffer; "
+                        "final output may be incomplete.\n");
+        return false;
+    }
+    return true;
+}
+
+bool XmlAltoOutputDev::writeMainFile() {
+    mainFileWritten = true;
+    if (!doc || !myfilename) {
+        return false;
+    }
+
+    bool success = true;
+
+    if (pagesStream != NULL) {
+        // Streaming mode: doc has an empty <Layout/>; splice pages in.
+        xmlChar *docbuf = NULL;
+        int docbuflen = 0;
+        xmlDocDumpFormatMemoryEnc(doc, &docbuf, &docbuflen, "UTF-8", 0);
+        if (docbuf != NULL) {
+            // Locate the empty <Layout> element in the serialized doc and
+            // splice the buffered pages into it. The element is created
+            // attribute-free (see nodeLayout in the constructor), so today
+            // it serializes as "<Layout/>" -- but we parse the start tag
+            // generically so attributes, a namespace prefix or a "<Layout />"
+            // form keep working. Find "<Layout" followed by a name-boundary
+            // char so "<LayoutFoo" cannot false-match.
+            char *buf = (char *) docbuf;
+            char *start = NULL;
+            for (char *scan = strstr(buf, "<Layout"); scan != NULL;
+                 scan = strstr(scan + 7, "<Layout")) {
+                char c = scan[7];
+                if (c == '\0' || c == ' ' || c == '\t' || c == '\n' ||
+                    c == '\r' || c == '>' || c == '/') {
+                    start = scan;
+                    break;
+                }
+            }
+            // End of the start tag. NOTE: this finds the first '>', which is
+            // wrong only if an attribute value contains a literal '>' -- not
+            // possible here since <Layout> has no attributes.
+            char *gt = start ? strchr(start, '>') : NULL;
+
+            FILE *out = fopen(myfilename->getCString(), "wb");
+            if (out != NULL) {
+                fflush(pagesStream);
+                if (start != NULL && gt != NULL) {
+                    // Self-closing if the last non-space char before '>' is '/'.
+                    char *p = gt - 1;
+                    while (p > start && (*p == ' ' || *p == '\t' ||
+                                         *p == '\n' || *p == '\r')) {
+                        p--;
+                    }
+                    if (*p == '/') {
+                        // <Layout .../>  ->  <Layout ...>{pages}</Layout>
+                        // Write up to the '/' (preserving any attributes),
+                        // re-open the tag, splice pages, then close it.
+                        fwrite(buf, 1, (size_t)(p - buf), out);
+                        fwrite(">\n", 1, 2, out);
+                        if (!copyStreamToFile(pagesStream, out)) {
+                            success = false;
+                        }
+                        fwrite("</Layout>", 1, 9, out);
+                        // Remainder after the original start tag's '>'.
+                        fwrite(gt + 1, 1,
+                               (size_t)(docbuflen - (gt + 1 - buf)), out);
+                    } else {
+                        // <Layout ...> [empty] </Layout>: splice between the
+                        // start tag's '>' and the matching close tag.
+                        char *close = strstr(gt, "</Layout>");
+                        if (close != NULL) {
+                            fwrite(buf, 1, (size_t)(gt + 1 - buf), out);
+                            fputc('\n', out);
+                            if (!copyStreamToFile(pagesStream, out)) {
+                                success = false;
+                            }
+                            fwrite(close, 1,
+                                   (size_t)(docbuflen - (close - buf)), out);
+                        } else {
+                            // Open tag but no close tag found: write as-is.
+                            // All streamed pages are dropped -- flag as failure.
+                            fprintf(stderr, "pdfalto: warning: could not locate closing </Layout> in serialized doc; pages not streamed into final file.\n");
+                            fwrite(buf, 1, docbuflen, out);
+                            success = false;
+                        }
+                    }
+                } else {
+                    // Couldn't locate <Layout>: bail out and write doc as-is.
+                    // Output is valid XML but all streamed pages are dropped.
+                    fprintf(stderr, "pdfalto: warning: could not locate <Layout> in serialized doc; pages not streamed into final file.\n");
+                    fwrite(buf, 1, docbuflen, out);
+                    success = false;
+                }
+                fclose(out);
+            } else {
+                fprintf(stderr, "pdfalto: warning: could not open '%s' for writing; "
+                                "falling back to xmlSaveFile (streamed pages will be lost).\n",
+                        myfilename->getCString());
+                xmlSaveFile(myfilename->getCString(), doc);
+                success = false;
+            }
+            xmlFree(docbuf);
+        } else {
+            fprintf(stderr, "pdfalto: warning: failed to serialize document to memory; "
+                            "falling back to xmlSaveFile (streamed pages will be lost).\n");
+            xmlSaveFile(myfilename->getCString(), doc);
+            success = false;
+        }
+        fclose(pagesStream);
+        pagesStream = NULL;
+    } else {
+        if (xmlSaveFile(myfilename->getCString(), doc) < 0) {
+            fprintf(stderr, "pdfalto: warning: failed to write '%s'.\n",
+                    myfilename->getCString());
+            success = false;
+        }
+    }
+
+    return success;
 }
 
 XmlAltoOutputDev::~XmlAltoOutputDev() {
@@ -8429,99 +8576,20 @@ XmlAltoOutputDev::~XmlAltoOutputDev() {
     }
 
     if (doc) {
-        if (myfilename) {
-            if (pagesStream != NULL) {
-                // Streaming mode: doc has an empty <Layout/>; splice pages in.
-                xmlChar *docbuf = NULL;
-                int docbuflen = 0;
-                xmlDocDumpFormatMemoryEnc(doc, &docbuf, &docbuflen, "UTF-8", 0);
-                if (docbuf != NULL) {
-                    // Locate the empty <Layout> element in the serialized doc and
-                    // splice the buffered pages into it. The element is created
-                    // attribute-free (see nodeLayout in the constructor), so today
-                    // it serializes as "<Layout/>" -- but we parse the start tag
-                    // generically so attributes, a namespace prefix or a "<Layout />"
-                    // form keep working. Find "<Layout" followed by a name-boundary
-                    // char so "<LayoutFoo" cannot false-match.
-                    char *buf = (char *) docbuf;
-                    char *start = NULL;
-                    for (char *scan = strstr(buf, "<Layout"); scan != NULL;
-                         scan = strstr(scan + 7, "<Layout")) {
-                        char c = scan[7];
-                        if (c == '\0' || c == ' ' || c == '\t' || c == '\n' ||
-                            c == '\r' || c == '>' || c == '/') {
-                            start = scan;
-                            break;
-                        }
-                    }
-                    // End of the start tag. NOTE: this finds the first '>', which is
-                    // wrong only if an attribute value contains a literal '>' -- not
-                    // possible here since <Layout> has no attributes.
-                    char *gt = start ? strchr(start, '>') : NULL;
-
-                    FILE *out = fopen(myfilename->getCString(), "wb");
-                    if (out != NULL) {
-                        fflush(pagesStream);
-                        if (start != NULL && gt != NULL) {
-                            // Self-closing if the last non-space char before '>' is '/'.
-                            char *p = gt - 1;
-                            while (p > start && (*p == ' ' || *p == '\t' ||
-                                                 *p == '\n' || *p == '\r')) {
-                                p--;
-                            }
-                            if (*p == '/') {
-                                // <Layout .../>  ->  <Layout ...>{pages}</Layout>
-                                // Write up to the '/' (preserving any attributes),
-                                // re-open the tag, splice pages, then close it.
-                                fwrite(buf, 1, (size_t)(p - buf), out);
-                                fwrite(">\n", 1, 2, out);
-                                copyStreamToFile(pagesStream, out);
-                                fwrite("</Layout>", 1, 9, out);
-                                // Remainder after the original start tag's '>'.
-                                fwrite(gt + 1, 1,
-                                       (size_t)(docbuflen - (gt + 1 - buf)), out);
-                            } else {
-                                // <Layout ...> [empty] </Layout>: splice between the
-                                // start tag's '>' and the matching close tag.
-                                char *close = strstr(gt, "</Layout>");
-                                if (close != NULL) {
-                                    fwrite(buf, 1, (size_t)(gt + 1 - buf), out);
-                                    fputc('\n', out);
-                                    copyStreamToFile(pagesStream, out);
-                                    fwrite(close, 1,
-                                           (size_t)(docbuflen - (close - buf)), out);
-                                } else {
-                                    // Open tag but no close tag found: write as-is.
-                                    fprintf(stderr, "pdfalto: warning: could not locate closing </Layout> in serialized doc; pages not streamed into final file.\n");
-                                    fwrite(buf, 1, docbuflen, out);
-                                }
-                            }
-                        } else {
-                            // Couldn't locate <Layout>: bail out and write doc as-is.
-                            // Pages will be lost, but output is still valid XML.
-                            fprintf(stderr, "pdfalto: warning: could not locate <Layout> in serialized doc; pages not streamed into final file.\n");
-                            fwrite(buf, 1, docbuflen, out);
-                        }
-                        fclose(out);
-                    } else {
-                        fprintf(stderr, "pdfalto: warning: could not open '%s' for writing; "
-                                        "falling back to xmlSaveFile (streamed pages will be lost).\n",
-                                myfilename->getCString());
-                        xmlSaveFile(myfilename->getCString(), doc);
-                    }
-                    xmlFree(docbuf);
-                } else {
-                    fprintf(stderr, "pdfalto: warning: failed to serialize document to memory; "
-                                    "falling back to xmlSaveFile (streamed pages will be lost).\n");
-                    xmlSaveFile(myfilename->getCString(), doc);
-                }
-                fclose(pagesStream);
-                pagesStream = NULL;
-            } else {
-                xmlSaveFile(myfilename->getCString(), doc);
-            }
+        // Normally main() calls writeMainFile() explicitly (so it can observe the
+        // result and set the exit code). This is a best-effort fallback for any path
+        // that destroys the device without writing first.
+        if (myfilename && !mainFileWritten) {
+            writeMainFile();
         }
         xmlFreeDoc(doc);
+    }
+
+    // Safety net: close the streaming buffer if writeMainFile() never ran (e.g. no
+    // output filename was set) so the temp file is not leaked.
+    if (pagesStream != NULL) {
+        fclose(pagesStream);
+        pagesStream = NULL;
     }
 
     if (lPictureReferences) {
@@ -8925,16 +8993,19 @@ void XmlAltoOutputDev::endPage() {
     // Stream the completed page out of the DOM to bound peak memory.
     // Only active for the non-cutter path (the cutter path manages per-page
     // docs itself). This keeps <Layout> empty in memory — the final file
-    // is assembled in ~XmlAltoOutputDev.
-    xmlNodePtr pageNode = text->getPageNode();
-    if (!text->isCutter() && pageNode != NULL && pageNode->parent != NULL) {
-        if (pagesStream == NULL) {
-            pagesStream = tmpfile();
-        }
-        if (pagesStream != NULL) {
-            xmlElemDump(pagesStream, doc, pageNode);
-            fputc('\n', pagesStream);
-            xmlUnlinkNode(pageNode);
+    // is assembled by writeMainFile(). detachPageNode() unlinks the node and
+    // transfers ownership to us, so TextPage is never left holding a dangling
+    // pointer; we are then responsible for freeing it.
+    if (!text->isCutter()) {
+        xmlNodePtr pageNode = text->detachPageNode();
+        if (pageNode != NULL) {
+            if (pagesStream == NULL) {
+                pagesStream = tmpfile();
+            }
+            if (pagesStream != NULL) {
+                xmlElemDump(pagesStream, doc, pageNode);
+                fputc('\n', pagesStream);
+            }
             xmlFreeNode(pageNode);
         }
     }
