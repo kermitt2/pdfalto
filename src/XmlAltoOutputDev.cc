@@ -8405,6 +8405,18 @@ XmlAltoOutputDev::XmlAltoOutputDev(GString *fileName, GString *fileNamePdf,
     }
 }
 
+// Copy the full contents of a temp stream (rewound first) to the output file.
+// Used by the streaming-mode splice in ~XmlAltoOutputDev to inject the buffered
+// <Page> elements into the serialized document.
+static void copyStreamToFile(FILE *src, FILE *dst) {
+    fseek(src, 0, SEEK_SET);
+    char copybuf[65536];
+    size_t n;
+    while ((n = fread(copybuf, 1, sizeof(copybuf), src)) > 0) {
+        fwrite(copybuf, 1, n, dst);
+    }
+}
+
 XmlAltoOutputDev::~XmlAltoOutputDev() {
     for (int j = 0; j < nT3Fonts; ++j) {
         delete t3FontCache[j];
@@ -8424,54 +8436,71 @@ XmlAltoOutputDev::~XmlAltoOutputDev() {
                 int docbuflen = 0;
                 xmlDocDumpFormatMemoryEnc(doc, &docbuf, &docbuflen, "UTF-8", 0);
                 if (docbuf != NULL) {
-                    // Find the Layout element output. xmlDocDumpFormatMemory
-                    // renders an empty Layout as "<Layout/>". Replace that
-                    // with <Layout>{pages}</Layout>.
-                    const char *needle = "<Layout/>";
-                    const char *open_fallback = "<Layout>";  // in case namespace or attrs appear
-                    const char *close_fallback = "</Layout>";
-                    char *hit = strstr((char *)docbuf, needle);
+                    // Locate the empty <Layout> element in the serialized doc and
+                    // splice the buffered pages into it. The element is created
+                    // attribute-free (see nodeLayout in the constructor), so today
+                    // it serializes as "<Layout/>" -- but we parse the start tag
+                    // generically so attributes, a namespace prefix or a "<Layout />"
+                    // form keep working. Find "<Layout" followed by a name-boundary
+                    // char so "<LayoutFoo" cannot false-match.
+                    char *buf = (char *) docbuf;
+                    char *start = NULL;
+                    for (char *scan = strstr(buf, "<Layout"); scan != NULL;
+                         scan = strstr(scan + 7, "<Layout")) {
+                        char c = scan[7];
+                        if (c == '\0' || c == ' ' || c == '\t' || c == '\n' ||
+                            c == '\r' || c == '>' || c == '/') {
+                            start = scan;
+                            break;
+                        }
+                    }
+                    // End of the start tag. NOTE: this finds the first '>', which is
+                    // wrong only if an attribute value contains a literal '>' -- not
+                    // possible here since <Layout> has no attributes.
+                    char *gt = start ? strchr(start, '>') : NULL;
+
                     FILE *out = fopen(myfilename->getCString(), "wb");
                     if (out != NULL) {
                         fflush(pagesStream);
-                        if (hit != NULL) {
-                            // Write everything up to and including "<Layout>"
-                            fwrite(docbuf, 1, (size_t)(hit - (char *)docbuf), out);
-                            fwrite("<Layout>\n", 1, 9, out);
-                            // Copy pages
-                            fseek(pagesStream, 0, SEEK_SET);
-                            char copybuf[65536];
-                            size_t n;
-                            while ((n = fread(copybuf, 1, sizeof(copybuf), pagesStream)) > 0) {
-                                fwrite(copybuf, 1, n, out);
+                        if (start != NULL && gt != NULL) {
+                            // Self-closing if the last non-space char before '>' is '/'.
+                            char *p = gt - 1;
+                            while (p > start && (*p == ' ' || *p == '\t' ||
+                                                 *p == '\n' || *p == '\r')) {
+                                p--;
                             }
-                            // Write "</Layout>" + remainder after "<Layout/>"
-                            fwrite("</Layout>", 1, 9, out);
-                            fwrite(hit + strlen(needle), 1,
-                                   docbuflen - (hit + strlen(needle) - (char *)docbuf), out);
-                        } else {
-                            // Fallback: handle "<Layout></Layout>" form (same namespace,
-                            // formatted output). Splice in just before "</Layout>".
-                            char *open_hit = strstr((char *)docbuf, open_fallback);
-                            char *close_hit = open_hit ? strstr(open_hit, close_fallback) : NULL;
-                            if (open_hit != NULL && close_hit != NULL) {
-                                size_t open_end = (size_t)(open_hit - (char *)docbuf) + strlen(open_fallback);
-                                fwrite(docbuf, 1, open_end, out);
-                                fputc('\n', out);
-                                fseek(pagesStream, 0, SEEK_SET);
-                                char copybuf[65536];
-                                size_t n;
-                                while ((n = fread(copybuf, 1, sizeof(copybuf), pagesStream)) > 0) {
-                                    fwrite(copybuf, 1, n, out);
-                                }
-                                fwrite(close_hit, 1,
-                                       docbuflen - (close_hit - (char *)docbuf), out);
+                            if (*p == '/') {
+                                // <Layout .../>  ->  <Layout ...>{pages}</Layout>
+                                // Write up to the '/' (preserving any attributes),
+                                // re-open the tag, splice pages, then close it.
+                                fwrite(buf, 1, (size_t)(p - buf), out);
+                                fwrite(">\n", 1, 2, out);
+                                copyStreamToFile(pagesStream, out);
+                                fwrite("</Layout>", 1, 9, out);
+                                // Remainder after the original start tag's '>'.
+                                fwrite(gt + 1, 1,
+                                       (size_t)(docbuflen - (gt + 1 - buf)), out);
                             } else {
-                                // Couldn't locate Layout marker: bail out and write doc as-is.
-                                // Pages will be lost, but output is still valid XML.
-                                fprintf(stderr, "pdfalto: warning: could not locate <Layout> in serialized doc; pages not streamed into final file.\n");
-                                fwrite(docbuf, 1, docbuflen, out);
+                                // <Layout ...> [empty] </Layout>: splice between the
+                                // start tag's '>' and the matching close tag.
+                                char *close = strstr(gt, "</Layout>");
+                                if (close != NULL) {
+                                    fwrite(buf, 1, (size_t)(gt + 1 - buf), out);
+                                    fputc('\n', out);
+                                    copyStreamToFile(pagesStream, out);
+                                    fwrite(close, 1,
+                                           (size_t)(docbuflen - (close - buf)), out);
+                                } else {
+                                    // Open tag but no close tag found: write as-is.
+                                    fprintf(stderr, "pdfalto: warning: could not locate closing </Layout> in serialized doc; pages not streamed into final file.\n");
+                                    fwrite(buf, 1, docbuflen, out);
+                                }
                             }
+                        } else {
+                            // Couldn't locate <Layout>: bail out and write doc as-is.
+                            // Pages will be lost, but output is still valid XML.
+                            fprintf(stderr, "pdfalto: warning: could not locate <Layout> in serialized doc; pages not streamed into final file.\n");
+                            fwrite(buf, 1, docbuflen, out);
                         }
                         fclose(out);
                     } else {
