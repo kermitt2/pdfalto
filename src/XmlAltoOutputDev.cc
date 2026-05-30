@@ -8474,8 +8474,17 @@ XmlAltoOutputDev::~XmlAltoOutputDev() {
                             }
                         }
                         fclose(out);
+                    } else {
+                        fprintf(stderr, "pdfalto: warning: could not open '%s' for writing; "
+                                        "falling back to xmlSaveFile (streamed pages will be lost).\n",
+                                myfilename->getCString());
+                        xmlSaveFile(myfilename->getCString(), doc);
                     }
                     xmlFree(docbuf);
+                } else {
+                    fprintf(stderr, "pdfalto: warning: failed to serialize document to memory; "
+                                    "falling back to xmlSaveFile (streamed pages will be lost).\n");
+                    xmlSaveFile(myfilename->getCString(), doc);
                 }
                 fclose(pagesStream);
                 pagesStream = NULL;
