@@ -2069,18 +2069,27 @@ void TextPage::endPage(GString *dataDir) {
     underlineObject.clear();
 }
 
-xmlNodePtr TextPage::detachPageNode() {
-    // Hand the current <Page> node to the caller and stop tracking it here, so we
-    // never end up holding (or freeing) a node the caller has taken ownership of.
+bool TextPage::streamPageNode(FILE *out, xmlDocPtr doc) {
+    // Dump the current <Page> node to the streaming buffer and, only if that
+    // write succeeds, remove it from the DOM and free it. On failure the node is
+    // left in place (still owned by the DOM and tracked by `page`), so a failed
+    // buffer write can never lose the page -- the caller can fall back to writing
+    // it inline. Ownership is handled entirely here, so no raw node pointer ever
+    // escapes TextPage.
     if (page == NULL) {
-        return NULL;
+        return true;
+    }
+    xmlElemDump(out, doc, page);
+    fputc('\n', out);
+    if (fflush(out) != 0 || ferror(out)) {
+        return false;
     }
     if (page->parent != NULL) {
         xmlUnlinkNode(page);
     }
-    xmlNodePtr detached = page;
+    xmlFreeNode(page);
     page = NULL;
-    return detached;
+    return true;
 }
 
 void TextPage::clear() {
@@ -8224,6 +8233,7 @@ XmlAltoOutputDev::XmlAltoOutputDev(GString *fileName, GString *fileNamePdf,
     lPictureReferences = NULL;
     pagesStream = NULL;
     mainFileWritten = false;
+    streamingDisabled = false;
     GString *imgDirName = NULL;
     Catalog *myCatalog;
 
@@ -8460,7 +8470,9 @@ bool XmlAltoOutputDev::writeMainFile() {
     bool success = true;
 
     if (pagesStream != NULL) {
-        // Streaming mode: doc has an empty <Layout/>; splice pages in.
+        // Streaming mode: <Layout> is normally empty in memory (all pages were
+        // streamed out), but may hold some inline pages if streaming was disabled
+        // part-way; either way we splice the buffered pages into <Layout>.
         xmlChar *docbuf = NULL;
         int docbuflen = 0;
         xmlDocDumpFormatMemoryEnc(doc, &docbuf, &docbuflen, "UTF-8", 0);
@@ -8516,12 +8528,15 @@ bool XmlAltoOutputDev::writeMainFile() {
                         fwrite(gt + 1, 1,
                                (size_t)(docbuflen - (gt + 1 - buf)), out);
                     } else {
-                        // <Layout ...> [empty] </Layout>: splice between the
-                        // start tag's '>' and the matching close tag.
+                        // <Layout ...> ... </Layout>: append the streamed pages
+                        // just before the closing tag. We write everything up to
+                        // (but not including) "</Layout>" so any pre-existing inner
+                        // content is preserved -- e.g. pages that stayed in the DOM
+                        // because streaming was disabled part-way through -- rather
+                        // than being dropped.
                         char *close = strstr(gt, "</Layout>");
                         if (close != NULL) {
-                            fwrite(buf, 1, (size_t)(gt + 1 - buf), out);
-                            fputc('\n', out);
+                            fwrite(buf, 1, (size_t)(close - buf), out);
                             if (!copyStreamToFile(pagesStream, out)) {
                                 success = false;
                             }
@@ -9005,24 +9020,28 @@ void XmlAltoOutputDev::endPage() {
 
     // Stream the completed page out of the DOM to bound peak memory.
     // Only active for the non-cutter path (the cutter path manages per-page
-    // docs itself). This keeps <Layout> empty in memory — the final file
-    // is assembled by writeMainFile(). We only detach/free the page once the
-    // streaming buffer is confirmed available: if tmpfile() fails we leave the
-    // page in the DOM so writeMainFile() falls back to writing the whole doc
-    // (non-streaming behavior) rather than silently dropping the page.
-    // detachPageNode() unlinks the node and transfers ownership to us, so
-    // TextPage is never left holding a dangling pointer.
-    if (!text->isCutter()) {
+    // docs itself). This keeps <Layout> empty in memory — the final file is
+    // assembled by writeMainFile().
+    //
+    // Streaming is all-or-nothing: if the temp buffer can't be created, or a
+    // write to it fails part-way, we latch streamingDisabled and leave this page
+    // (and every later page) in the DOM. That avoids a mixed state where some
+    // pages are buffered and others remain inline, which could reorder or drop
+    // pages. streamPageNode() only removes/frees the node on a successful write,
+    // so a failed write never loses the page.
+    if (!text->isCutter() && !streamingDisabled) {
         if (pagesStream == NULL) {
             pagesStream = tmpfile();
-        }
-        if (pagesStream != NULL) {
-            xmlNodePtr pageNode = text->detachPageNode();
-            if (pageNode != NULL) {
-                xmlElemDump(pagesStream, doc, pageNode);
-                fputc('\n', pagesStream);
-                xmlFreeNode(pageNode);
+            if (pagesStream == NULL) {
+                fprintf(stderr, "pdfalto: warning: could not create temp buffer for "
+                                "page streaming; keeping pages in memory.\n");
+                streamingDisabled = true;
             }
+        }
+        if (pagesStream != NULL && !text->streamPageNode(pagesStream, doc)) {
+            fprintf(stderr, "pdfalto: warning: error buffering page for streaming; "
+                            "keeping this and later pages in memory.\n");
+            streamingDisabled = true;
         }
     }
 }

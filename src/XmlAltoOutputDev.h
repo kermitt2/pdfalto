@@ -999,11 +999,15 @@ public:
      * @param fullFontName To know if the fullFontName option is selected */
     void dump(GBool noLineNumbers, GBool fullFontName, const vector<bool> &lineNumberStatus);
 
-    /** Transfer ownership of the current <Page> node to the caller. Unlinks the node
-     *  from the DOM and clears the internal pointer so TextPage no longer references
-     *  (and never frees) it. The caller becomes responsible for xmlFreeNode().
-     *  @return the detached node, or NULL if there is no live page node to detach. */
-    xmlNodePtr detachPageNode();
+    /** Dump the current <Page> node to a streaming buffer, then (only on a
+     *  successful write) unlink it from the DOM and free it, clearing the internal
+     *  pointer so TextPage never holds a dangling node. If the buffer write fails
+     *  the node is left in the DOM untouched so the page is not lost.
+     *  @param out  the streaming buffer to append the serialized page to
+     *  @param doc  the owning document (encoding context for xmlElemDump)
+     *  @return true if the page was streamed (and freed), false if the write failed
+     *          and the page was left in the DOM. */
+    bool streamPageNode(FILE *out, xmlDocPtr doc);
 
     GBool isCutter() { return cutter; }
 
@@ -1862,6 +1866,12 @@ private:
     /** Set once writeMainFile() has attempted the write, so the destructor's
      *  best-effort fallback does not write the file a second time. */
     bool mainFileWritten;
+
+    /** Latched true if streaming becomes unavailable mid-run (tmpfile() failed, or
+     *  a write to pagesStream failed). Once set, remaining pages are kept in the
+     *  in-memory DOM instead of being streamed, so streaming is all-or-nothing
+     *  rather than a mix that could reorder or drop pages. */
+    bool streamingDisabled;
 
     void beginActualText(GfxState *state, Unicode *u, int uLen);
 
