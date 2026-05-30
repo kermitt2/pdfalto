@@ -2069,6 +2069,29 @@ void TextPage::endPage(GString *dataDir) {
     underlineObject.clear();
 }
 
+bool TextPage::streamPageNode(FILE *out, xmlDocPtr doc) {
+    // Dump the current <Page> node to the streaming buffer and, only if that
+    // write succeeds, remove it from the DOM and free it. On failure the node is
+    // left in place (still owned by the DOM and tracked by `page`), so a failed
+    // buffer write can never lose the page -- the caller can fall back to writing
+    // it inline. Ownership is handled entirely here, so no raw node pointer ever
+    // escapes TextPage.
+    if (page == NULL) {
+        return true;
+    }
+    xmlElemDump(out, doc, page);
+    fputc('\n', out);
+    if (fflush(out) != 0 || ferror(out)) {
+        return false;
+    }
+    if (page->parent != NULL) {
+        xmlUnlinkNode(page);
+    }
+    xmlFreeNode(page);
+    page = NULL;
+    return true;
+}
+
 void TextPage::clear() {
     //TextRawWord *word;
 
@@ -8208,6 +8231,9 @@ XmlAltoOutputDev::XmlAltoOutputDev(GString *fileName, GString *fileNamePdf,
     dataDir = NULL;
     nsURI = NULL;
     lPictureReferences = NULL;
+    pagesStream = NULL;
+    mainFileWritten = false;
+    streamingDisabled = false;
     GString *imgDirName = NULL;
     Catalog *myCatalog;
 
@@ -8404,6 +8430,200 @@ XmlAltoOutputDev::XmlAltoOutputDev(GString *fileName, GString *fileNamePdf,
     }
 }
 
+// Create the per-page streaming buffer on real disk, honoring $TMPDIR.
+//
+// The libc tmpfile() lands in /tmp, which on most modern Linux distros and
+// containers is tmpfs (RAM). Spilling pages there would defeat the whole point
+// of streaming -- moving them from heap to a RAM filesystem leaves peak memory
+// unchanged and risks tmpfs ENOSPC. Instead we build the temp file under
+// $TMPDIR (falling back to /tmp), mkstemp() it, unlink() it immediately so it is
+// auto-removed on close (preserving tmpfile()'s cleanup semantics) and never
+// visible to other processes, then fdopen() it for buffered read/write.
+// Returns NULL on failure; the caller then disables streaming and keeps pages
+// in the DOM.
+static FILE *openPagesStream() {
+    const char *dir = getenv("TMPDIR");
+    if (dir == NULL || dir[0] == '\0') {
+        dir = "/tmp";
+    }
+    // "<dir>" + "/pdfalto-pages-XXXXXX" + NUL
+    size_t len = strlen(dir) + 21 + 1;
+    char *templ = (char *) malloc(len);
+    if (templ == NULL) {
+        return NULL;
+    }
+    snprintf(templ, len, "%s/pdfalto-pages-XXXXXX", dir);
+    int fd = mkstemp(templ);
+    if (fd < 0) {
+        free(templ);
+        return NULL;
+    }
+    // Unlink now: the file stays alive via the open fd and disappears on close,
+    // so a crash or early exit never leaks it on disk.
+    unlink(templ);
+    free(templ);
+    FILE *f = fdopen(fd, "wb+");
+    if (f == NULL) {
+        close(fd);
+    }
+    return f;
+}
+
+// Copy the full contents of a temp stream (rewound first) to the output file.
+// Used by the streaming-mode splice in writeMainFile() to inject the buffered
+// <Page> elements into the serialized document. Returns false (after warning on
+// stderr) if any I/O step fails -- e.g. the stream cannot be rewound/read, or the
+// output write is short because the disk is full -- so the caller can surface a
+// non-zero exit status instead of silently emitting a truncated file.
+static bool copyStreamToFile(FILE *src, FILE *dst) {
+    if (fseek(src, 0, SEEK_SET) != 0) {
+        fprintf(stderr, "pdfalto: warning: could not rewind streamed-pages buffer; "
+                        "final output may be incomplete.\n");
+        return false;
+    }
+    char copybuf[65536];
+    size_t n;
+    while ((n = fread(copybuf, 1, sizeof(copybuf), src)) > 0) {
+        if (fwrite(copybuf, 1, n, dst) != n) {
+            fprintf(stderr, "pdfalto: warning: short write while assembling output "
+                            "(disk full?); final output is truncated.\n");
+            return false;
+        }
+    }
+    if (ferror(src)) {
+        fprintf(stderr, "pdfalto: warning: read error on streamed-pages buffer; "
+                        "final output may be incomplete.\n");
+        return false;
+    }
+    return true;
+}
+
+bool XmlAltoOutputDev::writeMainFile() {
+    if (!doc || !myfilename) {
+        // Nothing to write; do not set mainFileWritten so the destructor's
+        // best-effort fallback is not suppressed for a write we never attempted.
+        return false;
+    }
+    mainFileWritten = true;
+
+    bool success = true;
+
+    if (pagesStream != NULL) {
+        // Streaming mode: <Layout> is normally empty in memory (all pages were
+        // streamed out), but may hold some inline pages if streaming was disabled
+        // part-way; either way we splice the buffered pages into <Layout>.
+        xmlChar *docbuf = NULL;
+        int docbuflen = 0;
+        xmlDocDumpFormatMemoryEnc(doc, &docbuf, &docbuflen, "UTF-8", 0);
+        if (docbuf != NULL) {
+            // Locate the empty <Layout> element in the serialized doc and
+            // splice the buffered pages into it. The element is created
+            // attribute-free and unprefixed (see nodeLayout in the constructor),
+            // so today it serializes as "<Layout/>". We parse the start tag
+            // generically, so a "<Layout ...>" with attributes or a "<Layout />"
+            // form would still work; a namespace *prefix* (e.g. "<ns:Layout>")
+            // would not match, but the element is never emitted prefixed here.
+            // Find "<Layout" followed by a name-boundary char so "<LayoutFoo"
+            // cannot false-match.
+            char *buf = (char *) docbuf;
+            char *start = NULL;
+            for (char *scan = strstr(buf, "<Layout"); scan != NULL;
+                 scan = strstr(scan + 7, "<Layout")) {
+                char c = scan[7];
+                if (c == '\0' || c == ' ' || c == '\t' || c == '\n' ||
+                    c == '\r' || c == '>' || c == '/') {
+                    start = scan;
+                    break;
+                }
+            }
+            // End of the start tag. This takes the first '>' after "<Layout".
+            // In general XML, a '>' may legally appear inside an attribute value,
+            // which would make this find the wrong delimiter -- but <Layout> is
+            // emitted here with no attributes, so the first '>' is always the
+            // real end of the start tag.
+            char *gt = start ? strchr(start, '>') : NULL;
+
+            FILE *out = fopen(myfilename->getCString(), "wb");
+            if (out != NULL) {
+                fflush(pagesStream);
+                if (start != NULL && gt != NULL) {
+                    // Self-closing if the last non-space char before '>' is '/'.
+                    char *p = gt - 1;
+                    while (p > start && (*p == ' ' || *p == '\t' ||
+                                         *p == '\n' || *p == '\r')) {
+                        p--;
+                    }
+                    if (*p == '/') {
+                        // <Layout .../>  ->  <Layout ...>{pages}</Layout>
+                        // Write up to the '/' (preserving any attributes),
+                        // re-open the tag, splice pages, then close it.
+                        fwrite(buf, 1, (size_t)(p - buf), out);
+                        fwrite(">\n", 1, 2, out);
+                        if (!copyStreamToFile(pagesStream, out)) {
+                            success = false;
+                        }
+                        fwrite("</Layout>", 1, 9, out);
+                        // Remainder after the original start tag's '>'.
+                        fwrite(gt + 1, 1,
+                               (size_t)(docbuflen - (gt + 1 - buf)), out);
+                    } else {
+                        // <Layout ...> ... </Layout>: insert the streamed pages
+                        // immediately after the opening start tag, then write the
+                        // rest of the document verbatim (any inline pages that
+                        // stayed in the DOM, plus </Layout> and whatever follows).
+                        // Streamed pages are always chronologically earlier than
+                        // any inline survivors (streaming only ever switches off,
+                        // never back on), so emitting them first preserves page
+                        // order, and existing inner content is never dropped.
+                        fwrite(buf, 1, (size_t)(gt + 1 - buf), out);
+                        if (!copyStreamToFile(pagesStream, out)) {
+                            success = false;
+                        }
+                        fwrite(gt + 1, 1,
+                               (size_t)(docbuflen - (gt + 1 - buf)), out);
+                    }
+                } else {
+                    // Couldn't locate <Layout>: bail out and write doc as-is.
+                    // Output is valid XML but all streamed pages are dropped.
+                    fprintf(stderr, "pdfalto: warning: could not locate <Layout> in serialized doc; pages not streamed into final file.\n");
+                    fwrite(buf, 1, docbuflen, out);
+                    success = false;
+                }
+                // Flush errors (e.g. disk full) can surface only at close, so a
+                // failed fclose means the file on disk may be truncated.
+                if (fclose(out) != 0) {
+                    fprintf(stderr, "pdfalto: warning: error closing '%s'; "
+                                    "final output may be truncated.\n",
+                            myfilename->getCString());
+                    success = false;
+                }
+            } else {
+                fprintf(stderr, "pdfalto: warning: could not open '%s' for writing; "
+                                "falling back to xmlSaveFile (streamed pages will be lost).\n",
+                        myfilename->getCString());
+                xmlSaveFile(myfilename->getCString(), doc);
+                success = false;
+            }
+            xmlFree(docbuf);
+        } else {
+            fprintf(stderr, "pdfalto: warning: failed to serialize document to memory; "
+                            "falling back to xmlSaveFile (streamed pages will be lost).\n");
+            xmlSaveFile(myfilename->getCString(), doc);
+            success = false;
+        }
+        fclose(pagesStream);
+        pagesStream = NULL;
+    } else {
+        if (xmlSaveFile(myfilename->getCString(), doc) < 0) {
+            fprintf(stderr, "pdfalto: warning: failed to write '%s'.\n",
+                    myfilename->getCString());
+            success = false;
+        }
+    }
+
+    return success;
+}
+
 XmlAltoOutputDev::~XmlAltoOutputDev() {
     for (int j = 0; j < nT3Fonts; ++j) {
         delete t3FontCache[j];
@@ -8416,10 +8636,20 @@ XmlAltoOutputDev::~XmlAltoOutputDev() {
     }
 
     if (doc) {
-        if (myfilename) {
-            xmlSaveFile(myfilename->getCString(), doc);
+        // Normally main() calls writeMainFile() explicitly (so it can observe the
+        // result and set the exit code). This is a best-effort fallback for any path
+        // that destroys the device without writing first.
+        if (myfilename && !mainFileWritten) {
+            writeMainFile();
         }
         xmlFreeDoc(doc);
+    }
+
+    // Safety net: close the streaming buffer if writeMainFile() never ran (e.g. no
+    // output filename was set) so the temp file is not leaked.
+    if (pagesStream != NULL) {
+        fclose(pagesStream);
+        pagesStream = NULL;
     }
 
     if (lPictureReferences) {
@@ -8819,6 +9049,35 @@ void XmlAltoOutputDev::endPage() {
     }
 
     text->endPage(dataDir);
+
+    // Stream the completed page out of the DOM to bound peak memory.
+    // Only active for the non-cutter path (the cutter path manages per-page
+    // docs itself). This keeps <Layout> empty in memory — the final file is
+    // assembled by writeMainFile().
+    //
+    // Streaming is all-or-nothing: if the temp buffer can't be created, or a
+    // write to it fails part-way, we latch streamingDisabled and leave this page
+    // (and every later page) in the DOM. That avoids a mixed state where some
+    // pages are buffered and others remain inline, which could reorder or drop
+    // pages. streamPageNode() only removes/frees the node on a successful write,
+    // so a failed write never loses the page.
+    if (!text->isCutter() && !streamingDisabled) {
+        if (pagesStream == NULL) {
+            pagesStream = openPagesStream();
+            if (pagesStream == NULL) {
+                fprintf(stderr, "pdfalto: warning: could not create temp buffer for "
+                                "page streaming; keeping pages in memory (peak memory "
+                                "no longer bounded). Set TMPDIR to a writable on-disk "
+                                "directory to enable streaming.\n");
+                streamingDisabled = true;
+            }
+        }
+        if (pagesStream != NULL && !text->streamPageNode(pagesStream, doc)) {
+            fprintf(stderr, "pdfalto: warning: error buffering page for streaming; "
+                            "keeping this and later pages in memory.\n");
+            streamingDisabled = true;
+        }
+    }
 }
 
 vector<bool> XmlAltoOutputDev::getLineNumberStatus() {
