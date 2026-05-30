@@ -8430,6 +8430,45 @@ XmlAltoOutputDev::XmlAltoOutputDev(GString *fileName, GString *fileNamePdf,
     }
 }
 
+// Create the per-page streaming buffer on real disk, honoring $TMPDIR.
+//
+// The libc tmpfile() lands in /tmp, which on most modern Linux distros and
+// containers is tmpfs (RAM). Spilling pages there would defeat the whole point
+// of streaming -- moving them from heap to a RAM filesystem leaves peak memory
+// unchanged and risks tmpfs ENOSPC. Instead we build the temp file under
+// $TMPDIR (falling back to /tmp), mkstemp() it, unlink() it immediately so it is
+// auto-removed on close (preserving tmpfile()'s cleanup semantics) and never
+// visible to other processes, then fdopen() it for buffered read/write.
+// Returns NULL on failure; the caller then disables streaming and keeps pages
+// in the DOM.
+static FILE *openPagesStream() {
+    const char *dir = getenv("TMPDIR");
+    if (dir == NULL || dir[0] == '\0') {
+        dir = "/tmp";
+    }
+    // "<dir>" + "/pdfalto-pages-XXXXXX" + NUL
+    size_t len = strlen(dir) + 21 + 1;
+    char *templ = (char *) malloc(len);
+    if (templ == NULL) {
+        return NULL;
+    }
+    snprintf(templ, len, "%s/pdfalto-pages-XXXXXX", dir);
+    int fd = mkstemp(templ);
+    if (fd < 0) {
+        free(templ);
+        return NULL;
+    }
+    // Unlink now: the file stays alive via the open fd and disappears on close,
+    // so a crash or early exit never leaks it on disk.
+    unlink(templ);
+    free(templ);
+    FILE *f = fdopen(fd, "wb+");
+    if (f == NULL) {
+        close(fd);
+    }
+    return f;
+}
+
 // Copy the full contents of a temp stream (rewound first) to the output file.
 // Used by the streaming-mode splice in writeMainFile() to inject the buffered
 // <Page> elements into the serialized document. Returns false (after warning on
@@ -9024,10 +9063,12 @@ void XmlAltoOutputDev::endPage() {
     // so a failed write never loses the page.
     if (!text->isCutter() && !streamingDisabled) {
         if (pagesStream == NULL) {
-            pagesStream = tmpfile();
+            pagesStream = openPagesStream();
             if (pagesStream == NULL) {
                 fprintf(stderr, "pdfalto: warning: could not create temp buffer for "
-                                "page streaming; keeping pages in memory.\n");
+                                "page streaming; keeping pages in memory (peak memory "
+                                "no longer bounded). Set TMPDIR to a writable on-disk "
+                                "directory to enable streaming.\n");
                 streamingDisabled = true;
             }
         }

@@ -457,7 +457,17 @@ int main(int argc, char *argv[]) {
     // Assemble and write the final ALTO file before destroying the device, so a
     // write/serialization failure (e.g. disk full while splicing streamed pages)
     // surfaces as a non-zero exit code rather than a silently truncated file.
-    exitCode = xmlAltoOut->writeMainFile() ? 0 : 4;
+    //   4 = the write/serialization failed (output may be missing or truncated)
+    //   5 = the file was written correctly, but page streaming was disabled
+    //       mid-run, so peak memory was no longer bounded (non-fatal; see the
+    //       stderr warning -- e.g. set TMPDIR to a writable on-disk directory)
+    if (!xmlAltoOut->writeMainFile()) {
+        exitCode = 4;
+    } else if (xmlAltoOut->streamingWasDisabled()) {
+        exitCode = 5;
+    } else {
+        exitCode = 0;
+    }
     delete xmlAltoOut;
     // clean up
 
