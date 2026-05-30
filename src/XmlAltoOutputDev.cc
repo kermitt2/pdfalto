@@ -110,6 +110,20 @@ using namespace icu;
 //#endif
 
 //------------------------------------------------------------------------
+// helpers
+//------------------------------------------------------------------------
+
+// Encode str's XML entities, set the result as node's content, and free the
+// buffer that xmlEncodeEntitiesReentrant allocates. The caller owns that buffer
+// (it is xmlMalloc'd) and xmlNodeSetContent copies rather than adopting it, so
+// it must be released here. xmlFree(NULL) is a safe no-op.
+static void setNodeContentEncoded(xmlNodePtr node, const xmlChar *str) {
+    xmlChar *encoded = xmlEncodeEntitiesReentrant(node->doc, str);
+    xmlNodeSetContent(node, encoded);
+    xmlFree(encoded);
+}
+
+//------------------------------------------------------------------------
 // parameters
 //------------------------------------------------------------------------
 
@@ -8322,9 +8336,7 @@ XmlAltoOutputDev::XmlAltoOutputDev(GString *fileName, GString *fileNamePdf,
     // adding the processing description
     xmlNodePtr nodeMeasurementUnit = xmlNewNode(NULL, (const xmlChar *) TAG_MEASUREMENTUNIT);
     nodeMeasurementUnit->type = XML_ELEMENT_NODE;
-    xmlNodeSetContent(nodeMeasurementUnit,
-                      (const xmlChar *) xmlEncodeEntitiesReentrant(nodeMeasurementUnit->doc,
-                                                                   (const xmlChar *) MEASUREMENT_UNIT));
+    setNodeContentEncoded(nodeMeasurementUnit, (const xmlChar *) MEASUREMENT_UNIT);
     xmlAddChild(nodeDescription, nodeMeasurementUnit);
 
     xmlNodePtr nodeSourceImageInformation = xmlNewNode(NULL, (const xmlChar *) TAG_SOURCE_IMAGE_INFO);
@@ -8338,9 +8350,7 @@ XmlAltoOutputDev::XmlAltoOutputDev(GString *fileName, GString *fileNamePdf,
         return;
     }
     GString *title = toUnicode(fileNamePDF, uMap);
-    xmlNodeSetContent(nodeNameFilePdf,
-                      (const xmlChar *) xmlEncodeEntitiesReentrant(nodeNameFilePdf->doc,
-                                                                   (const xmlChar *) title->getCString()));
+    setNodeContentEncoded(nodeNameFilePdf, (const xmlChar *) title->getCString());
     xmlAddChild(nodeSourceImageInformation, nodeNameFilePdf);
     delete title;
 
@@ -8361,8 +8371,7 @@ XmlAltoOutputDev::XmlAltoOutputDev(GString *fileName, GString *fileNamePdf,
     time(&t);
     char tstamp[sizeof "YYYY-MM-DDTHH:MM:SSZ"];
     strftime(tstamp, sizeof tstamp, "%FT%TZ", gmtime(&t));
-    xmlNodeSetContent(nodeProcessingDate, (const xmlChar *) xmlEncodeEntitiesReentrant(
-            nodeProcessingDate->doc, (const xmlChar *) tstamp));
+    setNodeContentEncoded(nodeProcessingDate, (const xmlChar *) tstamp);
 
     xmlNodePtr nodeProcessingSoftware = xmlNewNode(NULL, (const xmlChar *) TAG_PROCESSINGSOFTWARE);
     nodeProcessingSoftware->type = XML_ELEMENT_NODE;
@@ -8370,25 +8379,19 @@ XmlAltoOutputDev::XmlAltoOutputDev(GString *fileName, GString *fileNamePdf,
 
     xmlNodePtr nodeSoftwareCreator = xmlNewNode(NULL, (const xmlChar *) TAG_SOFTWARE_CREATOR);
     nodeSoftwareCreator->type = XML_ELEMENT_NODE;
-    xmlNodeSetContent(nodeSoftwareCreator,
-                      (const xmlChar *) xmlEncodeEntitiesReentrant(nodeSoftwareCreator->doc,
-                                                                   (const xmlChar *) PDFALTO_CREATOR));
+    setNodeContentEncoded(nodeSoftwareCreator, (const xmlChar *) PDFALTO_CREATOR);
     xmlAddChild(nodeProcessingSoftware, nodeSoftwareCreator);
 
     xmlNodePtr nodeSoftwareName = xmlNewNode(NULL, (const xmlChar *) TAG_SOFTWARE_NAME);
     nodeSoftwareName->type = XML_ELEMENT_NODE;
-    xmlNodeSetContent(nodeSoftwareName,
-                      (const xmlChar *) xmlEncodeEntitiesReentrant(nodeSoftwareName->doc,
-                                                                   (const xmlChar *) PDFALTO_NAME));
+    setNodeContentEncoded(nodeSoftwareName, (const xmlChar *) PDFALTO_NAME);
     xmlAddChild(nodeProcessingSoftware, nodeSoftwareName);
 //    xmlNewProp(nodeProcess, (const xmlChar*)ATTR_CMD,
 //               (const xmlChar*)cmdA->getCString());
 
     xmlNodePtr nodeSoftwareVersion = xmlNewNode(NULL, (const xmlChar *) TAG_SOFTWARE_VERSION);
     nodeSoftwareVersion->type = XML_ELEMENT_NODE;
-    xmlNodeSetContent(nodeSoftwareVersion,
-                      (const xmlChar *) xmlEncodeEntitiesReentrant(nodeSoftwareName->doc,
-                                                                   (const xmlChar *) PDFALTO_VERSION));
+    setNodeContentEncoded(nodeSoftwareVersion, (const xmlChar *) PDFALTO_VERSION);
     xmlAddChild(nodeProcessingSoftware, nodeSoftwareVersion);
 
     needClose = gFalse;
@@ -8523,36 +8526,28 @@ void XmlAltoOutputDev::addMetadataInfo(PDFDocXrce *pdfdocxrce) {
     if (info.isDict()) {
 
         content = getInfoString(info.getDict(), "Title");
-        xmlNodeSetContent(titleNode, (const xmlChar *) xmlEncodeEntitiesReentrant(
-                titleNode->doc, (const xmlChar *) content->getCString()));
+        setNodeContentEncoded(titleNode, (const xmlChar *) content->getCString());
 
         content = getInfoString(info.getDict(), "Subject");
-        xmlNodeSetContent(subjectNode, (const xmlChar *) xmlEncodeEntitiesReentrant(
-                subjectNode->doc, (const xmlChar *) content->getCString()));
+        setNodeContentEncoded(subjectNode, (const xmlChar *) content->getCString());
 
         content = getInfoString(info.getDict(), "Keywords");
-        xmlNodeSetContent(keywordsNode, (const xmlChar *) xmlEncodeEntitiesReentrant(
-                keywordsNode->doc, (const xmlChar *) content->getCString()));
+        setNodeContentEncoded(keywordsNode, (const xmlChar *) content->getCString());
 
         content = getInfoString(info.getDict(), "Author");
-        xmlNodeSetContent(authorNode, (const xmlChar *) xmlEncodeEntitiesReentrant(
-                authorNode->doc, (const xmlChar *) content->getCString()));
+        setNodeContentEncoded(authorNode, (const xmlChar *) content->getCString());
 
         content = getInfoString(info.getDict(), "Creator");
-        xmlNodeSetContent(creatorNode, (const xmlChar *) xmlEncodeEntitiesReentrant(
-                creatorNode->doc, (const xmlChar *) content->getCString()));
+        setNodeContentEncoded(creatorNode, (const xmlChar *) content->getCString());
 
         content = getInfoString(info.getDict(), "Producer");
-        xmlNodeSetContent(producerNode, (const xmlChar *) xmlEncodeEntitiesReentrant(
-                producerNode->doc, (const xmlChar *) content->getCString()));
+        setNodeContentEncoded(producerNode, (const xmlChar *) content->getCString());
 
         content = getInfoDate(info.getDict(), "CreationDate");
-        xmlNodeSetContent(creationDateNode, (const xmlChar *) xmlEncodeEntitiesReentrant(
-                creationDateNode->doc, (const xmlChar *) content->getCString()));
+        setNodeContentEncoded(creationDateNode, (const xmlChar *) content->getCString());
 
         content = getInfoDate(info.getDict(), "ModDate");
-        xmlNodeSetContent(modDateNode, (const xmlChar *) xmlEncodeEntitiesReentrant(
-                modDateNode->doc, (const xmlChar *) content->getCString()));
+        setNodeContentEncoded(modDateNode, (const xmlChar *) content->getCString());
     }
     info.free();
 }
@@ -10264,9 +10259,7 @@ GBool XmlAltoOutputDev::dumpOutline(xmlNodePtr parentNode, GList *itemsA, PDFDoc
         nodeString = xmlNewNode(NULL, (const xmlChar *) TAG_STRING);
         nodeString->type = XML_ELEMENT_NODE;
         //   	  	xmlNodeSetContent(nodeString,(const xmlChar*)xmlEncodeEntitiesReentrant(nodeString->doc,(const xmlChar*)title->getCString()));
-        xmlNodeSetContent(nodeString,
-                          (const xmlChar *) xmlEncodeEntitiesReentrant(nodeString->doc,
-                                                                       (const xmlChar *) title->getCString()));
+        setNodeContentEncoded(nodeString, (const xmlChar *) title->getCString());
 
         xmlAddChild(nodeItem, nodeString);
 
