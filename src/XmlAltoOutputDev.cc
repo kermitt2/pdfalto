@@ -3028,7 +3028,7 @@ void TextPage::addAttributsNodeVerbose(xmlNodePtr node, char *tmp,
     xmlNewProp(node, (const xmlChar *) ATTR_CHAR_SPACE, (const xmlChar *) tmp);
 }
 
-void TextPage::addAttributsNode(xmlNodePtr node, IWord *word, TextFontStyleInfo *fontStyleInfo, UnicodeMap *uMap,
+bool TextPage::addAttributsNode(xmlNodePtr node, IWord *word, TextFontStyleInfo *fontStyleInfo, UnicodeMap *uMap,
                                 GBool fullFontName) {
     char tmp[10];
 
@@ -3116,18 +3116,22 @@ void TextPage::addAttributsNode(xmlNodePtr node, IWord *word, TextFontStyleInfo 
     }
 
     int styleId;
+    bool retained;
     if (!contains) {
         styleId = fontStyles.size();
         fontStyleInfo->setId(styleId);
         fontStyles.push_back(fontStyleInfo);
+        retained = true;
     } else {
+        // duplicate of an already-registered style; getId() was set in the cmp loop above.
+        // The caller still owns fontStyleInfo and frees it after its post-call reads.
         styleId = fontStyleInfo->getId();
-        // duplicate of an already-registered style; drop it (fontStyles owns the original)
-        delete fontStyleInfo;
+        retained = false;
     }
 
     snprintf(tmp, sizeof(tmp), "font%d", styleId);
     xmlNewProp(node, (const xmlChar *) ATTR_STYLEREFS, (const xmlChar *) tmp);
+    return retained;
 }
 
 /*
@@ -4951,7 +4955,7 @@ void TextPage::dumpInReadingOrder(GBool noLineNumbers, GBool fullFontName) {
                         addAttributsNodeVerbose(node, tmp, word);
                     }
 
-                    addAttributsNode(node, word, fontStyleInfo, uMap, fullFontName);
+                    bool fontStyleRetained = addAttributsNode(node, word, fontStyleInfo, uMap, fullFontName);
                     addAttributTypeReadingOrder(node, tmp, word);
 
 //                    encodeFragment(line->text, n, uMap, primaryLR, s);
@@ -5034,6 +5038,9 @@ void TextPage::dumpInReadingOrder(GBool noLineNumbers, GBool fullFontName) {
                     previousWordBaseLine = word->base;
                     previousWordYmin = word->yMin;
                     previousWordYmax = word->yMax;
+
+                    // last read of fontStyleInfo done above; free it if addAttributsNode didn't keep it
+                    if (!fontStyleRetained) delete fontStyleInfo;
 
                     free(tmp);
                 }
@@ -6249,11 +6256,13 @@ void TextPage::dump(GBool noLineNumbers, GBool fullFontName, const vector<bool> 
                 if (verbose) {
                     addAttributsNodeVerbose(node, tmp, word);
                 }
-                addAttributsNode(node, word, fontStyleInfo, uMap, fullFontName);
+                bool fontStyleRetained = addAttributsNode(node, word, fontStyleInfo, uMap, fullFontName);
                 addAttributTypeReadingOrder(node, tmp, word);
 
                 xmlAddChild(nodeline, node);
                 xmlAddChild(nodeblocks, nodeline);
+
+                if (!fontStyleRetained) delete fontStyleInfo;
             }
 
             xmlAddChild(printSpace, nodeblocks);
@@ -6408,7 +6417,7 @@ void TextPage::dump(GBool noLineNumbers, GBool fullFontName, const vector<bool> 
                 if (verbose) {
                     addAttributsNodeVerbose(node, tmp, word);
                 }
-                addAttributsNode(node, word, fontStyleInfo, uMap, fullFontName);
+                bool fontStyleRetained = addAttributsNode(node, word, fontStyleInfo, uMap, fullFontName);
                 addAttributTypeReadingOrder(node, tmp, word);
 
 //                    encodeFragment(line->text, n, uMap, primaryLR, s);
@@ -6503,6 +6512,9 @@ void TextPage::dump(GBool noLineNumbers, GBool fullFontName, const vector<bool> 
                 previousWordBaseLine = word->base;
                 previousWordYmin = word->yMin;
                 previousWordYmax = word->yMax;
+
+                // last read of fontStyleInfo done above; free it if addAttributsNode didn't keep it
+                if (!fontStyleRetained) delete fontStyleInfo;
             }
 
             if (nonEmptyLine)
