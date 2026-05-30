@@ -1854,12 +1854,13 @@ private:
     vector<Unicode> placeholders;
 
     /** Per-page streaming: xmlElemDump of each finished <Page> is appended here,
-     *  then the page node is freed from the DOM. The final file is assembled in
-     *  the destructor by splicing this stream into the serialized doc. */
+     *  then the page node is freed from the DOM. The final file is assembled by
+     *  writeMainFile() (with a destructor fallback), which splices this stream
+     *  into the serialized doc. */
     FILE *pagesStream;
 
-    /** Set once writeMainFile() has produced the final output, so the destructor
-     *  does not write it a second time. */
+    /** Set once writeMainFile() has attempted the write, so the destructor's
+     *  best-effort fallback does not write the file a second time. */
     bool mainFileWritten;
 
     void beginActualText(GfxState *state, Unicode *u, int uLen);

@@ -8450,10 +8450,12 @@ static bool copyStreamToFile(FILE *src, FILE *dst) {
 }
 
 bool XmlAltoOutputDev::writeMainFile() {
-    mainFileWritten = true;
     if (!doc || !myfilename) {
+        // Nothing to write; do not set mainFileWritten so the destructor's
+        // best-effort fallback is not suppressed for a write we never attempted.
         return false;
     }
+    mainFileWritten = true;
 
     bool success = true;
 
@@ -8465,11 +8467,13 @@ bool XmlAltoOutputDev::writeMainFile() {
         if (docbuf != NULL) {
             // Locate the empty <Layout> element in the serialized doc and
             // splice the buffered pages into it. The element is created
-            // attribute-free (see nodeLayout in the constructor), so today
-            // it serializes as "<Layout/>" -- but we parse the start tag
-            // generically so attributes, a namespace prefix or a "<Layout />"
-            // form keep working. Find "<Layout" followed by a name-boundary
-            // char so "<LayoutFoo" cannot false-match.
+            // attribute-free and unprefixed (see nodeLayout in the constructor),
+            // so today it serializes as "<Layout/>". We parse the start tag
+            // generically, so a "<Layout ...>" with attributes or a "<Layout />"
+            // form would still work; a namespace *prefix* (e.g. "<ns:Layout>")
+            // would not match, but the element is never emitted prefixed here.
+            // Find "<Layout" followed by a name-boundary char so "<LayoutFoo"
+            // cannot false-match.
             char *buf = (char *) docbuf;
             char *start = NULL;
             for (char *scan = strstr(buf, "<Layout"); scan != NULL;
@@ -8481,9 +8485,11 @@ bool XmlAltoOutputDev::writeMainFile() {
                     break;
                 }
             }
-            // End of the start tag. NOTE: this finds the first '>', which is
-            // wrong only if an attribute value contains a literal '>' -- not
-            // possible here since <Layout> has no attributes.
+            // End of the start tag. This takes the first '>' after "<Layout".
+            // In general XML, a '>' may legally appear inside an attribute value,
+            // which would make this find the wrong delimiter -- but <Layout> is
+            // emitted here with no attributes, so the first '>' is always the
+            // real end of the start tag.
             char *gt = start ? strchr(start, '>') : NULL;
 
             FILE *out = fopen(myfilename->getCString(), "wb");
@@ -8536,7 +8542,14 @@ bool XmlAltoOutputDev::writeMainFile() {
                     fwrite(buf, 1, docbuflen, out);
                     success = false;
                 }
-                fclose(out);
+                // Flush errors (e.g. disk full) can surface only at close, so a
+                // failed fclose means the file on disk may be truncated.
+                if (fclose(out) != 0) {
+                    fprintf(stderr, "pdfalto: warning: error closing '%s'; "
+                                    "final output may be truncated.\n",
+                            myfilename->getCString());
+                    success = false;
+                }
             } else {
                 fprintf(stderr, "pdfalto: warning: could not open '%s' for writing; "
                                 "falling back to xmlSaveFile (streamed pages will be lost).\n",
@@ -8993,20 +9006,23 @@ void XmlAltoOutputDev::endPage() {
     // Stream the completed page out of the DOM to bound peak memory.
     // Only active for the non-cutter path (the cutter path manages per-page
     // docs itself). This keeps <Layout> empty in memory — the final file
-    // is assembled by writeMainFile(). detachPageNode() unlinks the node and
-    // transfers ownership to us, so TextPage is never left holding a dangling
-    // pointer; we are then responsible for freeing it.
+    // is assembled by writeMainFile(). We only detach/free the page once the
+    // streaming buffer is confirmed available: if tmpfile() fails we leave the
+    // page in the DOM so writeMainFile() falls back to writing the whole doc
+    // (non-streaming behavior) rather than silently dropping the page.
+    // detachPageNode() unlinks the node and transfers ownership to us, so
+    // TextPage is never left holding a dangling pointer.
     if (!text->isCutter()) {
-        xmlNodePtr pageNode = text->detachPageNode();
-        if (pageNode != NULL) {
-            if (pagesStream == NULL) {
-                pagesStream = tmpfile();
-            }
-            if (pagesStream != NULL) {
+        if (pagesStream == NULL) {
+            pagesStream = tmpfile();
+        }
+        if (pagesStream != NULL) {
+            xmlNodePtr pageNode = text->detachPageNode();
+            if (pageNode != NULL) {
                 xmlElemDump(pagesStream, doc, pageNode);
                 fputc('\n', pagesStream);
+                xmlFreeNode(pageNode);
             }
-            xmlFreeNode(pageNode);
         }
     }
 }
