@@ -79,8 +79,6 @@ using namespace icu;
 
 // PNG lib
 #include "png.h"
-#include "pngstruct.h"
-#include "pnginfo.h"
 
 #include "CharCodeToUnicode.h"
 
@@ -8039,7 +8037,7 @@ const char *TextPage::drawImageOrMask(GfxState *state, Object *ref, Stream *str,
 
 
 void file_write_data(png_structp png_ptr, png_bytep data, png_size_t length) {
-    FILE *file = (FILE *) png_ptr->io_ptr;
+    FILE *file = (FILE *) png_get_io_ptr(png_ptr);
 
     if (fwrite(data, 1, length, file) != length)
         png_error(png_ptr, "Write Error");
@@ -8047,7 +8045,7 @@ void file_write_data(png_structp png_ptr, png_bytep data, png_size_t length) {
 
 
 void file_flush_data(png_structp png_ptr) {
-    FILE *file = (FILE *) png_ptr->io_ptr;
+    FILE *file = (FILE *) png_get_io_ptr(png_ptr);
 
     if (fflush(file))
         png_error(png_ptr, "Flush Error");
@@ -8058,8 +8056,8 @@ bool TextPage::save_png(GString *file_name,
                         unsigned int width, unsigned int height, unsigned int row_stride,
                         unsigned char *data,
                         unsigned char bpp, unsigned char color_type, png_color *palette, unsigned short color_count) {
-    png_struct *png_ptr;
-    png_info *info_ptr;
+    png_structp png_ptr;
+    png_infop info_ptr;
 
     // Create necessary structs
     png_ptr = png_create_write_struct(PNG_LIBPNG_VER_STRING, NULL, NULL, NULL);
@@ -8080,7 +8078,7 @@ bool TextPage::save_png(GString *file_name,
         return false;
     }
 
-    if (setjmp(png_ptr->jmp_buf_local)) {
+    if (setjmp(png_jmpbuf(png_ptr))) {
         png_destroy_write_struct(&png_ptr, (png_infopp) &info_ptr);
         fclose(file);
         return false;
@@ -8089,17 +8087,19 @@ bool TextPage::save_png(GString *file_name,
     // Writing functions
     png_set_write_fn(png_ptr, file, (png_rw_ptr) file_write_data, (png_flush_ptr) file_flush_data);
 
-    // Image header
-    info_ptr->width = width;
-    info_ptr->height = height;
-    info_ptr->pixel_depth = bpp;
-    info_ptr->channels = (bpp > 8) ? (unsigned char) 3 : (unsigned char) 1;
-    info_ptr->bit_depth = (unsigned char) (bpp / info_ptr->channels);
-    info_ptr->color_type = color_type;
-    info_ptr->compression_type = info_ptr->filter_type = 0;
-    info_ptr->valid = 0;
-    info_ptr->rowbytes = row_stride;
-    info_ptr->interlace_type = PNG_INTERLACE_NONE;
+    // Image header — png_set_IHDR replaces direct field assignments to info_ptr.
+    // libpng computes channels, pixel_depth, rowbytes, and the valid flags internally.
+    unsigned char channels = (bpp > 8) ? (unsigned char) 3 : (unsigned char) 1;
+    unsigned char bit_depth = (unsigned char) (bpp / channels);
+    unsigned char final_color_type = (palette != NULL) ? (unsigned char) PNG_COLOR_TYPE_PALETTE
+                                                       : color_type;
+    png_set_IHDR(png_ptr, info_ptr, width, height, bit_depth, final_color_type,
+                 PNG_INTERLACE_NONE, PNG_COMPRESSION_TYPE_BASE, PNG_FILTER_TYPE_BASE);
+
+    // Palette
+    if (palette != NULL) {
+        png_set_PLTE(png_ptr, info_ptr, palette, color_count);
+    }
 
     // Background
     png_color_16 image_background = {0, 255, 255, 255, 0};
@@ -8107,16 +8107,6 @@ bool TextPage::save_png(GString *file_name,
 
     // Metrics
     png_set_pHYs(png_ptr, info_ptr, 3780, 3780, PNG_RESOLUTION_METER); // 3780 dot per meter
-
-    // Palette
-    if (palette != NULL) {
-        png_set_IHDR(png_ptr, info_ptr, info_ptr->width, info_ptr->height, info_ptr->bit_depth,
-                     PNG_COLOR_TYPE_PALETTE, info_ptr->interlace_type,
-                     PNG_COMPRESSION_TYPE_BASE, PNG_FILTER_TYPE_BASE);
-        info_ptr->valid |= PNG_INFO_PLTE;
-        info_ptr->palette = palette;
-        info_ptr->num_palette = color_count;
-    }
 
     // Write the file header
     png_write_info(png_ptr, info_ptr);
