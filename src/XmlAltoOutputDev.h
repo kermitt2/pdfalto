@@ -466,7 +466,7 @@ class TextChar {
 public:
     TextChar(GfxState *state, Unicode cA, CharCode charCodeA, int charPosA, int charLenA,
              double xMinA, double yMinA, double xMaxA, double yMaxA,
-             int rotA, GBool clippedA, GBool invisibleA,
+             int rotA, GBool clippedA, GBool invisibleA, double alphaA,
              TextFontInfo *fontA, double fontSizeA, SplashFont *splashFontA,
              double colorRA, double colorGA, double colorBA, GBool isNonUnicodeGlyphA);
 
@@ -484,6 +484,7 @@ public:
     Guchar rot;
     char clipped;
     char invisible;
+    double alpha;        // fill/stroke constant opacity (1.0 = fully opaque); see pdfalto issue #82
     char spaceAfter;
     TextFontInfo *font;
     SplashFont *splashfont;

@@ -75,6 +75,7 @@ namespace ConstantsXML {
 	const char *ATTR_LEADING = "leading";
 	const char *ATTR_RENDER = "render";
 	const char *ATTR_INVISIBLE = "INVISIBLE";
+	const char *ATTR_OPACITY = "OPACITY";
 	const char *ATTR_RISE = "rise";
 	const char *ATTR_HORIZ_SCALING = "horiz-scaling";
 	const char *ATTR_WORD_SPACE = "word-space";

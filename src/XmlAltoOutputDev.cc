@@ -458,7 +458,7 @@ TextChar::~TextChar() {
 
 TextChar::TextChar(GfxState *stateA, Unicode cA, CharCode charCodeA, int charPosA, int charLenA,
                    double xMinA, double yMinA, double xMaxA, double yMaxA,
-                   int rotA, GBool clippedA, GBool invisibleA,
+                   int rotA, GBool clippedA, GBool invisibleA, double alphaA,
                    TextFontInfo *fontA, double fontSizeA, SplashFont *splashFontA,
                    double colorRA, double colorGA, double colorBA, GBool isNonUnicodeGlyphA) {
     double t;
@@ -501,6 +501,7 @@ TextChar::TextChar(GfxState *stateA, Unicode cA, CharCode charCodeA, int charPos
     rot = (Guchar) rotA;
     clipped = (char) clippedA;
     invisible = (char) invisibleA;
+    alpha = alphaA;
     spaceAfter = (char) gFalse;
     font = fontA;
     fontSize = fontSizeA;
@@ -1265,7 +1266,7 @@ void TextRawWord::addChar(GfxState *state, double x, double y, double dx,
 
         chars->append(new TextChar(charState, u, charCodeA, charPosA, nBytes, xxMin, yyMin, xxMax, yyMax,
                                    rotA, clipped,
-                                   state->getRender() == 3 || alpha < 0.001,
+                                   (state->getRender() & 3) == 3 || alpha < 0.001, alpha,
                                    fontA, fontSizeA, splashFont,
                                    colToDbl(rgb.r), colToDbl(rgb.g),
                                    colToDbl(rgb.b), isNonUnicodeGlyph));
@@ -2726,7 +2727,7 @@ void TextPage::addCharToPageChars(GfxState *state, double x, double y, double dx
             }
             chars->append(new TextChar(state->copy(gTrue), u[j], c, charPos, nBytes, xMin, yMin, xMax, yMax,
                                        curRot, clipped,
-                                       (state->getRender() & 3) == 3 || alpha < 0.001,
+                                       (state->getRender() & 3) == 3 || alpha < 0.001, alpha,
                                        curFont, curFontSize, splashFont,
                                        colToDbl(rgb.r), colToDbl(rgb.g),
                                        colToDbl(rgb.b), isNonUnicodeGlyph));
@@ -3101,6 +3102,13 @@ static bool wordIsHiddenDroppable(IWord *word, vector<Image *> &images) {
     return !wordOverImage(word, images);
 }
 
+// Representative constant opacity of a word (pdfalto issue #82): the first glyph's alpha
+// (fill/stroke constant opacity, 1.0 = opaque). Opacity is virtually always uniform within a word.
+static double wordOpacity(IWord *word) {
+    if (word == NULL || word->chars == NULL || word->chars->getLength() == 0) return 1.0;
+    return ((TextChar *) word->chars->get(0))->alpha;
+}
+
 bool TextPage::addAttributsNode(xmlNodePtr node, IWord *word, TextFontStyleInfo *fontStyleInfo, UnicodeMap *uMap,
                                 GBool fullFontName) {
     char tmp[10];
@@ -3136,6 +3144,15 @@ bool TextPage::addAttributsNode(xmlNodePtr node, IWord *word, TextFontStyleInfo 
     // text (GROBID #826/#1083). Always emitted; white-on-white is already exposed via FONTCOLOR.
     if (wordAllCharsInvisible(word)) {
         xmlNewProp(node, (const xmlChar *) ATTR_INVISIBLE, (const xmlChar *) sTRUE);
+    }
+
+    // Expose partial transparency (pdfalto issue #82): emit OPACITY only when the text is not
+    // fully opaque, so rendering from the XML can be accurate. FONTCOLOR stays standard #RRGGBB.
+    double opacity = wordOpacity(word);
+    if (opacity < 0.999) {
+        char obuf[16];
+        snprintf(obuf, sizeof(obuf), "%.3f", opacity);
+        xmlNewProp(node, (const xmlChar *) ATTR_OPACITY, (const xmlChar *) obuf);
     }
 
     GString *gsFontName = new GString();
