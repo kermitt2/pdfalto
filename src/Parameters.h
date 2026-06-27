@@ -100,6 +100,11 @@ public:
 	 */
 	GBool getSkipGraphs() { return skipGraphs;};
 
+	/** Return a boolean which informs if hidden/invisible text (not over an image) should be removed
+	 * @return <code>true</code> if the removeHiddenText option is selected, <code>false</code> otherwise
+	 */
+	GBool getRemoveHiddenText() { return removeHiddenText;};
+
 	// setters
 
 	/** Modify the boolean which inform if the images are displayed
@@ -165,6 +170,11 @@ public:
 	 */
 	void setSkipGraphs(GBool skipGraphsAttr);
 
+	/** Modify the boolean which informs if hidden/invisible text should be removed
+	 * @param removeHiddenTextAttr <code>true</code> if the removeHiddenText option is selected, <code>false</code> otherwise
+	 */
+	void setRemoveHiddenText(GBool removeHiddenTextAttr);
+
 	void saveToXML(const char *fileName,int firstPage,int lastPage);
 	
 private:
@@ -195,6 +205,8 @@ private:
   	GBool noLineNumbers;
 	/** The value of the skipGraphs option */
 	GBool skipGraphs;
+	/** The value of the removeHiddenText option */
+	GBool removeHiddenText;
 };
 
 #endif /*PARAMETERS_H_*/

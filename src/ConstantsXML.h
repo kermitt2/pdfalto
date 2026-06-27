@@ -61,6 +61,7 @@ namespace ConstantsXML {
 	// Attributs about details informations
 	extern const char *ATTR_LEADING;
 	extern const char *ATTR_RENDER;
+	extern const char *ATTR_INVISIBLE;
 	extern const char *ATTR_RISE;
 	extern const char *ATTR_HORIZ_SCALING;
 	extern const char *ATTR_WORD_SPACE;

@@ -94,6 +94,12 @@ void Parameters::setSkipGraphs(GBool skipGraphsAttr) {
   unlockGlobalParams;
 }
 
+void Parameters::setRemoveHiddenText(GBool removeHiddenTextAttr) {
+  lockGlobalParams;
+  removeHiddenText = removeHiddenTextAttr;
+  unlockGlobalParams;
+}
+
 void Parameters::saveToXML(const char *fileName,int firstPage,int lastPage){
 	char tmp[10];
 
