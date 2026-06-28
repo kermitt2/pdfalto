@@ -999,6 +999,18 @@ public:
      * @param fullFontName To know if the fullFontName option is selected */
     void dump(GBool noLineNumbers, GBool fullFontName, const vector<bool> &lineNumberStatus);
 
+    /** Dump the current <Page> node to a streaming buffer, then (only on a
+     *  successful write) unlink it from the DOM and free it, clearing the internal
+     *  pointer so TextPage never holds a dangling node. If the buffer write fails
+     *  the node is left in the DOM untouched so the page is not lost.
+     *  @param out  the streaming buffer to append the serialized page to
+     *  @param doc  the owning document (encoding context for xmlElemDump)
+     *  @return true if the page was streamed (and freed), false if the write failed
+     *          and the page was left in the DOM. */
+    bool streamPageNode(FILE *out, xmlDocPtr doc);
+
+    GBool isCutter() const { return cutter; }
+
     /** Dump contents of the current page following the reading order.
      * @param blocks To know if the blocks option is selected
      * @param fullFontName To know if the fullFontName option is selected */
@@ -1533,6 +1545,22 @@ public:
      * @return <code>true</code> if the file was successfully created, <code>false</code> else*/
     virtual GBool isOk() { return ok; }
 
+    /** Assemble and write the final ALTO file to myfilename. In streaming mode this
+     *  splices the buffered <Page> elements back into <Layout>. Must be called before
+     *  the object is destroyed so the caller can observe the result; the destructor
+     *  performs the write as a best-effort fallback only if this was never called.
+     *  @return <code>true</code> on success, <code>false</code> if a write/serialization
+     *          error occurred (the output file may be missing or truncated). */
+    bool writeMainFile();
+
+    /** Whether per-page streaming was turned off part-way through the run (the
+     *  temp buffer could not be created, or a write to it failed). When true the
+     *  output file is still complete and correct, but peak memory was no longer
+     *  bounded -- the remaining pages were kept in the in-memory DOM. Callers can
+     *  use this to surface a distinct, non-fatal exit status.
+     *  @return <code>true</code> if streaming degraded mid-run, <code>false</code> otherwise. */
+    bool streamingWasDisabled() const { return streamingDisabled; }
+
     /** Does this device use upside-down coordinates?
      * (Upside-down means (0,0) is the top left corner of the page.)
      * @return <code>true</code> if this device use upside-down, <code>false</code> otherwise */
@@ -1836,6 +1864,23 @@ private:
     GHash *unicode_map;
 
     vector<Unicode> placeholders;
+
+    /** Per-page streaming: xmlElemDump of each finished <Page> is appended here,
+     *  then the page node is freed from the DOM. The final file is assembled by
+     *  writeMainFile() (with a destructor fallback), which splices this stream
+     *  into the serialized doc. */
+    FILE *pagesStream;
+
+    /** Set once writeMainFile() has attempted the write, so the destructor's
+     *  best-effort fallback does not write the file a second time. */
+    bool mainFileWritten;
+
+    /** Latched true if streaming becomes unavailable mid-run (the temp buffer
+     *  could not be created, or a write to pagesStream failed). Once set, remaining
+     *  pages are kept in the in-memory DOM instead of being streamed, so streaming
+     *  is all-or-nothing rather than a mix that could reorder or drop pages.
+     *  Exposed via streamingWasDisabled() so callers can flag the degraded run. */
+    bool streamingDisabled;
 
     void beginActualText(GfxState *state, Unicode *u, int uLen);
 
