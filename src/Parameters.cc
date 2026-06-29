@@ -11,7 +11,10 @@
 
 Parameters *parameters = NULL;
 
-Parameters::Parameters() {}
+Parameters::Parameters() {
+  vectorCoordsOnly = gFalse;
+  vectorPathLimit = 0;
+}
 
 Parameters::~Parameters() {}
 
@@ -91,6 +94,18 @@ void Parameters::setNoLineNumbers(GBool noLineNumberAttrs) {
 void Parameters::setSkipGraphs(GBool skipGraphsAttr) {
   lockGlobalParams;
   skipGraphs = skipGraphsAttr;
+  unlockGlobalParams;
+}
+
+void Parameters::setVectorCoordsOnly(GBool vectorCoordsOnlyAttr) {
+  lockGlobalParams;
+  vectorCoordsOnly = vectorCoordsOnlyAttr;
+  unlockGlobalParams;
+}
+
+void Parameters::setVectorPathLimit(int limit) {
+  lockGlobalParams;
+  vectorPathLimit = limit;
   unlockGlobalParams;
 }
 

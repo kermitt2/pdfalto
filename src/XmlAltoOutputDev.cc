@@ -2051,6 +2051,8 @@ void TextPage::startPage(int pageNum, GfxState *state, GBool cut) {
     xmlDocSetRootElement(vecdoc, vecroot);
 
     svg_xmax=0, svg_xmin=0, svg_ymax=0, svg_ymin =0;
+    vecPathCount = 0;
+    vecLimitWarned = gFalse;
     // for links
     //  store them in a list
     //  and when dump: for each token look at intersectionwith
@@ -7404,10 +7406,13 @@ void TextPage::doPath(GfxPath *path, GfxState *state, GString *gattributes) {
     //printf("path %d\n",idx);
 //	if (idx>10000){return;}
 
+    // When the .svg file will not be written (e.g. -onlyGraphsCoord / -noImage),
+    // there is no point building the SVG <g> node tree: only the per-page union
+    // bbox (updated inside createPath) is needed for the <IMAGE type="svg">
+    // coordinate node. Skipping the node tree avoids accumulating the full vector
+    // geometry in memory, which is the >6GB OOM cause on vector-heavy PDFs.
     xmlNodePtr groupNode = NULL;
-
-    //if (parameters->getDisplayImage()) 
-    {
+    if (parameters->getDisplayImage()) {
         // GROUP tag
         groupNode = xmlNewNode(NULL, (const xmlChar *) TAG_GROUP);
         xmlAddChild(vecroot, groupNode);
@@ -7415,18 +7420,12 @@ void TextPage::doPath(GfxPath *path, GfxState *state, GString *gattributes) {
         xmlNewProp(groupNode, (const xmlChar *) ATTR_STYLE,
                    (const xmlChar *) gattributes->getCString());
 
-        //GString *id = new GString("p");
         GString sid("p");
-        //, *clipZone = new GString("p");
-        GBool isInline = false;
-        //id = buildIdImage(getPageNumber(), numImage, id);
         buildSID(getPageNumber(), getIdx(), &sid);
-        //clipZone = buildIdClipZone(getPageNumber(), idCur, clipZone);
 
         xmlNewProp(groupNode, (const xmlChar *) ATTR_SVGID, (const xmlChar *) sid.getCString());
-        //xmlNewProp(groupNode, (const xmlChar *) ATTR_IDCLIPZONE, (const xmlChar *) clipZone->getCString());
-        createPath(path, state, groupNode);
     }
+    createPath(path, state, groupNode);
 }
 
 void TextPage::createPath(GfxPath *path, GfxState *state, xmlNodePtr groupNode) {
@@ -7442,6 +7441,18 @@ void TextPage::createPath(GfxPath *path, GfxState *state, xmlNodePtr groupNode) 
 
     xmlNodePtr pathnode = NULL;
 
+    // Mode selection (the per-page union bbox is computed identically in all modes,
+    // so svg_xmin..svg_ymax — what GROBID reads — stays byte-identical):
+    //  - buildFullGeometry: write every M/C/L/Z segment to the .svg (default)
+    //  - coordsOnly: write only the path's bounding-box rectangle (same box GROBID
+    //    extracts, orders of magnitude smaller .svg)
+    //  - neither (groupNode == NULL, i.e. -onlyGraphsCoord / -noImage): build no
+    //    nodes at all; only keep tracking the union bbox -> avoids the >6GB OOM.
+    GBool writeFile = (groupNode != NULL) && parameters->getDisplayImage();
+    GBool coordsOnly = parameters->getVectorCoordsOnly();
+    GBool buildFullGeometry = writeFile && !coordsOnly;
+    int pathLimit = parameters->getVectorPathLimit();
+
     n = path->getNumSubpaths();
     for (i = 0; i < n; ++i) {
         subpath = path->getSubpath(i);
@@ -7453,14 +7464,11 @@ void TextPage::createPath(GfxPath *path, GfxState *state, xmlNodePtr groupNode) 
         y0 = b;
 
         // M tag : moveto
-        pathnode = xmlNewNode(NULL, (const xmlChar *) TAG_PATH);
-        //snprintf(tmp, SVG_VALUE_BUFFER_SIZE, "M%g,%g", x0, y0);
-        snprintf(tmp, SVG_VALUE_BUFFER_SIZE, "M%1.4f,%1.4f", x0, y0);
-
-        GString dd(tmp);
-
-//        formatCoord(tmp, sizeof(tmp), y0);
-//        xmlNewProp(pathnode, (const xmlChar*)ATTR_Y, (const xmlChar*)tmp);
+        GString dd;
+        if (buildFullGeometry) {
+            snprintf(tmp, SVG_VALUE_BUFFER_SIZE, "M%1.4f,%1.4f", x0, y0);
+            dd.append(tmp);
+        }
 
         j = 1;
         while (j < m) {
@@ -7481,9 +7489,10 @@ void TextPage::createPath(GfxPath *path, GfxState *state, xmlNodePtr groupNode) 
                 x3 = a;
                 y3 = b;
                 // C tag  : curveto
-//                pathnode=xmlNewNode(NULL, (const xmlChar*)TAG_C);
-                snprintf(tmp, SVG_VALUE_BUFFER_SIZE, " C%1.4f,%1.4f %1.4f,%1.4f %1.4f,%1.4f", x1, y1, x2, y2, x3, y3);
-                dd.append(tmp);
+                if (buildFullGeometry) {
+                    snprintf(tmp, SVG_VALUE_BUFFER_SIZE, " C%1.4f,%1.4f %1.4f,%1.4f %1.4f,%1.4f", x1, y1, x2, y2, x3, y3);
+                    dd.append(tmp);
+                }
                 if(xmax==0) {
                     double list_double[] = {x0, x1, x2, x3};
                     xmax = *std::max_element(list_double, list_double +4);
@@ -7533,8 +7542,10 @@ void TextPage::createPath(GfxPath *path, GfxState *state, xmlNodePtr groupNode) 
 //                xmlNewProp(pathnode, (const xmlChar*)ATTR_Y,
 //                           (const xmlChar*)tmp);
 //                xmlAddChild(groupNode, pathnode);
-                snprintf(tmp, SVG_VALUE_BUFFER_SIZE," L%1.4f,%1.4f", x1, y1);
-                dd.append(tmp);
+                if (buildFullGeometry) {
+                    snprintf(tmp, SVG_VALUE_BUFFER_SIZE," L%1.4f,%1.4f", x1, y1);
+                    dd.append(tmp);
+                }
                 if (xmax == 0) {
                     double list_double[] = {x0, x1};
                     xmax = *std::max_element(list_double, list_double+2);
@@ -7575,9 +7586,14 @@ void TextPage::createPath(GfxPath *path, GfxState *state, xmlNodePtr groupNode) 
 //                xmlNewProp(groupNode, (const xmlChar*)ATTR_CLOSED,
 //                           (const xmlChar*)sTRUE);
 //            }
-            dd.append(" Z");
+            if (buildFullGeometry) {
+                dd.append(" Z");
+            }
         }
 
+        // Update the per-page union bbox. This block is intentionally left identical
+        // to the original logic (including the `==0` sentinel) so that the
+        // <IMAGE type="svg"> coordinate node is byte-identical in every mode.
         if(svg_xmax == 0 && svg_ymin == 0 && svg_ymax == 0 && svg_xmin == 0){
             svg_xmin = xmin;
             svg_xmax = xmax;
@@ -7594,8 +7610,46 @@ void TextPage::createPath(GfxPath *path, GfxState *state, xmlNodePtr groupNode) 
                 svg_ymax = ymax;
         }
 
-        xmlNewProp(pathnode, (const xmlChar *) ATTR_D, (const xmlChar *) dd.getCString());
-        xmlAddChild(groupNode, pathnode);
+        // Emit the full-geometry node per subpath (default mode only). In coords-only
+        // mode a single bbox rectangle is emitted for the whole path after the loop.
+        if (buildFullGeometry) {
+            if (pathLimit > 0 && vecPathCount >= pathLimit) {
+                if (!vecLimitWarned) {
+                    fprintf(stderr, "Warning: vector path limit (%d) reached on page %d; "
+                            "remaining vector paths not emitted (union bbox preserved)\n",
+                            pathLimit, getPageNumber());
+                    vecLimitWarned = gTrue;
+                }
+            } else {
+                pathnode = xmlNewNode(NULL, (const xmlChar *) TAG_PATH);
+                xmlNewProp(pathnode, (const xmlChar *) ATTR_D, (const xmlChar *) dd.getCString());
+                xmlAddChild(groupNode, pathnode);
+                vecPathCount++;
+            }
+        }
+    }
+
+    // coords-only mode: emit a single bounding-box rectangle for the whole path.
+    // The min/max corners are the same ones GROBID's vector-coords.xq would derive
+    // from the full geometry, so the extracted box is unchanged.
+    if (writeFile && coordsOnly &&
+        !(xmin == 0 && xmax == 0 && ymin == 0 && ymax == 0)) {
+        if (pathLimit > 0 && vecPathCount >= pathLimit) {
+            if (!vecLimitWarned) {
+                fprintf(stderr, "Warning: vector path limit (%d) reached on page %d; "
+                        "remaining vector paths not emitted (union bbox preserved)\n",
+                        pathLimit, getPageNumber());
+                vecLimitWarned = gTrue;
+            }
+        } else {
+            snprintf(tmp, SVG_VALUE_BUFFER_SIZE,
+                     "M%1.4f,%1.4f L%1.4f,%1.4f L%1.4f,%1.4f L%1.4f,%1.4f Z",
+                     xmin, ymin, xmax, ymin, xmax, ymax, xmin, ymax);
+            pathnode = xmlNewNode(NULL, (const xmlChar *) TAG_PATH);
+            xmlNewProp(pathnode, (const xmlChar *) ATTR_D, (const xmlChar *) tmp);
+            xmlAddChild(groupNode, pathnode);
+            vecPathCount++;
+        }
     }
     // https://github.com/kermitt2/pdfalto/issues/63
     //delete d;
@@ -7921,7 +7975,19 @@ const char *TextPage::drawImageOrMask(GfxState *state, Object *ref, Stream *str,
 
     extension = EXTENSION_PNG;
 
-    if (extractImg) {
+    // Guard against malformed/pathological image dimensions before allocating
+    // width*height*3 bytes: a huge product overflows int (-> negative/wrapped
+    // size passed to new[]) and can crash or exhaust memory. The image
+    // coordinates are still emitted below regardless; only the pixel dump is skipped.
+    GBool imageDimsOk = (width > 0 && height > 0 &&
+                         (long long) width * (long long) height <= 100000000LL); // 100 Mpixels
+    if (extractImg && !imageDimsOk) {
+        fprintf(stderr, "Warning: skipping image pixel extraction for implausible "
+                "dimensions %dx%d (page %d); coordinates still emitted\n",
+                width, height, getPageNumber());
+    }
+
+    if (extractImg && imageDimsOk) {
         GString *relname = new GString(dataDirectory);
         relname->append("-");
         relname->append(GString::fromInt(imageIndex));    

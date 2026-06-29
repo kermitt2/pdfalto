@@ -57,6 +57,8 @@ static GBool noText = gFalse;
 static GBool noImage = gFalse;
 static GBool onlyGraphsCoord = gFalse;
 static GBool skipGraphs = gFalse;
+static GBool vectorCoordsOnly = gFalse;
+static int vectorPathLimit = 0;
 static GBool outline = gFalse;
 static GBool cutPages = gFalse;
 //static GBool blocks = gFalse;
@@ -91,6 +93,10 @@ static ArgDesc argDesc[] = {
                 "only extract image coordinates, do not dump image files"},
         {"-skipGraphs",    argFlag,   &skipGraphs,      0,
                 "skip all graphics processing (bitmap and vectorial)"},
+        {"-vectorCoordsOnly", argFlag, &vectorCoordsOnly, 0,
+                "for vector graphics, dump only each path's bounding-box rectangle instead of full curve geometry (smaller .svg, same coordinates)"},
+        {"-vectorLimit",   argInt,    &vectorPathLimit, 0,
+                "max vector paths emitted per page (0 = unlimited); guards against pathological files"},
         {"-noImageInline", argFlag,   &noImageInline,   0,
                 "deprecated"},
         {"-outline",       argFlag,   &outline,         0,
@@ -230,6 +236,20 @@ int main(int argc, char *argv[]) {
 
     if (!skipGraphs) {
         parameters->setSkipGraphs(gFalse);
+    }
+
+    if (vectorCoordsOnly) {
+        parameters->setVectorCoordsOnly(gTrue);
+        cmd->append("-vectorCoordsOnly ");
+    } else {
+        parameters->setVectorCoordsOnly(gFalse);
+    }
+
+    parameters->setVectorPathLimit(vectorPathLimit);
+    if (vectorPathLimit > 0) {
+        char vlbuf[64];
+        snprintf(vlbuf, sizeof(vlbuf), "-vectorLimit %d ", vectorPathLimit);
+        cmd->append(vlbuf);
     }
 
     if (noText) {

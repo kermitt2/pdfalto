@@ -100,6 +100,17 @@ public:
 	 */
 	GBool getSkipGraphs() { return skipGraphs;};
 
+	/** Return a boolean which informs if vector graphics should be dumped as their
+	 * bounding-box rectangle only (coordinates), instead of their full curve geometry
+	 * @return <code>true</code> if the vectorCoordsOnly option is selected, <code>false</code> otherwise
+	 */
+	GBool getVectorCoordsOnly() { return vectorCoordsOnly; };
+
+	/** Return the maximum number of vector paths emitted per page (0 = unlimited).
+	 * Protects against pathological/corrupt files with huge path counts.
+	 */
+	int getVectorPathLimit() { return vectorPathLimit; }
+
 	// setters
 
 	/** Modify the boolean which inform if the images are displayed
@@ -165,6 +176,14 @@ public:
 	 */
 	void setSkipGraphs(GBool skipGraphsAttr);
 
+	/** Modify the boolean which informs if vector graphics are dumped as bounding-box rectangles only
+	 * @param vectorCoordsOnlyAttr <code>true</code> if the vectorCoordsOnly option is selected, <code>false</code> otherwise
+	 */
+	void setVectorCoordsOnly(GBool vectorCoordsOnlyAttr);
+
+	/** Modify the maximum number of vector paths emitted per page (0 = unlimited) */
+	void setVectorPathLimit(int limit);
+
 	void saveToXML(const char *fileName,int firstPage,int lastPage);
 	
 private:
@@ -195,6 +214,10 @@ private:
   	GBool noLineNumbers;
 	/** The value of the skipGraphs option */
 	GBool skipGraphs;
+	/** The value of the vectorCoordsOnly option */
+	GBool vectorCoordsOnly;
+	/** Max number of vector paths emitted per page (0 = unlimited) */
+	int vectorPathLimit;
 };
 
 #endif /*PARAMETERS_H_*/

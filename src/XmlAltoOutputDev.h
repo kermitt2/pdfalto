@@ -1396,6 +1396,11 @@ private:
     double svg_xmax;
     double svg_ymax;
 
+    /** Number of vector paths already emitted on the current page (for -vectorLimit) */
+    int vecPathCount;
+    /** Whether the per-page vector path-limit warning has already been logged */
+    GBool vecLimitWarned;
+
     /** The directory name which contain all data */
     GString *dataDirectory;
 
