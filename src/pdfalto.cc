@@ -59,6 +59,7 @@ static GBool onlyGraphsCoord = gFalse;
 static GBool skipGraphs = gFalse;
 static GBool vectorCoordsOnly = gFalse;
 static int vectorPathLimit = 0;
+static GBool vectorBoxes = gFalse;
 static GBool outline = gFalse;
 static GBool cutPages = gFalse;
 //static GBool blocks = gFalse;
@@ -97,6 +98,8 @@ static ArgDesc argDesc[] = {
                 "for vector graphics, dump only each path's bounding-box rectangle instead of full curve geometry (smaller .svg, same coordinates)"},
         {"-vectorLimit",   argInt,    &vectorPathLimit, 0,
                 "max vector paths emitted per page (0 = unlimited); guards against pathological files"},
+        {"-vectorBoxes",   argFlag,   &vectorBoxes,     0,
+                "emit one bounding box per vector group in the ALTO (instead of a single per-page union box), so vector coordinates can be read without the .svg files"},
         {"-noImageInline", argFlag,   &noImageInline,   0,
                 "deprecated"},
         {"-outline",       argFlag,   &outline,         0,
@@ -250,6 +253,13 @@ int main(int argc, char *argv[]) {
         char vlbuf[64];
         snprintf(vlbuf, sizeof(vlbuf), "-vectorLimit %d ", vectorPathLimit);
         cmd->append(vlbuf);
+    }
+
+    if (vectorBoxes) {
+        parameters->setVectorBoxes(gTrue);
+        cmd->append("-vectorBoxes ");
+    } else {
+        parameters->setVectorBoxes(gFalse);
     }
 
     if (noText) {
