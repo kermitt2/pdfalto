@@ -2053,6 +2053,7 @@ void TextPage::startPage(int pageNum, GfxState *state, GBool cut) {
     svg_xmax=0, svg_xmin=0, svg_ymax=0, svg_ymin =0;
     vecPathCount = 0;
     vecLimitWarned = gFalse;
+    vectorBoxes.clear();
     // for links
     //  store them in a list
     //  and when dump: for each token look at intersectionwith
@@ -6656,7 +6657,56 @@ void TextPage::dump(GBool noLineNumbers, GBool fullFontName, const vector<bool> 
     }
 
 
-    if (!parameters->getSkipGraphs())
+    if (!parameters->getSkipGraphs() && parameters->getVectorBoxes())
+    {
+        // -vectorBoxes: emit one <Illustration TYPE="svg"> per vector group, carrying
+        // that group's bounding box, so consumers read the vector coordinates straight
+        // from the ALTO (no .svg parsing). No geometry was built in memory for these.
+        char tmpb[32];
+        if (vecLimitWarned) {
+            // page had too many groups -> emit a single union box (bounded, complete)
+            GString *bsid = new GString("p");
+            bsid = buildSID(getPageNumber(), getIdx(), bsid);
+            xmlNodePtr bnode = xmlNewNode(NULL, (const xmlChar *) TAG_IMAGE);
+            xmlNewProp(bnode, (const xmlChar *) ATTR_ID, (const xmlChar *) bsid->getCString());
+            snprintf(tmpb, sizeof(tmpb), ATTR_NUMFORMAT, svg_xmin);
+            xmlNewProp(bnode, (const xmlChar *) ATTR_X, (const xmlChar *) tmpb);
+            snprintf(tmpb, sizeof(tmpb), ATTR_NUMFORMAT, svg_ymin);
+            xmlNewProp(bnode, (const xmlChar *) ATTR_Y, (const xmlChar *) tmpb);
+            snprintf(tmpb, sizeof(tmpb), ATTR_NUMFORMAT, svg_xmax - svg_xmin);
+            xmlNewProp(bnode, (const xmlChar *) ATTR_WIDTH, (const xmlChar *) tmpb);
+            snprintf(tmpb, sizeof(tmpb), ATTR_NUMFORMAT, svg_ymax - svg_ymin);
+            xmlNewProp(bnode, (const xmlChar *) ATTR_HEIGHT, (const xmlChar *) tmpb);
+            std::string rotation = std::to_string(0.0);
+            xmlNewProp(bnode, (const xmlChar *) ATTR_ROTATION, (const xmlChar *) rotation.c_str());
+            xmlNewProp(bnode, (const xmlChar *) ATTR_TYPE, (const xmlChar *) "svg");
+            xmlAddChild(printSpace, bnode);
+            delete bsid;
+        } else {
+            for (size_t i = 0; i < vectorBoxes.size(); i++) {
+                const VectorBox &b = vectorBoxes[i];
+                GString *bsid = new GString("p");
+                bsid = buildSID(getPageNumber(), b.idx, bsid);
+                xmlNodePtr bnode = xmlNewNode(NULL, (const xmlChar *) TAG_IMAGE);
+                xmlNewProp(bnode, (const xmlChar *) ATTR_ID, (const xmlChar *) bsid->getCString());
+                snprintf(tmpb, sizeof(tmpb), ATTR_NUMFORMAT, b.x);
+                xmlNewProp(bnode, (const xmlChar *) ATTR_X, (const xmlChar *) tmpb);
+                snprintf(tmpb, sizeof(tmpb), ATTR_NUMFORMAT, b.y);
+                xmlNewProp(bnode, (const xmlChar *) ATTR_Y, (const xmlChar *) tmpb);
+                snprintf(tmpb, sizeof(tmpb), ATTR_NUMFORMAT, b.w);
+                xmlNewProp(bnode, (const xmlChar *) ATTR_WIDTH, (const xmlChar *) tmpb);
+                snprintf(tmpb, sizeof(tmpb), ATTR_NUMFORMAT, b.h);
+                xmlNewProp(bnode, (const xmlChar *) ATTR_HEIGHT, (const xmlChar *) tmpb);
+                std::string rotation = std::to_string(0.0);
+                xmlNewProp(bnode, (const xmlChar *) ATTR_ROTATION, (const xmlChar *) rotation.c_str());
+                xmlNewProp(bnode, (const xmlChar *) ATTR_TYPE, (const xmlChar *) "svg");
+                xmlAddChild(printSpace, bnode);
+                delete bsid;
+            }
+        }
+        xmlFreeDoc(vecdoc);
+    }
+    else if (!parameters->getSkipGraphs())
     {
         GString *sid = new GString("p");
         //GBool isInline = false;
@@ -7412,7 +7462,7 @@ void TextPage::doPath(GfxPath *path, GfxState *state, GString *gattributes) {
     // coordinate node. Skipping the node tree avoids accumulating the full vector
     // geometry in memory, which is the >6GB OOM cause on vector-heavy PDFs.
     xmlNodePtr groupNode = NULL;
-    if (parameters->getDisplayImage()) {
+    if (parameters->getDisplayImage() && !parameters->getVectorBoxes()) {
         // GROUP tag
         groupNode = xmlNewNode(NULL, (const xmlChar *) TAG_GROUP);
         xmlAddChild(vecroot, groupNode);
@@ -7425,10 +7475,14 @@ void TextPage::doPath(GfxPath *path, GfxState *state, GString *gattributes) {
 
         xmlNewProp(groupNode, (const xmlChar *) ATTR_SVGID, (const xmlChar *) sid.getCString());
     }
-    createPath(path, state, groupNode);
+    createPath(path, state, groupNode, /*recordVectorBox=*/gTrue);
 }
 
-void TextPage::createPath(GfxPath *path, GfxState *state, xmlNodePtr groupNode) {
+// Default per-page cap on the number of vector-group boxes emitted in -vectorBoxes
+// mode (overridable with -vectorLimit). Pages exceeding it fall back to one union box.
+#define DEFAULT_VECTOR_BOX_CAP 5000
+
+void TextPage::createPath(GfxPath *path, GfxState *state, xmlNodePtr groupNode, GBool recordVectorBox) {
     GfxSubpath *subpath;
     double x0, y0, x1, y1, x2, y2, x3, y3;
     double xmin =0 , xmax = 0 , ymin = 0, ymax=0;
@@ -7448,7 +7502,8 @@ void TextPage::createPath(GfxPath *path, GfxState *state, xmlNodePtr groupNode) 
     //    extracts, orders of magnitude smaller .svg)
     //  - neither (groupNode == NULL, i.e. -onlyGraphsCoord / -noImage): build no
     //    nodes at all; only keep tracking the union bbox -> avoids the >6GB OOM.
-    GBool writeFile = (groupNode != NULL) && parameters->getDisplayImage();
+    GBool writeFile = (groupNode != NULL) && parameters->getDisplayImage()
+                      && !parameters->getVectorBoxes();
     GBool coordsOnly = parameters->getVectorCoordsOnly();
     GBool buildFullGeometry = writeFile && !coordsOnly;
     int pathLimit = parameters->getVectorPathLimit();
@@ -7649,6 +7704,32 @@ void TextPage::createPath(GfxPath *path, GfxState *state, xmlNodePtr groupNode) 
             xmlNewProp(pathnode, (const xmlChar *) ATTR_D, (const xmlChar *) tmp);
             xmlAddChild(groupNode, pathnode);
             vecPathCount++;
+        }
+    }
+
+    // -vectorBoxes: record one bounding box for this vector group (drawn graphics
+    // only; xmin..ymax accumulate over all of the group's subpaths above). These are
+    // emitted directly in the ALTO instead of the single per-page union box, so a
+    // consumer reads the vector coordinates without parsing the .svg. Cheap (4
+    // doubles), and independent of whether any geometry was built in memory.
+    if (recordVectorBox && parameters->getVectorBoxes() &&
+        !(xmin == 0 && xmax == 0 && ymin == 0 && ymax == 0)) {
+        // Cap the number of per-group boxes kept per page. Beyond it (pathological
+        // files can have millions of draw operations) we stop collecting and dump()
+        // falls back to a single union box for the page, keeping both memory and the
+        // ALTO size bounded. Default cap, overridable with -vectorLimit.
+        int boxCap = (pathLimit > 0) ? pathLimit : DEFAULT_VECTOR_BOX_CAP;
+        if ((int) vectorBoxes.size() >= boxCap) {
+            if (!vecLimitWarned) {
+                fprintf(stderr, "Warning: vector group count exceeded %d on page %d; "
+                        "falling back to a single union box for this page\n",
+                        boxCap, getPageNumber());
+                vecLimitWarned = gTrue;
+            }
+        } else {
+            VectorBox b;
+            b.x = xmin; b.y = ymin; b.w = xmax - xmin; b.h = ymax - ymin; b.idx = getIdx();
+            vectorBoxes.push_back(b);
         }
     }
     // https://github.com/kermitt2/pdfalto/issues/63

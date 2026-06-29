@@ -111,6 +111,13 @@ public:
 	 */
 	int getVectorPathLimit() { return vectorPathLimit; }
 
+	/** Return a boolean informing if one bounding box per vector group should be
+	 * emitted directly in the ALTO (instead of a single per-page union box), so a
+	 * consumer can read the vector coordinates without parsing the .svg files.
+	 * @return <code>true</code> if the vectorBoxes option is selected, <code>false</code> otherwise
+	 */
+	GBool getVectorBoxes() { return vectorBoxes; };
+
 	// setters
 
 	/** Modify the boolean which inform if the images are displayed
@@ -184,6 +191,9 @@ public:
 	/** Modify the maximum number of vector paths emitted per page (0 = unlimited) */
 	void setVectorPathLimit(int limit);
 
+	/** Modify the boolean informing if one bounding box per vector group is emitted in the ALTO */
+	void setVectorBoxes(GBool vectorBoxesAttr);
+
 	void saveToXML(const char *fileName,int firstPage,int lastPage);
 	
 private:
@@ -218,6 +228,8 @@ private:
 	GBool vectorCoordsOnly;
 	/** Max number of vector paths emitted per page (0 = unlimited) */
 	int vectorPathLimit;
+	/** The value of the vectorBoxes option */
+	GBool vectorBoxes;
 };
 
 #endif /*PARAMETERS_H_*/

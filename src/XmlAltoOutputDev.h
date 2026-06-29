@@ -1173,7 +1173,7 @@ public:
      * @param path The path description
      * @param state The state description
      * @param groupNode The current GROUP node  */
-    void createPath(GfxPath *path, GfxState *state, xmlNodePtr groupNode);
+    void createPath(GfxPath *path, GfxState *state, xmlNodePtr groupNode, GBool recordVectorBox = gFalse);
 
     /** Get the clipping box and add the CLIP tag whithin the instructions vectorials node.
      * In this case, the rule use is the even-odd.
@@ -1400,6 +1400,12 @@ private:
     int vecPathCount;
     /** Whether the per-page vector path-limit warning has already been logged */
     GBool vecLimitWarned;
+
+    /** One lightweight bounding box per vector group drawn on the current page,
+     * collected when -vectorBoxes is set and emitted in the ALTO instead of the
+     * single per-page union box. Reset at startPage. */
+    struct VectorBox { double x, y, w, h; int idx; };
+    std::vector<VectorBox> vectorBoxes;
 
     /** The directory name which contain all data */
     GString *dataDirectory;
