@@ -6653,6 +6653,7 @@ void TextPage::dump(GBool noLineNumbers, GBool fullFontName, const vector<bool> 
             xmlNewProp(bnode, (const xmlChar *) ATTR_HEIGHT, (const xmlChar *) tmpb);
             std::string rotation = std::to_string(0.0);
             xmlNewProp(bnode, (const xmlChar *) ATTR_ROTATION, (const xmlChar *) rotation.c_str());
+            xmlNewProp(bnode, (const xmlChar *) ATTR_OPACITY, (const xmlChar *) "1");
             xmlNewProp(bnode, (const xmlChar *) ATTR_TYPE, (const xmlChar *) "svg");
             xmlAddChild(printSpace, bnode);
             delete bsid;
@@ -6673,6 +6674,8 @@ void TextPage::dump(GBool noLineNumbers, GBool fullFontName, const vector<bool> 
                 xmlNewProp(bnode, (const xmlChar *) ATTR_HEIGHT, (const xmlChar *) tmpb);
                 std::string rotation = std::to_string(0.0);
                 xmlNewProp(bnode, (const xmlChar *) ATTR_ROTATION, (const xmlChar *) rotation.c_str());
+                snprintf(tmpb, sizeof(tmpb), "%g", b.opacity);
+                xmlNewProp(bnode, (const xmlChar *) ATTR_OPACITY, (const xmlChar *) tmpb);
                 xmlNewProp(bnode, (const xmlChar *) ATTR_TYPE, (const xmlChar *) "svg");
                 xmlAddChild(printSpace, bnode);
                 delete bsid;
@@ -7414,7 +7417,7 @@ void TextPage::doPathForClip(GfxPath *path, GfxState *state,
     }
 }
 
-void TextPage::doPath(GfxPath *path, GfxState *state, GString *gattributes) {
+void TextPage::doPath(GfxPath *path, GfxState *state, GString *gattributes, double opacity) {
     if (parameters->getSkipGraphs()) {
         return;
     }
@@ -7443,14 +7446,14 @@ void TextPage::doPath(GfxPath *path, GfxState *state, GString *gattributes) {
 
         xmlNewProp(groupNode, (const xmlChar *) ATTR_SVGID, (const xmlChar *) sid.getCString());
     }
-    createPath(path, state, groupNode, /*recordVectorBox=*/gTrue);
+    createPath(path, state, groupNode, /*recordVectorBox=*/gTrue, opacity);
 }
 
 // Default per-page cap on the number of vector-group boxes emitted in -vectorBoxes
 // mode (overridable with -vectorLimit). Pages exceeding it fall back to one union box.
 #define DEFAULT_VECTOR_BOX_CAP 5000
 
-void TextPage::createPath(GfxPath *path, GfxState *state, xmlNodePtr groupNode, GBool recordVectorBox) {
+void TextPage::createPath(GfxPath *path, GfxState *state, xmlNodePtr groupNode, GBool recordVectorBox, double opacity) {
     GfxSubpath *subpath;
     double x0, y0, x1, y1, x2, y2, x3, y3;
     double xmin =0 , xmax = 0 , ymin = 0, ymax=0;
@@ -7695,9 +7698,21 @@ void TextPage::createPath(GfxPath *path, GfxState *state, xmlNodePtr groupNode, 
                 vecLimitWarned = gTrue;
             }
         } else {
-            VectorBox b;
-            b.x = xmin; b.y = ymin; b.w = xmax - xmin; b.h = ymax - ymin; b.idx = getIdx();
-            vectorBoxes.push_back(b);
+            // clamp to page bounds: guards degenerate transforms that explode a path's
+            // coordinates far beyond the page (seen: a single 3.3e8 pt^2 box).
+            double bx0 = xmin, by0 = ymin, bx1 = xmax, by1 = ymax;
+            if (pageWidth > 0 && pageHeight > 0) {
+                if (bx0 < 0) bx0 = 0;
+                if (by0 < 0) by0 = 0;
+                if (bx1 > pageWidth)  bx1 = pageWidth;
+                if (by1 > pageHeight) by1 = pageHeight;
+            }
+            if (bx1 > bx0 && by1 > by0) {
+                VectorBox b;
+                b.x = bx0; b.y = by0; b.w = bx1 - bx0; b.h = by1 - by0; b.idx = getIdx();
+                b.opacity = opacity;
+                vectorBoxes.push_back(b);
+            }
         }
     }
     // https://github.com/kermitt2/pdfalto/issues/63
@@ -10122,7 +10137,7 @@ void XmlAltoOutputDev::stroke(GfxState *state) {
     }
     attr.append(tmp);
 
-    doPath(state->getPath(), state, &attr);
+    doPath(state->getPath(), state, &attr, state->getStrokeOpacity());
 }
 
 void XmlAltoOutputDev::fill(GfxState *state) {
@@ -10130,8 +10145,8 @@ void XmlAltoOutputDev::fill(GfxState *state) {
         return;
     }
 
-    char tmp[100] = "fill: ";
-    GString attr(tmp, sizeof(tmp));
+    char tmp[100];
+    GString attr("fill: ");
     GfxRGB rgb;
 
     // The fill attribute which give color value
@@ -10145,7 +10160,7 @@ void XmlAltoOutputDev::fill(GfxState *state) {
     snprintf(tmp, sizeof(tmp), "fill-opacity: %g;", fo);
     attr.append(tmp);
 
-    doPath(state->getPath(), state, &attr);
+    doPath(state->getPath(), state, &attr, fo);
 }
 
 void XmlAltoOutputDev::eoFill(GfxState *state) {
@@ -10153,8 +10168,8 @@ void XmlAltoOutputDev::eoFill(GfxState *state) {
         return;
     }
 
-    char tmp[100] = "fill: ";
-    GString attr(tmp, sizeof(tmp));
+    char tmp[100];
+    GString attr("fill: ");
     GfxRGB rgb;
 
     // The fill attribute which give color value
@@ -10171,7 +10186,7 @@ void XmlAltoOutputDev::eoFill(GfxState *state) {
     snprintf(tmp, sizeof(tmp), "fill-opacity: %g;", fo);
     attr.append(tmp);
 
-    doPath(state->getPath(), state, &attr);
+    doPath(state->getPath(), state, &attr, fo);
 }
 
 void XmlAltoOutputDev::clip(GfxState *state) {
@@ -10189,12 +10204,12 @@ void XmlAltoOutputDev::clipToStrokePath(GfxState *state) {
     text->clipToStrokePath(state);
 }
 
-void XmlAltoOutputDev::doPath(GfxPath *path, GfxState *state, GString *gattributes) {
+void XmlAltoOutputDev::doPath(GfxPath *path, GfxState *state, GString *gattributes, double opacity) {
     if (parameters->getSkipGraphs()) {
         return;
     }
 
-    text->doPath(path, state, gattributes);
+    text->doPath(path, state, gattributes, opacity);
 }
 
 void XmlAltoOutputDev::saveState(GfxState *state) {

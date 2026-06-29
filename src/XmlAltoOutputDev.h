@@ -1150,7 +1150,7 @@ public:
      * @param path The path description
      * @param state The state description
      * @param gattributes All attributes for the <i>style</i> attribut*/
-    void doPath(GfxPath *path, GfxState *state, GString *gattributes);
+    void doPath(GfxPath *path, GfxState *state, GString *gattributes, double opacity = 1.0);
 
     /** Add the GROUP tag whithin the CLIP current node
      * @param path The path description
@@ -1162,7 +1162,7 @@ public:
      * @param path The path description
      * @param state The state description
      * @param groupNode The current GROUP node  */
-    void createPath(GfxPath *path, GfxState *state, xmlNodePtr groupNode, GBool recordVectorBox = gFalse);
+    void createPath(GfxPath *path, GfxState *state, xmlNodePtr groupNode, GBool recordVectorBox = gFalse, double opacity = 1.0);
 
     /** Get the clipping box and add the CLIP tag whithin the instructions vectorials node.
      * In this case, the rule use is the even-odd.
@@ -1393,7 +1393,7 @@ private:
     /** One lightweight bounding box per vector group drawn on the current page,
      * collected when -vectorBoxes is set and emitted in the ALTO instead of the
      * single per-page union box. Reset at startPage. */
-    struct VectorBox { double x, y, w, h; int idx; };
+    struct VectorBox { double x, y, w, h; int idx; double opacity; };
     std::vector<VectorBox> vectorBoxes;
 
     /** The directory name which contain all data */
@@ -1807,7 +1807,7 @@ private:
      * @param path The current path
      * @param state The state description
      * @param gattributes Style attributes to add to the current path */
-    void doPath(GfxPath *path, GfxState *state, GString* gattributes);
+    void doPath(GfxPath *path, GfxState *state, GString* gattributes, double opacity = 1.0);
 
     double curstate[6];//this is the ctm
     //double *curstate[1000];

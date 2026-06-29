@@ -62,6 +62,7 @@ namespace ConstantsXML {
 	const char *ATTR_Y = "VPOS";
 	
 	const char *ATTR_ROTATION = "ROTATION";
+	const char *ATTR_OPACITY = "OPACITY";
 	const char *ATTR_ANGLE = "angle";
 
 	const char *ATTR_ID = "ID";
