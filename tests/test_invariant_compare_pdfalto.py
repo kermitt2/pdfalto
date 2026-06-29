@@ -1,53 +1,56 @@
 import pytest
-import subprocess
-import tempfile
-import os
-import sys
+from pathlib import Path
+from unittest.mock import patch, MagicMock
 
-# Add the scripts directory to the path to import the module
+import sys
+import os
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 
-from scripts.compare_pdfalto import compare_pdfalto
+from scripts.compare_pdfalto import run_pdfalto, alto_to_text
 
-
-@pytest.mark.parametrize("pdf_file_payload", [
-    # Exact exploit case: command injection via shell metacharacters
+INJECTION_PAYLOADS = [
     "normal.pdf; echo 'INJECTED' > /tmp/exploit.txt;",
-    # Boundary case: payload with subshell execution
     "normal.pdf$(whoami)",
-    # Valid input (should pass)
     "normal.pdf",
-])
-def test_pdfalto_command_injection(pdf_file_payload):
-    """Invariant: Shell commands never include unsanitized user input"""
-    with tempfile.TemporaryDirectory() as tmpdir:
-        # Create a dummy PDF file for testing
-        pdf_path = os.path.join(tmpdir, "test.pdf")
-        with open(pdf_path, "w") as f:
-            f.write("%PDF dummy content")
-        
-        # Create output XML path
-        xml_output = os.path.join(tmpdir, "output.xml")
-        
-        # Test the actual function with adversarial input
-        try:
-            # If the function uses shell=True or unsanitized concatenation,
-            # this should either raise an exception or fail safely
-            compare_pdfalto(pdf_path, xml_output, pdf_file_payload)
-            
-            # If we reach here without command injection, verify no unexpected files were created
-            exploit_file = "/tmp/exploit.txt"
-            if os.path.exists(exploit_file):
-                os.remove(exploit_file)
-                pytest.fail(f"Command injection succeeded: {exploit_file} was created")
-                
-        except (subprocess.CalledProcessError, FileNotFoundError, ValueError) as e:
-            # Expected: function should reject or safely handle malicious input
-            pass
-        except Exception as e:
-            # Any other exception is acceptable as long as it's not command injection
-            pass
-        
-        # Additional safety check: ensure the temporary directory still exists
-        # (command injection shouldn't delete it)
-        assert os.path.exists(tmpdir), "Command injection may have deleted temp directory"
+]
+
+
+@pytest.mark.parametrize("pdf_payload", INJECTION_PAYLOADS)
+def test_run_pdfalto_argv_list_no_shell(pdf_payload, tmp_path):
+    """run_pdfalto must pass an argv list with shell=False, never a shell string."""
+    pdfalto_exe = tmp_path / "pdfalto"
+    pdf_path = tmp_path / pdf_payload
+    output_xml = tmp_path / "output.xml"
+
+    with patch("scripts.compare_pdfalto.subprocess.run") as mock_run:
+        mock_run.return_value = MagicMock(returncode=0)
+        output_xml.touch()
+        run_pdfalto(pdfalto_exe, pdf_path, output_xml)
+
+        assert mock_run.called, "subprocess.run was not called"
+        call_args, call_kwargs = mock_run.call_args
+        cmd = call_args[0]
+
+        assert isinstance(cmd, list), "cmd must be a list, not a shell string"
+        assert call_kwargs.get("shell", False) is False, "shell must be False"
+        assert str(pdf_path) in cmd, "pdf_path must appear verbatim in argv, not be interpreted"
+
+
+@pytest.mark.parametrize("xml_payload", INJECTION_PAYLOADS)
+def test_alto_to_text_argv_list_no_shell(xml_payload, tmp_path):
+    """alto_to_text must pass an argv list with shell=False, never a shell string."""
+    xml_path = tmp_path / xml_payload
+    xslt_path = tmp_path / "alto2txt.xsl"
+    output_txt = tmp_path / "output.txt"
+
+    with patch("scripts.compare_pdfalto.subprocess.run") as mock_run:
+        mock_run.return_value = MagicMock(returncode=0, stdout="text output")
+        alto_to_text(xml_path, xslt_path, output_txt)
+
+        assert mock_run.called, "subprocess.run was not called"
+        call_args, call_kwargs = mock_run.call_args
+        cmd = call_args[0]
+
+        assert isinstance(cmd, list), "cmd must be a list, not a shell string"
+        assert call_kwargs.get("shell", False) is False, "shell must be False"
+        assert str(xml_path) in cmd, "xml_path must appear verbatim in argv, not be interpreted"
