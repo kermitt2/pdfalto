@@ -50,7 +50,7 @@ def run_pdfalto(pdfalto_exe: Path, pdf_path: Path, output_xml: Path) -> bool:
         str(output_xml)
     ]
     try:
-        result = subprocess.run(cmd, capture_output=True, text=True, timeout=300)
+        result = subprocess.run(cmd, capture_output=True, text=True, timeout=300, shell=False)
         if result.returncode != 0:
             return False
         # Validate that output file exists and is non-empty
@@ -70,7 +70,7 @@ def alto_to_text(xml_path: Path, xslt_path: Path, output_txt: Path) -> bool:
     """Convert ALTO XML to plain text using xsltproc."""
     cmd = ['xsltproc', str(xslt_path), str(xml_path)]
     try:
-        result = subprocess.run(cmd, capture_output=True, encoding='utf-8', timeout=60)
+        result = subprocess.run(cmd, capture_output=True, encoding='utf-8', timeout=60, shell=False)
         if result.returncode == 0:
             with open(output_txt, 'w', encoding='utf-8') as f:
                 f.write(result.stdout)
