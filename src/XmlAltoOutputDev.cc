@@ -1863,6 +1863,7 @@ TextPage::TextPage(GBool verboseA, Catalog *catalog, xmlNodePtr node,
     actualTextNBytes = 0;
 
     curWord = NULL;
+    lastAddedChar = NULL;
     charPos = 0;
     curFont = NULL;
     curFontSize = 0;
@@ -2124,6 +2125,7 @@ void TextPage::clear() {
     actualTextNBytes = 0;
 
     curWord = NULL;
+    lastAddedChar = NULL;
     charPos = 0;
     curFont = NULL;
     curFontSize = 0;
@@ -2767,6 +2769,10 @@ void TextPage::addCharToRawWord(GfxState *state, double x, double y, double dx,
     GBool overlap = gFalse;
     int uBufLen, i;
 
+    // Reset per-call; set below only if a TextChar is actually created, so the
+    // OCR sidecar reads back the real glyph bbox (or nothing for filtered chars).
+    lastAddedChar = NULL;
+
     if (uLen == 0) {
         endWord();
         return;
@@ -2959,6 +2965,12 @@ void TextPage::addCharToRawWord(GfxState *state, double x, double y, double dx,
             curWord->addChar(state, x1 + i * w1, y1 + i * h1, w1, h1, u[i], c, charPos,
                              (overlap || sp < -minDupBreakOverlap * curWord->fontSize), curFont, curFontSize,
                              splashFont, nBytes, curRot, isNonUnicodeGlyph);
+        }
+        // Expose the just-created TextChar (last in the word) so drawChar can
+        // record the OCR sidecar bbox from the same rotation-aware, transformed
+        // box ALTO uses, rather than recomputing it.
+        if (curWord && curWord->chars->getLength() > 0) {
+            lastAddedChar = (TextChar *) curWord->chars->get(curWord->chars->getLength() - 1);
         }
     }
 
@@ -8264,20 +8276,9 @@ XmlAltoOutputDev::XmlAltoOutputDev(GString *fileName, GString *fileNamePdf,
     nT3Fonts = 0;
 
     unicode_map = new GHash(gTrue);
+    // Placeholders for non-Unicode glyphs are allocated lazily from the Private
+    // Use Area (see kPlaceholderBase/kPlaceholderEnd); no fixed table needed.
     placeholderIdx = 0;
-    //initialise some special unicodes 9 to begin with as placeholders, from https://unicode.org/charts/PDF/U2B00.pdf
-    placeholders.push_back((Unicode) 9724);
-    placeholders.push_back((Unicode) 9650);
-    placeholders.push_back((Unicode) 9658);
-    placeholders.push_back((Unicode) 9670);
-    placeholders.push_back((Unicode) 9675);
-    placeholders.push_back((Unicode) 9671);
-    placeholders.push_back((Unicode) 9679);
-    placeholders.push_back((Unicode) 9678);
-    placeholders.push_back((Unicode) 9725);
-    placeholders.push_back((Unicode) 9720);
-    placeholders.push_back((Unicode) 9721);
-    placeholders.push_back((Unicode) 9722);
 
     //curstate=(double*)malloc(10000*sizeof(6*double));
 
@@ -9705,18 +9706,14 @@ void XmlAltoOutputDev::drawChar(GfxState *state, double x, double y, double dx,
                                 GBool fill, GBool stroke, GBool makePath) {
 
     GBool isNonUnicodeGlyph = gFalse;
+    // OCR-sidecar record deferred until after addChar (see below), so the bbox
+    // can be taken from the real TextChar instead of a recomputed one.
+    Unicode ocrPlaceholder = 0;
+    std::string ocrFontName;
 
     SplashFont *splashFont = NULL;
 
     if (parameters->getOcr() == gTrue) {
-        SplashCoord mat[6];
-//        mat[0] = (SplashCoord) (curstate[0]);
-//        mat[1] = (SplashCoord) (curstate[1]);
-//        mat[2] = (SplashCoord) (curstate[2]);
-//        mat[3] = (SplashCoord) (curstate[3]);
-//        mat[4] = (SplashCoord) (curstate[4]);
-//        mat[5] = (SplashCoord) (curstate[5]);
-        //splashFont = getSplashFont(state, mat);
         if ((uLen == 0 ||
              ((u[0] == (Unicode) 0 || u[0] < (Unicode) 32) && uLen == 1) ||
              (uLen > 1 && (globalParams->getTextEncodingName()->cmp(ENCODING_UTF8)==0)&& !isUTF8(u, uLen)))) {
@@ -9731,15 +9728,18 @@ void XmlAltoOutputDev::drawChar(GfxState *state, double x, double y, double dx,
                 fontName = new GString();
             }
             fontName->append(to_string(c).c_str());
-            if (globalParams->getPrintCommands()) {
-                printf("ToBeOCRISEChar: x=%.2f y=%.2f c=%3d=0x%02x='%c' u=%3d fontName=%s \n",
-                       (double) x, (double) y, c, c, c, u[0], fontName->getCString());
-            }
-            // do map every char to a unicode, depending on charcode and font name
+            // Map every (fontName,charCode) to a stable placeholder codepoint.
             Unicode mapped_unicode = unicode_map->lookupInt(fontName);
             if (!mapped_unicode) {
-                mapped_unicode = placeholders[placeholderIdx];
-                if (placeholderIdx + 1 < placeholders.size()) {
+                // Allocate the next unique Private Use Area codepoint; saturate
+                // at kPlaceholderEnd only past 6400 distinct glyphs (so the
+                // in-text placeholder stays a collision-free key into the
+                // sidecar for any realistic document).
+                mapped_unicode = (Unicode) (kPlaceholderBase + placeholderIdx);
+                if (mapped_unicode > kPlaceholderEnd) {
+                    mapped_unicode = kPlaceholderEnd;
+                }
+                if (kPlaceholderBase + placeholderIdx < kPlaceholderEnd) {
                     placeholderIdx++;
                 }
                 unicode_map->add(fontName, mapped_unicode);
@@ -9750,11 +9750,160 @@ void XmlAltoOutputDev::drawChar(GfxState *state, double x, double y, double dx,
             u[0] = mapped_unicode;
             uLen = 1;
             isNonUnicodeGlyph = gTrue;
+
+            // Capture the placeholder + font name; the sidecar bbox is recorded
+            // after addChar below, from the real TextChar, so it matches the
+            // rotation-aware, transformed box ALTO uses.
+            ocrPlaceholder = mapped_unicode;
+            GfxFont *gfxFont = state->getFont();
+            GString *rawFontName = gfxFont ? gfxFont->getName() : NULL;
+            ocrFontName = rawFontName ? rawFontName->getCString() : "";
         }
     } else if(uLen > 1 && (globalParams->getTextEncodingName()->cmp(ENCODING_UTF8)==0)&& !isUTF8(u, uLen))
         return;
 
     text->addChar(state, x, y, dx, dy, c, nBytes, u, uLen, splashFont, isNonUnicodeGlyph);
+
+    if (isNonUnicodeGlyph) {
+        // Record the OCR-sidecar glyph from the TextChar addChar just created,
+        // so the bbox is identical to the one ALTO emits (correct for rotated,
+        // CTM-scaled and Type 3 text). If the char was filtered out
+        // (out-of-bounds/tiny/space), there is nothing to OCR, so skip it.
+        TextChar *tc = text->getLastAddedChar();
+        if (tc) {
+            recordNonUnicodeGlyph(text->getPageNumber(),
+                                  tc->xMin, tc->yMin, tc->xMax, tc->yMax,
+                                  ocrPlaceholder, c, ocrFontName.c_str());
+        }
+    }
+}
+
+void XmlAltoOutputDev::recordNonUnicodeGlyph(int page,
+                                             double xMin, double yMin,
+                                             double xMax, double yMax,
+                                             Unicode placeholder,
+                                             CharCode charCode,
+                                             const char *fontName) {
+    std::string font = fontName ? fontName : "";
+    // Case-insensitive dedup: some PDFs emit two GfxFont instances for
+    // the same logical font that differ only by case in their name (e.g.
+    // "AMDONF+..." and "amdonf+..."). Collapse them in the sidecar.
+    std::string keyFont = font;
+    for (char &kc : keyFont) {
+        kc = (char) tolower((unsigned char) kc);
+    }
+    std::string key = keyFont + "\x1f" + std::to_string((unsigned long)charCode);
+    auto it = ocrGlyphIndex.find(key);
+    if (it == ocrGlyphIndex.end()) {
+        OcrGlyph g;
+        g.placeholder = placeholder;
+        g.charCode = charCode;
+        g.fontName = font;
+        ocrGlyphs.push_back(std::move(g));
+        it = ocrGlyphIndex.emplace(key, ocrGlyphs.size() - 1).first;
+    }
+    OcrGlyphInstance inst{page, xMin, yMin, xMax, yMax};
+    ocrGlyphs[it->second].occurrences.push_back(inst);
+}
+
+namespace {
+
+void jsonAppendEscaped(std::string &out, const std::string &s) {
+    out.push_back('"');
+    for (char c : s) {
+        switch (c) {
+            case '"':  out += "\\\""; break;
+            case '\\': out += "\\\\"; break;
+            case '\b': out += "\\b"; break;
+            case '\f': out += "\\f"; break;
+            case '\n': out += "\\n"; break;
+            case '\r': out += "\\r"; break;
+            case '\t': out += "\\t"; break;
+            default:
+                if (static_cast<unsigned char>(c) < 0x20) {
+                    char buf[8];
+                    snprintf(buf, sizeof(buf), "\\u%04x", (unsigned char)c);
+                    out += buf;
+                } else {
+                    out.push_back(c);
+                }
+        }
+    }
+    out.push_back('"');
+}
+
+void jsonAppendNumber(std::string &out, double v) {
+    char buf[32];
+    snprintf(buf, sizeof(buf), "%.3f", v);
+    out += buf;
+}
+
+} // namespace
+
+// Emits <xml>_data/ocr-regions.json so an external pipeline can render the
+// flagged bboxes (e.g. via pdftoppm) and OCR them. Deliberately does not
+// rasterise here: keeps pdfalto dependency-free and leaves DPI/format/OCR
+// engine choices to the caller. Placeholder codepoints in the JSON match
+// the ones pdfalto wrote into the ALTO <String CONTENT>, so a corrections
+// step can replace them by (placeholder, page, bbox) lookup.
+void XmlAltoOutputDev::writeOcrSidecar() {
+    if (ocrGlyphs.empty() || !dataDir) {
+        return;
+    }
+#ifdef WIN32
+    _mkdir(dataDir->getCString());
+#else
+    mkdir(dataDir->getCString(), 00777);
+#endif
+
+    GString *path = new GString(dataDir);
+    path->append("/ocr-regions.json");
+
+    FILE *f = fopen(path->getCString(), "wb");
+    if (!f) {
+        fprintf(stderr, "pdfalto: could not open OCR sidecar for writing: %s\n",
+                path->getCString());
+        delete path;
+        return;
+    }
+
+    std::string out;
+    out += "{\n  \"version\": 1,\n  \"glyphs\": [\n";
+    for (size_t gi = 0; gi < ocrGlyphs.size(); ++gi) {
+        const OcrGlyph &g = ocrGlyphs[gi];
+        out += "    {\n";
+        out += "      \"placeholder\": ";
+        out += std::to_string((unsigned long)g.placeholder);
+        out += ",\n      \"charCode\": ";
+        out += std::to_string((unsigned long)g.charCode);
+        out += ",\n      \"fontName\": ";
+        jsonAppendEscaped(out, g.fontName);
+        out += ",\n      \"occurrences\": [\n";
+        for (size_t oi = 0; oi < g.occurrences.size(); ++oi) {
+            const OcrGlyphInstance &inst = g.occurrences[oi];
+            out += "        {\"page\": ";
+            out += std::to_string(inst.page);
+            out += ", \"xMin\": ";
+            jsonAppendNumber(out, inst.xMin);
+            out += ", \"yMin\": ";
+            jsonAppendNumber(out, inst.yMin);
+            out += ", \"xMax\": ";
+            jsonAppendNumber(out, inst.xMax);
+            out += ", \"yMax\": ";
+            jsonAppendNumber(out, inst.yMax);
+            out += "}";
+            if (oi + 1 < g.occurrences.size()) out += ",";
+            out += "\n";
+        }
+        out += "      ]\n    }";
+        if (gi + 1 < ocrGlyphs.size()) out += ",";
+        out += "\n";
+    }
+    out += "  ]\n}\n";
+
+    fwrite(out.data(), 1, out.size(), f);
+    fclose(f);
+    delete path;
 }
 
 void XmlAltoOutputDev::updateCTM(GfxState *state, double m11, double m12,
