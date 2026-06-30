@@ -1863,6 +1863,7 @@ TextPage::TextPage(GBool verboseA, Catalog *catalog, xmlNodePtr node,
     actualTextNBytes = 0;
 
     curWord = NULL;
+    lastAddedChar = NULL;
     charPos = 0;
     curFont = NULL;
     curFontSize = 0;
@@ -2124,6 +2125,7 @@ void TextPage::clear() {
     actualTextNBytes = 0;
 
     curWord = NULL;
+    lastAddedChar = NULL;
     charPos = 0;
     curFont = NULL;
     curFontSize = 0;
@@ -2767,6 +2769,10 @@ void TextPage::addCharToRawWord(GfxState *state, double x, double y, double dx,
     GBool overlap = gFalse;
     int uBufLen, i;
 
+    // Reset per-call; set below only if a TextChar is actually created, so the
+    // OCR sidecar reads back the real glyph bbox (or nothing for filtered chars).
+    lastAddedChar = NULL;
+
     if (uLen == 0) {
         endWord();
         return;
@@ -2959,6 +2965,12 @@ void TextPage::addCharToRawWord(GfxState *state, double x, double y, double dx,
             curWord->addChar(state, x1 + i * w1, y1 + i * h1, w1, h1, u[i], c, charPos,
                              (overlap || sp < -minDupBreakOverlap * curWord->fontSize), curFont, curFontSize,
                              splashFont, nBytes, curRot, isNonUnicodeGlyph);
+        }
+        // Expose the just-created TextChar (last in the word) so drawChar can
+        // record the OCR sidecar bbox from the same rotation-aware, transformed
+        // box ALTO uses, rather than recomputing it.
+        if (curWord && curWord->chars->getLength() > 0) {
+            lastAddedChar = (TextChar *) curWord->chars->get(curWord->chars->getLength() - 1);
         }
     }
 
@@ -9694,6 +9706,10 @@ void XmlAltoOutputDev::drawChar(GfxState *state, double x, double y, double dx,
                                 GBool fill, GBool stroke, GBool makePath) {
 
     GBool isNonUnicodeGlyph = gFalse;
+    // OCR-sidecar record deferred until after addChar (see below), so the bbox
+    // can be taken from the real TextChar instead of a recomputed one.
+    Unicode ocrPlaceholder = 0;
+    std::string ocrFontName;
 
     SplashFont *splashFont = NULL;
 
@@ -9735,41 +9751,31 @@ void XmlAltoOutputDev::drawChar(GfxState *state, double x, double y, double dx,
             uLen = 1;
             isNonUnicodeGlyph = gTrue;
 
-            // Record the glyph metadata for the OCR sidecar. Bbox is
-            // computed in page space; y is kept in xpdf's bottom-up
-            // convention (matching state->transform) — downstream
-            // consumers that need ALTO's top-down frame should flip using
-            // the page height. Height uses the font's ascent/descent
-            // scaled by the current font size, mirroring the computation
-            // in TextRawWord::addChar for a consistent bbox.
-            double rx, ry, rw, rh;
-            state->transform(x, y, &rx, &ry);
-            state->transformDelta(dx, dy, &rw, &rh);
-            double fs = state->getFontSize();
+            // Capture the placeholder + font name; the sidecar bbox is recorded
+            // after addChar below, from the real TextChar, so it matches the
+            // rotation-aware, transformed box ALTO uses.
+            ocrPlaceholder = mapped_unicode;
             GfxFont *gfxFont = state->getFont();
-            double asc = gfxFont && gfxFont->getAscent() != 0.0
-                         ? gfxFont->getAscent() * fs : 0.75 * fs;
-            double desc = gfxFont && gfxFont->getDescent() != 0.0
-                          ? gfxFont->getDescent() * fs : -0.25 * fs;
-            double x0 = rx, x1 = rx + rw;
-            double y0 = ry - asc, y1 = ry - desc;
-            double rxMin = x0 < x1 ? x0 : x1;
-            double rxMax = x0 < x1 ? x1 : x0;
-            double ryMin = y0 < y1 ? y0 : y1;
-            double ryMax = y0 < y1 ? y1 : y0;
-            const char *cleanFontName = NULL;
             GString *rawFontName = gfxFont ? gfxFont->getName() : NULL;
-            if (rawFontName) {
-                cleanFontName = rawFontName->getCString();
-            }
-            recordNonUnicodeGlyph(text->getPageNumber(),
-                                  rxMin, ryMin, rxMax, ryMax,
-                                  mapped_unicode, c, cleanFontName);
+            ocrFontName = rawFontName ? rawFontName->getCString() : "";
         }
     } else if(uLen > 1 && (globalParams->getTextEncodingName()->cmp(ENCODING_UTF8)==0)&& !isUTF8(u, uLen))
         return;
 
     text->addChar(state, x, y, dx, dy, c, nBytes, u, uLen, splashFont, isNonUnicodeGlyph);
+
+    if (isNonUnicodeGlyph) {
+        // Record the OCR-sidecar glyph from the TextChar addChar just created,
+        // so the bbox is identical to the one ALTO emits (correct for rotated,
+        // CTM-scaled and Type 3 text). If the char was filtered out
+        // (out-of-bounds/tiny/space), there is nothing to OCR, so skip it.
+        TextChar *tc = text->getLastAddedChar();
+        if (tc) {
+            recordNonUnicodeGlyph(text->getPageNumber(),
+                                  tc->xMin, tc->yMin, tc->xMax, tc->yMax,
+                                  ocrPlaceholder, c, ocrFontName.c_str());
+        }
+    }
 }
 
 void XmlAltoOutputDev::recordNonUnicodeGlyph(int page,

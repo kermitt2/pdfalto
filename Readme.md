@@ -104,10 +104,15 @@ jq -c '.glyphs[] | .occurrences[] as $o | {placeholder, charCode, page: $o.page,
   # ... invoke your OCR engine here, then write a corrections JSON ...
 done
 # apply corrections back: replace placeholder codepoints in out.xml
-#   with the recovered Unicode, matched by (page, bbox) or (placeholder)
+#   with the recovered Unicode, matched by (fontName, charCode) — the canonical
+#   sidecar key — or by (page, bbox)
 ```
 
-The placeholder codepoints in the sidecar are identical to the ones in the
+Each distinct `(fontName, charCode)` gets its own placeholder, so the codepoint
+alone is a stable key for documents with up to 6400 distinct unmapped glyphs;
+beyond that the allocation saturates, so prefer `(fontName, charCode)` as the
+authoritative key when applying corrections. The placeholder codepoints in the
+sidecar are identical to the ones in the
 ALTO file, so a corrections step can simply substitute them in-place.
 
 ### Extra script to get only text content

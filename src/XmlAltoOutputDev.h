@@ -936,6 +936,10 @@ public:
 
     int getPageNumber() {return num;}
 
+    /** The TextChar created by the most recent addChar call, or NULL if that
+     *  call added none (filtered char, space, out-of-bounds glyph). */
+    TextChar *getLastAddedChar() { return lastAddedChar; }
+
     /** Update the current font
      *  @param state The state description */
     void updateFont(GfxState *state);
@@ -1408,6 +1412,12 @@ private:
 
     /** The currently active string */
     TextRawWord *curWord;
+
+    /** The TextChar created by the most recent addCharToRawWord call, or NULL
+     *  if that call added none (filtered/space/out-of-bounds char). Lets the
+     *  OCR sidecar read back the exact glyph bbox ALTO uses, instead of
+     *  recomputing a simplified one. */
+    TextChar *lastAddedChar;
 
     /** The next character position (within content stream) */
     int charPos;
