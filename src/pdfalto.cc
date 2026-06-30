@@ -277,12 +277,15 @@ int main(int argc, char *argv[]) {
     if (ocr) {
         parameters->setOcr(gTrue);
         cmd->append("-ocr ");
-        //we avoid using heuristic mapping (not reliable)
-        globalParams->setMapNumericCharNames(gFalse);
     } else {
         parameters->setOcr(gFalse);
-        globalParams->setMapNumericCharNames(gTrue);
     }
+    // Keep glyph-index name resolution (MSTT "GNN"/"gNNN"/"cidNNN" -> Unicode via
+    // the standard Mac glyph ordering) enabled even under -ocr. The OCR sidecar is
+    // meant to capture only the *residual* glyphs that this resolution genuinely
+    // cannot map; disabling it here would defeat the recovery and placeholder the
+    // whole document.
+    globalParams->setMapNumericCharNames(gTrue);
 
     if (fullFontName) {
         parameters->setFullFontName(gTrue);

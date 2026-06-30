@@ -1867,7 +1867,14 @@ private:
 
     GHash *unicode_map;
 
-    vector<Unicode> placeholders;
+    // Placeholder codepoints for glyphs with no Unicode mapping (-ocr). Each
+    // distinct (fontName,charCode) gets a unique codepoint allocated
+    // sequentially from the Unicode Private Use Area, so the in-text
+    // placeholder is a stable, collision-free key back into the OCR sidecar.
+    // The PUA (U+E000..U+F8FF, 6400 slots) never collides with real document
+    // text and encodes as valid UTF-8.
+    static const Unicode kPlaceholderBase = 0xE000;
+    static const Unicode kPlaceholderEnd  = 0xF8FF;
     size_t placeholderIdx;
 
     struct OcrGlyphInstance {

@@ -79,11 +79,14 @@ files are generated:
 
 Some PDFs contain glyphs that have no valid Unicode mapping — typically custom
 Type 3 fonts, symbolic/dingbat fonts with broken `ToUnicode` CMaps, or Private
-Use Area characters. By default pdfalto drops these. With `-ocr`, pdfalto:
+Use Area characters. pdfalto first tries to *recover* the real characters
+(including MSTT `GNN`/`gNNN`/`cidNNN` glyph-index naming); `-ocr` only captures
+the *residual* glyphs that recovery genuinely cannot map. For those, pdfalto:
 
-1. Substitutes each such glyph with a deterministic placeholder codepoint in
-   the `U+25B0 … U+265F` range (geometric shapes / chess symbols) inside the
-   ALTO `<String CONTENT>`, so the output remains valid UTF-8.
+1. Substitutes each glyph with a unique placeholder codepoint allocated
+   sequentially from the Private Use Area (`U+E000` onward) inside the ALTO
+   `<String CONTENT>`, so the output stays valid UTF-8 and each distinct
+   `(fontName, charCode)` gets its own collision-free placeholder.
 2. Writes `<xml>_data/ocr-regions.json` listing every unique `(fontName,
    charCode)` pair that triggered a placeholder, with a per-occurrence page
    number and bounding box in page-space points (xpdf bottom-up convention,
@@ -169,12 +172,12 @@ building, see described workaround.
 
 ## Future work
 
-- Text like containing block element characters (https://unicode.org/charts/PDF/U2B00.pdf) are used as placeholders for
-  unknown character unicodes, instead of what would be expected when visually inspecting the text. The reason for these
-  unsolved character unicode values is that the actual characters are glyphs that are embedded in the PDF document which
-  use free unicode range for embedded fonts, not the right unicode. The only way to extract the valid text for those
-  special characters is to use OCR at glyph level . This is our targeted main future enhancement, relying on a custom
-  Deep Learning approach.
+- Under `-ocr`, glyphs with no recoverable Unicode are substituted with Private Use Area placeholder codepoints
+  (`U+E000` onward, see the OCR sidecar section above) instead of what would be expected when visually inspecting the
+  text. The reason for these unsolved character unicode values is that the actual characters are glyphs embedded in the
+  PDF document which use a free unicode range for embedded fonts, not the right unicode. The only way to extract the
+  valid text for those special characters is to use OCR at glyph level, driven by the `ocr-regions.json` sidecar. This
+  is our targeted main future enhancement, relying on a custom Deep Learning approach.
 
 - map special characters in secondary fonts to their expected unicode
 

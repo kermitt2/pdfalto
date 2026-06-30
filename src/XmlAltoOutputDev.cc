@@ -8264,20 +8264,9 @@ XmlAltoOutputDev::XmlAltoOutputDev(GString *fileName, GString *fileNamePdf,
     nT3Fonts = 0;
 
     unicode_map = new GHash(gTrue);
+    // Placeholders for non-Unicode glyphs are allocated lazily from the Private
+    // Use Area (see kPlaceholderBase/kPlaceholderEnd); no fixed table needed.
     placeholderIdx = 0;
-    //initialise some special unicodes 9 to begin with as placeholders, from https://unicode.org/charts/PDF/U2B00.pdf
-    placeholders.push_back((Unicode) 9724);
-    placeholders.push_back((Unicode) 9650);
-    placeholders.push_back((Unicode) 9658);
-    placeholders.push_back((Unicode) 9670);
-    placeholders.push_back((Unicode) 9675);
-    placeholders.push_back((Unicode) 9671);
-    placeholders.push_back((Unicode) 9679);
-    placeholders.push_back((Unicode) 9678);
-    placeholders.push_back((Unicode) 9725);
-    placeholders.push_back((Unicode) 9720);
-    placeholders.push_back((Unicode) 9721);
-    placeholders.push_back((Unicode) 9722);
 
     //curstate=(double*)malloc(10000*sizeof(6*double));
 
@@ -9709,14 +9698,6 @@ void XmlAltoOutputDev::drawChar(GfxState *state, double x, double y, double dx,
     SplashFont *splashFont = NULL;
 
     if (parameters->getOcr() == gTrue) {
-        SplashCoord mat[6];
-//        mat[0] = (SplashCoord) (curstate[0]);
-//        mat[1] = (SplashCoord) (curstate[1]);
-//        mat[2] = (SplashCoord) (curstate[2]);
-//        mat[3] = (SplashCoord) (curstate[3]);
-//        mat[4] = (SplashCoord) (curstate[4]);
-//        mat[5] = (SplashCoord) (curstate[5]);
-        //splashFont = getSplashFont(state, mat);
         if ((uLen == 0 ||
              ((u[0] == (Unicode) 0 || u[0] < (Unicode) 32) && uLen == 1) ||
              (uLen > 1 && (globalParams->getTextEncodingName()->cmp(ENCODING_UTF8)==0)&& !isUTF8(u, uLen)))) {
@@ -9731,15 +9712,18 @@ void XmlAltoOutputDev::drawChar(GfxState *state, double x, double y, double dx,
                 fontName = new GString();
             }
             fontName->append(to_string(c).c_str());
-            if (globalParams->getPrintCommands()) {
-                printf("ToBeOCRISEChar: x=%.2f y=%.2f c=%3d=0x%02x='%c' u=%3d fontName=%s \n",
-                       (double) x, (double) y, c, c, c, u[0], fontName->getCString());
-            }
-            // do map every char to a unicode, depending on charcode and font name
+            // Map every (fontName,charCode) to a stable placeholder codepoint.
             Unicode mapped_unicode = unicode_map->lookupInt(fontName);
             if (!mapped_unicode) {
-                mapped_unicode = placeholders[placeholderIdx];
-                if (placeholderIdx + 1 < placeholders.size()) {
+                // Allocate the next unique Private Use Area codepoint; saturate
+                // at kPlaceholderEnd only past 6400 distinct glyphs (so the
+                // in-text placeholder stays a collision-free key into the
+                // sidecar for any realistic document).
+                mapped_unicode = (Unicode) (kPlaceholderBase + placeholderIdx);
+                if (mapped_unicode > kPlaceholderEnd) {
+                    mapped_unicode = kPlaceholderEnd;
+                }
+                if (kPlaceholderBase + placeholderIdx < kPlaceholderEnd) {
                     placeholderIdx++;
                 }
                 unicode_map->add(fontName, mapped_unicode);
