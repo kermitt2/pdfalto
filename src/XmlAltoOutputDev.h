@@ -1009,7 +1009,7 @@ public:
     /** Dump contents of the current page
      * @param blocks To know if the blocks option is selected
      * @param fullFontName To know if the fullFontName option is selected */
-    void dump(GBool noLineNumbers, GBool fullFontName, const vector<bool> &lineNumberStatus);
+    void dump(GBool noLineNumbers, GBool fullFontName, const vector<bool> &lineNumberStatus, vector<double> &lineNumberColumnsX);
 
     /** Dump the current <Page> node to a streaming buffer, then (only on a
      *  successful write) unlink it from the DOM and free it, clearing the internal
@@ -1195,7 +1195,7 @@ public:
     void restoreState(GfxState *state);
 
     /** Identify line numbers and mark corresponding raw word */
-    bool markLineNumber();
+    bool markLineNumber(vector<double> &lineNumberColumnsX);
 
     /** Set if the page contains a column of line numbers*/
     void setLineNumber(bool theBool);
@@ -1936,6 +1936,7 @@ private:
 
     /** give for each page if line numbers have been found */
     vector<bool> lineNumberStatus;
+    vector<double> lineNumberColumnsX;   // x-positions of line-number columns confirmed across the document
 };
 
 #endif
