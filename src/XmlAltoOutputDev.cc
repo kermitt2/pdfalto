@@ -5605,6 +5605,21 @@ bool TextPage::markLineNumber() {
     return true;
 }
 
+/**
+ * Clamp an illustration bounding box so that its position stays non-negative.
+ * Graphics that extend past the top or left page edge (bleed, clipped images,
+ * vector paths starting off-page) otherwise produce negative HPOS/VPOS values,
+ * which are invalid in ALTO. When a coordinate is negative we move it back to 0
+ * and shrink the corresponding dimension by the clipped-off amount, keeping the
+ * on-page portion of the box. See issue #236.
+ */
+static void clampIllustrationBox(double &x, double &y, double &w, double &h) {
+    if (x < 0) { w += x; x = 0; }
+    if (y < 0) { h += y; y = 0; }
+    if (w < 0) { w = 0; }
+    if (h < 0) { h = 0; }
+}
+
 void TextPage::dump(GBool noLineNumbers, GBool fullFontName, const vector<bool> &lineNumberStatus) {
     // Output the page in raw (content stream) order
     blocks = new GList(); // these are blocks in alto schema
@@ -6547,7 +6562,12 @@ void TextPage::dump(GBool noLineNumbers, GBool fullFontName, const vector<bool> 
                     if (wordI < line1->words->getLength() - 1 and (word->spaceAfter == gTrue)) {
                         xmlNodePtr spacingNode = xmlNewNode(NULL, (const xmlChar *) TAG_SPACING);
                         spacingNode->type = XML_ELEMENT_NODE;
-                        snprintf(tmp, sizeof(tmp), ATTR_NUMFORMAT, (nextWord->xMin - word->xMax));
+                        // The inter-word gap can be negative when consecutive words overlap
+                        // (backward kerning or reordered runs); ALTO requires a non-negative
+                        // WIDTH, so clamp it to 0. See issue #236.
+                        double spacingWidth = nextWord->xMin - word->xMax;
+                        if (spacingWidth < 0) { spacingWidth = 0; }
+                        snprintf(tmp, sizeof(tmp), ATTR_NUMFORMAT, spacingWidth);
                         xmlNewProp(spacingNode, (const xmlChar *) ATTR_WIDTH,
                                    (const xmlChar *) tmp);
                         snprintf(tmp, sizeof(tmp), ATTR_NUMFORMAT, (word->yMin));
@@ -6591,13 +6611,19 @@ void TextPage::dump(GBool noLineNumbers, GBool fullFontName, const vector<bool> 
 
         //xmlNewProp(node, (const xmlChar *) ATTR_SID,(const xmlChar*)listeImages[i]->getImageSid()->getCString());
 
-        snprintf(tmp, sizeof(tmp), ATTR_NUMFORMAT, listeImages[i]->getXPositionImage());
+        double imgX = listeImages[i]->getXPositionImage();
+        double imgY = listeImages[i]->getYPositionImage();
+        double imgW = listeImages[i]->getWidthImage();
+        double imgH = listeImages[i]->getHeightImage();
+        clampIllustrationBox(imgX, imgY, imgW, imgH);
+
+        snprintf(tmp, sizeof(tmp), ATTR_NUMFORMAT, imgX);
         xmlNewProp(node, (const xmlChar *) ATTR_X, (const xmlChar *) tmp);
-        snprintf(tmp, sizeof(tmp), ATTR_NUMFORMAT, listeImages[i]->getYPositionImage());
+        snprintf(tmp, sizeof(tmp), ATTR_NUMFORMAT, imgY);
         xmlNewProp(node, (const xmlChar *) ATTR_Y, (const xmlChar *) tmp);
-        snprintf(tmp, sizeof(tmp), ATTR_NUMFORMAT, listeImages[i]->getWidthImage());
+        snprintf(tmp, sizeof(tmp), ATTR_NUMFORMAT, imgW);
         xmlNewProp(node, (const xmlChar *) ATTR_WIDTH, (const xmlChar *) tmp);
-        snprintf(tmp, sizeof(tmp), ATTR_NUMFORMAT, listeImages[i]->getHeightImage());
+        snprintf(tmp, sizeof(tmp), ATTR_NUMFORMAT, imgH);
         xmlNewProp(node, (const xmlChar *) ATTR_HEIGHT, (const xmlChar *) tmp);
 
         std::string rotation = std::to_string(listeImages[i]->getRotation());
@@ -6643,13 +6669,19 @@ void TextPage::dump(GBool noLineNumbers, GBool fullFontName, const vector<bool> 
         //xmlNewProp(node, (const xmlChar *) ATTR_SID,(const xmlChar*)listeImages[i]->getImageSid()->getCString());
 
         double r =0;
-        snprintf(tmp, sizeof(tmp), ATTR_NUMFORMAT, svg_xmin);
+        double svgX = svg_xmin;
+        double svgY = svg_ymin;
+        double svgW = svg_xmax - svg_xmin;
+        double svgH = svg_ymax - svg_ymin;
+        clampIllustrationBox(svgX, svgY, svgW, svgH);
+
+        snprintf(tmp, sizeof(tmp), ATTR_NUMFORMAT, svgX);
         xmlNewProp(node, (const xmlChar *) ATTR_X, (const xmlChar *) tmp);
-        snprintf(tmp, sizeof(tmp), ATTR_NUMFORMAT, svg_ymin);
+        snprintf(tmp, sizeof(tmp), ATTR_NUMFORMAT, svgY);
         xmlNewProp(node, (const xmlChar *) ATTR_Y, (const xmlChar *) tmp);
-        snprintf(tmp, sizeof(tmp), ATTR_NUMFORMAT, svg_xmax - svg_xmin);
+        snprintf(tmp, sizeof(tmp), ATTR_NUMFORMAT, svgW);
         xmlNewProp(node, (const xmlChar *) ATTR_WIDTH, (const xmlChar *) tmp);
-        snprintf(tmp, sizeof(tmp), ATTR_NUMFORMAT, svg_ymax - svg_ymin);
+        snprintf(tmp, sizeof(tmp), ATTR_NUMFORMAT, svgH);
         xmlNewProp(node, (const xmlChar *) ATTR_HEIGHT, (const xmlChar *) tmp);
 
         std::string rotation = std::to_string(r);
