@@ -39,8 +39,12 @@ void PDFDocXrce::displayPages(OutputDev *out, xmlNodePtr docrootA, int firstPage
     			rotate += 360;
   			}
   			
-  			// We recover the state matrix page
-  			state = new GfxState(hDPI, vDPI, currentPage->getMediaBox(), rotate, out->upsideDown());
+  			// We recover the state matrix page.
+  			// Use the CropBox (not the MediaBox) so annotation coordinates are referenced to the
+  			// same page frame as the text (rendered with useMediaBox=false). Otherwise, on pages
+  			// whose CropBox is inset from the MediaBox (bleed/trim margins), annotation boxes are
+  			// shifted by the CropBox origin and can land on the wrong line.
+  			state = new GfxState(hDPI, vDPI, currentPage->getCropBox(), rotate, out->upsideDown());
   			for (i = 0; i < 6; ++i) {
     			ctm[i] = state->getCTM()[i];
   			}
