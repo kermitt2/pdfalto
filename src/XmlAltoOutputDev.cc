@@ -2935,12 +2935,21 @@ void TextPage::addCharToRawWord(GfxState *state, double x, double y, double dx,
                 ((TextChar *) curWord->chars->get(curWord->chars->getLength() - 1))->spaceAfter =
                         (char) gTrue;
         }
+        // A combining mark is drawn on the same baseline as the glyph it
+        // modifies, so the diacritic-driven break suppression below is only
+        // valid within a single line. When the baseline shifts by more than the
+        // same-line tolerance, this glyph belongs to a different line (e.g. a
+        // character wrapped to the next line); the break must not be suppressed,
+        // otherwise the wrapped glyph is glued onto the previous word and the
+        // resulting token gets a negative width (issue #192).
+        GBool sameBaseline = fabs(base - curWord->base) <= 1;
+
         // take into account rotation angle ??
-        if ( (overlap || 
+        if ( (overlap ||
               fabs(base - curWord->base) > 1 ||
               space ||
-              (sp < -minDupBreakOverlap * curWord->fontSize)) 
-              && modifierClass == NOT_A_MODIFIER) {
+              (sp < -minDupBreakOverlap * curWord->fontSize))
+              && (modifierClass == NOT_A_MODIFIER || !sameBaseline)) {
             endWord();
             beginWord(state, x, y);
         }
