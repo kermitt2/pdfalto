@@ -21,7 +21,50 @@
 
 #include <iostream>
 
-using namespace std;
+// ── WINDOWS SUPPORT: explicit "using" declarations instead of ──────────────
+//    "using namespace std;"
+//
+// What "using namespace std;" normally does:
+//   The C++ standard library puts all its names (string, vector, cout, etc.)
+//   inside a container called "std" (short for "standard"). Normally you must
+//   write "std::string" or "std::vector" every time. The shortcut
+//   "using namespace std;" dumps ALL of those names into the global scope so
+//   you can write just "string" or "vector" without the "std::" prefix.
+//
+// Why that shortcut causes a crash on Windows with modern compilers:
+//   Starting with C++17 (a version of the C++ language standard), the standard
+//   library added a new type called "std::byte" — a type for raw byte values.
+//   Separately, the Windows SDK (Microsoft's set of header files for Windows
+//   programming) defines its own type also called "byte" (in the file
+//   rpcndr.h, which gets pulled in indirectly when you include libxml2's
+//   headers, because libxml2 on Windows includes windows.h -> objbase.h ->
+//   rpcndr.h).
+//
+//   When you write "using namespace std;", the compiler sees TWO different
+//   things both called "byte" — the C++ standard library's "std::byte" AND
+//   the Windows SDK's "byte". It cannot tell which one you mean, so it
+//   refuses to compile and prints an ambiguity error.
+//
+//   This is a known issue with GCC 15+ and MinGW (the toolchain used to build
+//   this project on Windows). It also affects MSVC (Microsoft's compiler) in
+//   C++17 mode.
+//
+// The fix:
+//   Instead of importing EVERYTHING from "std" (which drags in std::byte),
+//   we import only the specific names this file actually uses. That way
+//   std::byte is never brought into the global scope, and the Windows SDK's
+//   "byte" is the only "byte" visible — no conflict.
+//
+//   Each "using std::X;" line below makes one specific name available without
+//   the "std::" prefix. For example, "using std::string;" lets us write
+//   "string" instead of "std::string" throughout the file.
+// ───────────────────────────────────────────────────────────────────────────
+using std::string; using std::vector; using std::list; using std::set;
+using std::stack; using std::cout; using std::endl;
+using std::sort; using std::min; using std::max; using std::abs;
+using std::min_element; using std::max_element;
+using std::find; using std::distance; using std::reverse; using std::swap;
+using std::to_string;
 
 #include "ConstantsUtils.h"
 
