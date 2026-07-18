@@ -58,6 +58,13 @@ AnnotsXrce::AnnotsXrce(Object &objA, xmlNodePtr docrootA, Catalog *catalog, doub
     for (int i = 0; i < objA.arrayGetLength(); ++i) {
         objA.arrayGet(i, &kid);
         if (kid.isDict()) {
+            // Reset the per-annotation node pointers so that an unsupported
+            // annotation (e.g. Squiggly/StrikeOut) does not inherit, or attach
+            // its children to, the node of a previously processed one (#148).
+            nodeAnnot = NULL;
+            nodePopup = NULL;
+            nodeContent = NULL;
+            isLink = gFalse;
             Dict *dict;
             dict = kid.getDict();
             char tmpor[100];
@@ -85,15 +92,17 @@ AnnotsXrce::AnnotsXrce(Object &objA, xmlNodePtr docrootA, Catalog *catalog, doub
 
 
             // Get informations about Link annotation
-            if (isLink) {
+            // Without a host annotation node there is nowhere to attach the action
+            // subtree, and the locals below would stay unset (#148).
+            if (isLink && nodeAnnot) {
                 Link *link = new Link(dict, catalog->getBaseURI());
                 //printf("%d \n",link->isOk());
                 LinkAction *ac = link->getAction();
                 //printf("ac %d \n",ac->isOk());
                 // Get the Action information
                 if (ac != NULL && ac->isOk()) {
-                    xmlNodePtr nodeActionAction;
-                    xmlNodePtr nodeActionDEST;
+                    xmlNodePtr nodeActionAction = NULL;
+                    xmlNodePtr nodeActionDEST = NULL;
                     if (nodeAnnot) {
                         nodeActionAction = xmlNewNode(NULL, (const xmlChar *) TAG_ACTION);
                         nodeActionAction->type = XML_ELEMENT_NODE;
@@ -381,7 +390,7 @@ AnnotsXrce::AnnotsXrce(Object &objA, xmlNodePtr docrootA, Catalog *catalog, doub
 
             // Get the popup's contents
             if (dict->lookup("RC", &objContents)->isString()) {
-                if (nodeAnnot) {
+                if (nodeAnnot && nodePopup) {
                     nodeContent = xmlNewNode(NULL, (const xmlChar *) TAG_RICH_CONTENT);
                     nodeContent->type = XML_ELEMENT_NODE;
                     //to unicode first
@@ -410,9 +419,9 @@ AnnotsXrce::AnnotsXrce(Object &objA, xmlNodePtr docrootA, Catalog *catalog, doub
 
             // Get the localization (points series) of the annotation into the page
             if (dict->lookup("QuadPoints", &objQuadPoints)->isArray()) {
-                xmlNodePtr nodeQuad;
-                xmlNodePtr nodeQuadril;
-                xmlNodePtr nodePoints;
+                xmlNodePtr nodeQuad = NULL;
+                xmlNodePtr nodeQuadril = NULL;
+                xmlNodePtr nodePoints = NULL;
 
                 if (nodeAnnot) {
                     nodeQuad = xmlNewNode(NULL, (const xmlChar *) TAG_QUADPOINTS);
@@ -423,7 +432,10 @@ AnnotsXrce::AnnotsXrce(Object &objA, xmlNodePtr docrootA, Catalog *catalog, doub
                 char temp[10];
                 double xx = 0;
                 double yy = 0;
-                for (int j = 0; j < objQuadPoints.arrayGetLength(); ++j) {
+                // Only build the QuadPoints subtree when we have a host annotation
+                // node; unsupported subtypes (Squiggly/StrikeOut) also carry
+                // QuadPoints but leave nodeQuad unset, which would crash xmlAddChild (#148).
+                for (int j = 0; nodeAnnot && j < objQuadPoints.arrayGetLength(); ++j) {
                     objQuadPoints.arrayGet(j, &point);
 
                     if (j % 8 == 0) {
