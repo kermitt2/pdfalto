@@ -458,7 +458,7 @@ TextChar::~TextChar() {
 
 TextChar::TextChar(GfxState *stateA, Unicode cA, CharCode charCodeA, int charPosA, int charLenA,
                    double xMinA, double yMinA, double xMaxA, double yMaxA,
-                   int rotA, GBool clippedA, GBool invisibleA,
+                   int rotA, GBool clippedA, GBool invisibleA, double alphaA,
                    TextFontInfo *fontA, double fontSizeA, SplashFont *splashFontA,
                    double colorRA, double colorGA, double colorBA, GBool isNonUnicodeGlyphA) {
     double t;
@@ -501,6 +501,7 @@ TextChar::TextChar(GfxState *stateA, Unicode cA, CharCode charCodeA, int charPos
     rot = (Guchar) rotA;
     clipped = (char) clippedA;
     invisible = (char) invisibleA;
+    alpha = alphaA;
     spaceAfter = (char) gFalse;
     font = fontA;
     fontSize = fontSizeA;
@@ -1265,7 +1266,7 @@ void TextRawWord::addChar(GfxState *state, double x, double y, double dx,
 
         chars->append(new TextChar(charState, u, charCodeA, charPosA, nBytes, xxMin, yyMin, xxMax, yyMax,
                                    rotA, clipped,
-                                   state->getRender() == 3 || alpha < 0.001,
+                                   (state->getRender() & 3) == 3 || alpha < 0.001, alpha,
                                    fontA, fontSizeA, splashFont,
                                    colToDbl(rgb.r), colToDbl(rgb.g),
                                    colToDbl(rgb.b), isNonUnicodeGlyph));
@@ -2749,7 +2750,7 @@ void TextPage::addCharToPageChars(GfxState *state, double x, double y, double dx
             }
             chars->append(new TextChar(state->copy(gTrue), u[j], c, charPos, nBytes, xMin, yMin, xMax, yMax,
                                        curRot, clipped,
-                                       state->getRender() == 3 || alpha < 0.001,
+                                       (state->getRender() & 3) == 3 || alpha < 0.001, alpha,
                                        curFont, curFontSize, splashFont,
                                        colToDbl(rgb.r), colToDbl(rgb.g),
                                        colToDbl(rgb.b), isNonUnicodeGlyph));
@@ -3070,6 +3071,67 @@ void TextPage::addAttributsNodeVerbose(xmlNodePtr node, char *tmp,
     xmlNewProp(node, (const xmlChar *) ATTR_CHAR_SPACE, (const xmlChar *) tmp);
 }
 
+// ---- Hidden/invisible text helpers (GROBID issues #826, #1083) -------------------------------
+// A word is "invisible" when every one of its glyphs was painted with text render mode 3 or 7
+// (no fill/stroke) or with near-zero opacity — see the TextChar construction in drawChar/
+// drawString. This is exposed as RENDER="invisible" so consumers can filter, and (with
+// -removeHiddenText) used together with the over-image test to drop hidden duplicate text while
+// preserving genuine OCR layers.
+static bool wordAllCharsInvisible(IWord *word) {
+    if (word == NULL || word->chars == NULL) return false;
+    int n = word->chars->getLength();
+    if (n == 0) return false;
+    for (int i = 0; i < n; i++) {
+        if (!((TextChar *) word->chars->get(i))->invisible) return false;
+    }
+    return true;
+}
+
+// White-on-white text: colortoString() yields "#RRGGBB"; treat pure white as hidden.
+static bool wordIsWhite(IWord *word) {
+    if (word == NULL) return false;
+    GString *col = word->colortoString();   // "#RRGGBB"
+    if (col == NULL) return false;
+    const char *s = col->getCString();
+    if (*s == '#') s++;
+    bool white = true;
+    int i = 0;
+    for (; i < 6; i++) {
+        if (s[i] != 'f' && s[i] != 'F') { white = false; break; }
+    }
+    if (white && s[6] != '\0') white = false;   // exactly 6 hex digits
+    delete col;
+    return white;
+}
+
+// True if the word's bounding box overlaps any bitmap image drawn on the page. Invisible text
+// over an image is almost always a real OCR layer (the visible content is the scanned image), so
+// it must be KEPT; invisible text not over an image is a hidden duplicate/watermark to drop.
+static bool wordOverImage(IWord *word, vector<Image *> &images) {
+    double wx1 = word->xMin, wy1 = word->yMin, wx2 = word->xMax, wy2 = word->yMax;
+    for (size_t i = 0; i < images.size(); i++) {
+        double ix1 = images[i]->getXPositionImage();
+        double iy1 = images[i]->getYPositionImage();
+        double ix2 = ix1 + images[i]->getWidthImage();
+        double iy2 = iy1 + images[i]->getHeightImage();
+        if (wx1 < ix2 && wx2 > ix1 && wy1 < iy2 && wy2 > iy1) return true;
+    }
+    return false;
+}
+
+// A token to be dropped by -removeHiddenText: hidden (invisible OR white) AND not over an image.
+static bool wordIsHiddenDroppable(IWord *word, vector<Image *> &images) {
+    if (!(wordAllCharsInvisible(word) || wordIsWhite(word))) return false;
+    return !wordOverImage(word, images);
+}
+
+// Representative constant opacity of a word (pdfalto issue #82): the first glyph's alpha
+// (fill/stroke constant opacity, 1.0 = opaque). Opacity is virtually always uniform within a word.
+static double wordOpacity(IWord *word) {
+    if (word == NULL || word->chars == NULL || word->chars->getLength() == 0) return 1.0;
+    return ((TextChar *) word->chars->get(0))->alpha;
+}
+
 bool TextPage::addAttributsNode(xmlNodePtr node, IWord *word, TextFontStyleInfo *fontStyleInfo, UnicodeMap *uMap,
                                 GBool fullFontName) {
     char tmp[10];
@@ -3100,6 +3162,21 @@ bool TextPage::addAttributsNode(xmlNodePtr node, IWord *word, TextFontStyleInfo 
     xmlNewProp(node, (const xmlChar *) ATTR_TOKEN_CONTENT,
                (const xmlChar *)stringTemp->getCString());
     delete stringTemp;
+
+    // Expose invisibility (render mode 3/7 or near-zero opacity) so consumers can filter hidden
+    // text (GROBID #826/#1083). Always emitted; white-on-white is already exposed via FONTCOLOR.
+    if (wordAllCharsInvisible(word)) {
+        xmlNewProp(node, (const xmlChar *) ATTR_INVISIBLE, (const xmlChar *) sTRUE);
+    }
+
+    // Expose partial transparency (pdfalto issue #82): emit OPACITY only when the text is not
+    // fully opaque, so rendering from the XML can be accurate. FONTCOLOR stays standard #RRGGBB.
+    double opacity = wordOpacity(word);
+    if (opacity < 0.999) {
+        char obuf[16];
+        snprintf(obuf, sizeof(obuf), "%.3f", opacity);
+        xmlNewProp(node, (const xmlChar *) ATTR_OPACITY, (const xmlChar *) obuf);
+    }
 
     GString *gsFontName = new GString();
     if (word->getFontName()) {
@@ -4941,6 +5018,13 @@ void TextPage::dumpInReadingOrder(GBool noLineNumbers, GBool fullFontName) {
                     else
                         nextWord = NULL;
 
+                    // Drop hidden/duplicate text (render mode 3/7, transparent, or white-on-white)
+                    // that is NOT over an image, when -removeHiddenText is set (GROBID #826/#1083).
+                    // Text over an image is kept (genuine OCR layer).
+                    if (parameters->getRemoveHiddenText() && wordIsHiddenDroppable(word, listeImages)) {
+                        continue;
+                    }
+
                     char *tmp;
 
                     tmp = (char *) malloc(10 * sizeof(char));
@@ -6405,6 +6489,11 @@ void TextPage::dump(GBool noLineNumbers, GBool fullFontName, const vector<bool> 
                     nextWord = (TextRawWord *) line1->words->get(wordI + 1);
                 else
                     nextWord = NULL;
+
+                // Drop hidden/duplicate text not over an image (GROBID #826/#1083); keep OCR layers.
+                if (parameters->getRemoveHiddenText() && wordIsHiddenDroppable(word, listeImages)) {
+                    continue;
+                }
 
                 fontStyleInfo = new TextFontStyleInfo;
 

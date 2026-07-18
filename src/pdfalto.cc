@@ -57,6 +57,7 @@ static GBool noText = gFalse;
 static GBool noImage = gFalse;
 static GBool onlyGraphsCoord = gFalse;
 static GBool skipGraphs = gFalse;
+static GBool removeHiddenText = gFalse;
 static GBool outline = gFalse;
 static GBool cutPages = gFalse;
 //static GBool blocks = gFalse;
@@ -91,6 +92,8 @@ static ArgDesc argDesc[] = {
                 "only extract image coordinates, do not dump image files"},
         {"-skipGraphs",    argFlag,   &skipGraphs,      0,
                 "skip all graphics processing (bitmap and vectorial)"},
+        {"-removeHiddenText", argFlag, &removeHiddenText, 0,
+                "remove hidden/invisible text (render mode 3/7, transparent, or white) not over an image (keeps OCR layers)"},
         {"-noImageInline", argFlag,   &noImageInline,   0,
                 "deprecated"},
         {"-outline",       argFlag,   &outline,         0,
@@ -230,6 +233,13 @@ int main(int argc, char *argv[]) {
 
     if (!skipGraphs) {
         parameters->setSkipGraphs(gFalse);
+    }
+
+    if (removeHiddenText) {
+        parameters->setRemoveHiddenText(gTrue);
+        cmd->append("-removeHiddenText ");
+    } else {
+        parameters->setRemoveHiddenText(gFalse);
     }
 
     if (noText) {
