@@ -679,6 +679,7 @@ TextWord::TextWord(GList *charsA, int start, int lenA,
             fontName = strdup(fontA->getFontName()->getCString());
             char* localLowerFontName = fontA->getFontName()->lowerCase()->getCString();
             if (strstr(localLowerFontName, "bold") ||
+                strstr(localLowerFontName, "heavy") ||
                 strstr(localLowerFontName, "_bd")) {
 
                 bold = gTrue;
@@ -1015,6 +1016,7 @@ TextRawWord::TextRawWord(GfxState *state, double x0, double y0,
             fontName = strdup(state->getFont()->getName()->getCString());
             char *localLowerFontName = state->getFont()->getName()->lowerCase()->getCString();
             if (strstr(localLowerFontName, "bold") ||
+                strstr(localLowerFontName, "heavy") ||
                 strstr(localLowerFontName, "_bd"))
                 bold = gTrue;
             if (strstr(localLowerFontName, "italic") ||
