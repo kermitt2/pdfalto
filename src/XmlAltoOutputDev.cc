@@ -547,7 +547,6 @@ TextWord::TextWord(GList *charsA, int start, int lenA,
                    int rotA, int dirA, GBool spaceAfterA, GfxState *state,
                    TextFontInfo *fontA, double fontSizeA, int idCurrentWord,
                    int index) {
-    GfxFont *gfxFont;
     double ascent, descent;
 
     TextChar *chPrev, *ch;
@@ -698,15 +697,17 @@ TextWord::TextWord(GList *charsA, int start, int lenA,
 
     fontSize = fontSizeA;
 
-    if ((gfxFont = font->gfxFont)) {
-        ascent = gfxFont->getAscent() * fontSize;
-        descent = gfxFont->getDescent() * fontSize;
+    if (font->hasGfxFont()) {
+        // Read the metrics cached by TextFontInfo instead of dereferencing
+        // font->gfxFont: that GfxFont may already have been destroyed along with
+        // its GfxFontDict when the enclosing form's resources were popped.
+        ascent = font->getAscent() * fontSize;
+        descent = font->getDescent() * fontSize;
     } else {
         // this means that the PDF file draws text without a current font,
         // which should never happen
         ascent = 0.95 * fontSize;
         descent = -0.35 * fontSize;
-        gfxFont = NULL;
     }
 
     len = lenA;
@@ -884,7 +885,6 @@ TextWord::~TextWord() {
 TextRawWord::TextRawWord(GfxState *state, double x0, double y0,
                          TextFontInfo *fontA, double fontSizeA, int idCurrentWord,
                          int index) {
-    GfxFont *gfxFont;
     double x, y, ascent, descent;
 
     charLen = 0;
@@ -1023,15 +1023,17 @@ TextRawWord::TextRawWord(GfxState *state, double x0, double y0,
     fontSize = fontSizeA;
 
     state->transform(x0, y0, &x, &y);
-    if ((gfxFont = font->gfxFont)) {
-        ascent = gfxFont->getAscent() * fontSize;
-        descent = gfxFont->getDescent() * fontSize;
+    if (font->hasGfxFont()) {
+        // Read the metrics cached by TextFontInfo instead of dereferencing
+        // font->gfxFont: that GfxFont may already have been destroyed along with
+        // its GfxFontDict when the enclosing form's resources were popped.
+        ascent = font->getAscent() * fontSize;
+        descent = font->getDescent() * fontSize;
     } else {
         // this means that the PDF file draws text without a current font,
         // which should never happen
         ascent = 0.95 * fontSize;
         descent = -0.35 * fontSize;
-        gfxFont = NULL;
     }
 
     // Rotation cases
