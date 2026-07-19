@@ -895,6 +895,12 @@ TextRawWord::TextRawWord(GfxState *state, double x0, double y0,
     symbolic = gFalse;
     lineNumber = false;
 
+    // addCharToRawWord() only ever calls setSpaceAfter(gTrue), so without this
+    // a word with no space after it keeps whatever was in the freshly allocated
+    // memory. TextPage::dump() tests this flag to decide whether to emit an <SP>,
+    // which made the default (non reading-order) output depend on heap contents.
+    spaceAfter = gFalse;
+
     double *fontm;
     double m[4];
     double m2[4];
