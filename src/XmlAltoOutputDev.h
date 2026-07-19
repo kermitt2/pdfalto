@@ -131,6 +131,17 @@ public:
     GBool isSymbolic() { return flags & fontSymbolic; }
     GBool isItalic() { return flags & fontItalic; }
     GBool isBold() { return flags & fontBold; }
+
+    // Ascent/descent as captured (and sanitised) when this TextFontInfo was
+    // built. Callers must use these rather than reaching through to the
+    // GfxFont: a word can outlive the font it refers to, because the GfxFontDict
+    // owning it is destroyed when the enclosing form's resources are popped.
+    double getAscent() { return ascent; }
+    double getDescent() { return descent; }
+
+    // Whether a GfxFont was present at construction time. The pointer itself
+    // may since have been freed, so it must never be dereferenced.
+    GBool hasGfxFont() { return gfxFont != NULL; }
 //#endif
 
 private:
