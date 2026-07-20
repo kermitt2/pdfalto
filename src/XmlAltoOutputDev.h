@@ -947,6 +947,10 @@ public:
 
     int getPageNumber() {return num;}
 
+    /** The TextChar created by the most recent addChar call, or NULL if that
+     *  call added none (filtered char, space, out-of-bounds glyph). */
+    TextChar *getLastAddedChar() { return lastAddedChar; }
+
     /** Update the current font
      *  @param state The state description */
     void updateFont(GfxState *state);
@@ -1420,6 +1424,12 @@ private:
     /** The currently active string */
     TextRawWord *curWord;
 
+    /** The TextChar created by the most recent addCharToRawWord call, or NULL
+     *  if that call added none (filtered/space/out-of-bounds char). Lets the
+     *  OCR sidecar read back the exact glyph bbox ALTO uses, instead of
+     *  recomputing a simplified one. */
+    TextChar *lastAddedChar;
+
     /** The next character position (within content stream) */
     int charPos;
 
@@ -1878,8 +1888,42 @@ private:
 
     GHash *unicode_map;
 
-    vector<Unicode> placeholders;
+    // Placeholder codepoints for glyphs with no Unicode mapping (-ocr). Each
+    // distinct (fontName,charCode) gets a unique codepoint allocated
+    // sequentially from the Unicode Private Use Area, so the in-text
+    // placeholder is a stable, collision-free key back into the OCR sidecar.
+    // The PUA (U+E000..U+F8FF, 6400 slots) never collides with real document
+    // text and encodes as valid UTF-8.
+    static const Unicode kPlaceholderBase = 0xE000;
+    static const Unicode kPlaceholderEnd  = 0xF8FF;
     size_t placeholderIdx;
+
+    struct OcrGlyphInstance {
+        int page;
+        double xMin, yMin, xMax, yMax;
+    };
+
+    struct OcrGlyph {
+        Unicode placeholder;
+        CharCode charCode;
+        std::string fontName;
+        std::vector<OcrGlyphInstance> occurrences;
+    };
+
+    std::vector<OcrGlyph> ocrGlyphs;
+    std::unordered_map<std::string, size_t> ocrGlyphIndex;
+
+    void recordNonUnicodeGlyph(int page,
+                               double xMin, double yMin,
+                               double xMax, double yMax,
+                               Unicode placeholder,
+                               CharCode charCode,
+                               const char *fontName);
+
+public:
+    void writeOcrSidecar();
+
+private:
 
     /** Per-page streaming: xmlElemDump of each finished <Page> is appended here,
      *  then the page node is freed from the DOM. The final file is assembled by

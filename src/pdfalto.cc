@@ -110,8 +110,8 @@ static ArgDesc argDesc[] = {
                 "do not extract textual objects (might be useful, but non-valid ALTO)"},
         {"-charReadingOrderAttr",  argFlag,   &charReadingOrderAttr,    0,
                 "include TYPE attribute to String elements to indicate right-to-left reading order (might be useful, but non-valid ALTO)"},
-//        {"-ocr",           argFlag,   &ocr,             0,
-//                "recognises all characters that are missing from unicode."},
+        {"-ocr",           argFlag,   &ocr,             0,
+                "emit a sidecar listing glyphs with no Unicode mapping (<xml>_data/ocr-regions.json); render + OCR the bounding boxes externally (e.g. pdftoppm)."},
         {"-fullFontName",  argFlag,   &fullFontName,    0,
                 "fonts names are not normalized"},
         {"-nsURI",         argString, namespaceUri,     sizeof(namespaceUri),
@@ -277,12 +277,15 @@ int main(int argc, char *argv[]) {
     if (ocr) {
         parameters->setOcr(gTrue);
         cmd->append("-ocr ");
-        //we avoid using heuristic mapping (not reliable)
-        globalParams->setMapNumericCharNames(gFalse);
     } else {
         parameters->setOcr(gFalse);
-        globalParams->setMapNumericCharNames(gTrue);
     }
+    // Keep glyph-index name resolution (MSTT "GNN"/"gNNN"/"cidNNN" -> Unicode via
+    // the standard Mac glyph ordering) enabled even under -ocr. The OCR sidecar is
+    // meant to capture only the *residual* glyphs that this resolution genuinely
+    // cannot map; disabling it here would defeat the recovery and placeholder the
+    // whole document.
+    globalParams->setMapNumericCharNames(gTrue);
 
     if (fullFontName) {
         parameters->setFullFontName(gTrue);
@@ -440,6 +443,9 @@ int main(int argc, char *argv[]) {
             xmlFreeDoc(docAnnotXml);
         } else {
             doc->displayPages(xmlAltoOut, NULL, firstPage, lastPage, 72, 72, 0, gFalse, gTrue, gFalse);
+        }
+        if (parameters->getOcr()) {
+            xmlAltoOut->writeOcrSidecar();
         }
         if (outline) {
             if (doc->getOutline()) {
