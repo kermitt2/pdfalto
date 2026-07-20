@@ -6682,7 +6682,6 @@ void TextPage::dump(GBool noLineNumbers, GBool fullFontName, const vector<bool> 
             xmlNewProp(bnode, (const xmlChar *) ATTR_HEIGHT, (const xmlChar *) tmpb);
             std::string rotation = std::to_string(0.0);
             xmlNewProp(bnode, (const xmlChar *) ATTR_ROTATION, (const xmlChar *) rotation.c_str());
-            xmlNewProp(bnode, (const xmlChar *) ATTR_OPACITY, (const xmlChar *) "1");
             xmlNewProp(bnode, (const xmlChar *) ATTR_TYPE, (const xmlChar *) "svg");
             xmlAddChild(printSpace, bnode);
             delete bsid;
@@ -6705,8 +6704,6 @@ void TextPage::dump(GBool noLineNumbers, GBool fullFontName, const vector<bool> 
                 xmlNewProp(bnode, (const xmlChar *) ATTR_HEIGHT, (const xmlChar *) tmpb);
                 std::string rotation = std::to_string(0.0);
                 xmlNewProp(bnode, (const xmlChar *) ATTR_ROTATION, (const xmlChar *) rotation.c_str());
-                snprintf(tmpb, sizeof(tmpb), "%g", b.opacity);
-                xmlNewProp(bnode, (const xmlChar *) ATTR_OPACITY, (const xmlChar *) tmpb);
                 xmlNewProp(bnode, (const xmlChar *) ATTR_TYPE, (const xmlChar *) "svg");
                 xmlAddChild(printSpace, bnode);
                 delete bsid;
@@ -7720,7 +7717,11 @@ void TextPage::createPath(GfxPath *path, GfxState *state, xmlNodePtr groupNode, 
     // emitted directly in the ALTO instead of the single per-page union box, so a
     // consumer reads the vector coordinates without parsing the .svg. Cheap (4
     // doubles), and independent of whether any geometry was built in memory.
-    if (recordVectorBox && parameters->getVectorBoxes() &&
+    // A fully transparent group renders nothing, so it is not an illustration and is
+    // not recorded. This is the filtering an OPACITY attribute would have delegated to
+    // the consumer; ALTO has no legal attribute to carry it (see below), and partially
+    // transparent groups are visible and so are kept.
+    if (recordVectorBox && parameters->getVectorBoxes() && opacity > 1e-6 &&
         !(xmin == 0 && xmax == 0 && ymin == 0 && ymax == 0)) {
         // Cap the number of per-group boxes kept per page. Beyond it (pathological
         // files can have millions of draw operations) we stop collecting and dump()
@@ -7747,7 +7748,6 @@ void TextPage::createPath(GfxPath *path, GfxState *state, xmlNodePtr groupNode, 
             if (bx1 > bx0 && by1 > by0) {
                 VectorBox b;
                 b.x = bx0; b.y = by0; b.w = bx1 - bx0; b.h = by1 - by0; b.idx = getIdx();
-                b.opacity = opacity;
                 vectorBoxes.push_back(b);
             }
         }

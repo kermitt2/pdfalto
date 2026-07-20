@@ -52,7 +52,6 @@ namespace ConstantsXML {
 	extern const char *ATTR_X;
 	extern const char *ATTR_Y;
 	extern const char *ATTR_ROTATION;
-	extern const char *ATTR_OPACITY;
 	extern const char *ATTR_ANGLE;
 	extern const char *ATTR_ID;
 	// This attribute gives the reading order : right->left (value 0) or left->right (value 1)

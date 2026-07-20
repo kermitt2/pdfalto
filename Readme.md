@@ -41,6 +41,7 @@ Usage: pdfalto [options] <PDF-file> [<xml-file>]
   -skipGraphs                   : skip all graphics processing (bitmap and vectorial)  
   -vectorCoordsOnly             : for vector graphics, dump only each path's bounding-box rectangle instead of full curve geometry (smaller .svg, same coordinates)
   -vectorLimit <int>            : max vector paths emitted per page (0 = unlimited); guards against pathological files
+  -vectorBoxes                  : emit one bounding box per vector group in the ALTO (instead of a single per-page union box), so vector coordinates can be read without the .svg files
   -outline                      : create an outline file xml
   -annotation                   : create an annotations file xml
   -noLineNumbers                : do not output line numbers added in manuscript-style textual documents
@@ -98,6 +99,22 @@ each path to its bounding-box rectangle — the same box a consumer derives from
 
 > **Note:** internal per-page buffers are written under `$TMPDIR`. Point `$TMPDIR` at real on-disk storage (not a
 > `tmpfs`/RAM disk), otherwise the streaming buffers count against RAM and defeat the memory bound.
+
+### Reading vector coordinates without the .svg files
+
+By default the ALTO carries a single `<Illustration TYPE="svg">` per page, whose box is the union of every vector
+path drawn on that page — so a consumer that wants individual figure regions has to parse the `.svg`. With
+`-vectorBoxes`, pdfalto instead emits one `<Illustration TYPE="svg">` per vector *group*, each carrying that group's
+own bounding box, and writes no `.svg` at all:
+
+```
+<Illustration ID="p1_s1" HPOS="168.548" VPOS="245.197" WIDTH="406.431" HEIGHT="2.268" ROTATION="0.000000" TYPE="svg"/>
+```
+
+Each box is clipped to the page rectangle. Fully transparent groups render nothing and are omitted, so what appears
+in the ALTO is the visible vector content; partially transparent groups are visible and are kept. Pages with more
+than 5000 vector groups (overridable with `-vectorLimit <N>`) fall back to a single union box for that page, so both
+memory and ALTO size stay bounded on pathological files.
 
 ### Extra script to get only text content
 

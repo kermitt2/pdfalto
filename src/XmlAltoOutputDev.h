@@ -1404,7 +1404,7 @@ private:
     /** One lightweight bounding box per vector group drawn on the current page,
      * collected when -vectorBoxes is set and emitted in the ALTO instead of the
      * single per-page union box. Reset at startPage. */
-    struct VectorBox { double x, y, w, h; int idx; double opacity; };
+    struct VectorBox { double x, y, w, h; int idx; };
     std::vector<VectorBox> vectorBoxes;
 
     /** The directory name which contain all data */

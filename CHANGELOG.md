@@ -8,6 +8,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - Bound peak memory on vector-heavy PDFs: when the `.svg` is not written (`-onlyGraphsCoord`/`-noImage`) the full vector geometry is no longer built in memory, only the per-page bounding box that consumers read (fixes >6GB OOM on pathological figures; output unchanged)
 - Add `-vectorCoordsOnly` to dump each vector path's bounding-box rectangle instead of full curve geometry (smaller `.svg`, same coordinates)
 - Add `-vectorLimit <N>` to cap the number of vector paths emitted per page, guarding against pathological/corrupt files
+- Add `-vectorBoxes` to emit one bounding box per vector group in the ALTO instead of a single per-page union box, so vector coordinates can be read without parsing the `.svg` files
 - Guard bitmap extraction against implausible image dimensions before allocation
 - Change release schema following the major.minor.patch convention
 - update to xpdf-4.05
