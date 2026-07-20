@@ -2317,165 +2317,19 @@ void TextPage::beginWord(GfxState *state, double x0, double y0) {
     curWord = new TextRawWord(state, x0, y0, curFont, curFontSize, getIdWORD(), getIdx());
 }
 
-ModifierClass TextPage::classifyChar(Unicode u) {
-    switch (u) {
-        case (Unicode) 776: //COMBINING DIAERESIS
-        case (Unicode) 168: //DIAERESIS
-            return DIAERESIS;
-
-        case 833:
-        case 779: // COMBINING DOUBLE_ACUTE_ACCENT
-        case 733:
-            return DOUBLE_ACUTE_ACCENT;
-        case 180:
-        case 769: //COMBINING
-        case 714:
-            return ACUTE_ACCENT;
-
-        case 768: //COMBINING
-        case 832:
-        case 715:
-        case 96:
-            return GRAVE_ACCENT;
-
-        case 783: //COMBINING
-            return DOUBLE_GRAVE_ACCENT;
-
-        case 774: //COMBINING
-        case 728:
-            //case '\uA67C':
-            return BREVE_ACCENT;
-
-        case 785: //COMBINING
-        case 1156:
-        case 1159:
-            return INVERTED_BREVE_ACCENT;
-
-
-        case 770: //COMBINING
-        case 94:
-        case 710:
-            return CIRCUMFLEX;
-
-
-        case 771: //COMBINING
-        case 126:
-        case 732:
-            return TILDE;
-
-        case 778: //COMBINING
-        case 176:
-        case 730:
-            return NORDIC_RING;//LOOK AT UNICODE RING BELOW...
-
-        case 780: //COMBINING
-        case 711:
-            return CZECH_CARON;
-
-        case 807: //COMBINING
-        case 184:
-            return CEDILLA;
-
-        case 775: //COMBINING
-        case 729:
-            return DOT_ABOVE;
-
-        case 777: //COMBINING
-        case 704:
-            return HOOK;
-
-        case 795: //COMBINING
-            return HORN;
-
-        case 808: //COMBINING
-        case 731:
-            //case '\u1AB7':// combining open mark below
-            return OGONEK;
-
-        case 772: //COMBINING
-        case 175:
-        case 713:
-            return MACRON;
-        default:
-            return NOT_A_MODIFIER;
-    }
-
-}
-
-/*
- * Returns the correct base char for composition with icu4c following unicode standard.
- */
-Unicode IWord::getStandardBaseChar(Unicode c) {
-    switch (c) {
-        case 305:
-            return 105;
-        default:
-            return c;
-    }
-}
-
-Unicode TextPage::getCombiningDiacritic(ModifierClass modifierClass) {
-
-    Unicode diactritic = 0;
-    switch (modifierClass) {
-        case DIAERESIS:
-            diactritic = 776;
-            break;
-        case ACUTE_ACCENT:
-            diactritic = 769;
-            break;
-        case GRAVE_ACCENT:
-            diactritic = 768;
-            break;
-        case CIRCUMFLEX:
-            diactritic = 770;
-            break;
-        case TILDE:
-            diactritic = 771;
-            break;
-        case NORDIC_RING:
-            diactritic = 778;
-            break;
-        case CZECH_CARON:
-            diactritic = 780;
-            break;
-        case CEDILLA:
-            diactritic = 807;
-            break;
-        case DOUBLE_ACUTE_ACCENT:
-            diactritic = 779;
-            break;
-        case DOUBLE_GRAVE_ACCENT:
-            diactritic = 783;
-            break;
-        case BREVE_ACCENT:
-            diactritic = 785;
-            break;
-        case INVERTED_BREVE_ACCENT:
-            diactritic = 785;
-            break;
-        case DOT_ABOVE:
-            diactritic = 775;
-            break;
-        case HOOK:
-            diactritic = 777;
-            break;
-        case HORN:
-            diactritic = 795;
-            break;
-        case OGONEK:
-            diactritic = 808;
-            break;
-        case MACRON:
-            diactritic = 772;
-            break;
-        default:
-            break;
-    }
-    return diactritic;
-}
-
-ModifierClass IWord::classifyChar(Unicode u) {
+// Single source of truth for combining-mark classification.
+//
+// This table used to be duplicated as TextPage::classifyChar and
+// IWord::classifyChar, and the two copies had drifted: the TextPage one also
+// listed U+00B0 DEGREE SIGN as NORDIC_RING. Both were live -- TextPage's from
+// addCharToRawWord, IWord's from TextRawWord::addChar -- so the same character
+// was a combining mark for one word-break decision and not for another.
+//
+// The degree sign is a standalone symbol, not a combining mark; classifying it
+// as one suppressed the word break and glued axis labels such as "40 deg N"
+// into unusable tokens. U+02DA RING ABOVE (730) and U+030A COMBINING RING
+// ABOVE (778) remain, as those genuinely are marks.
+static ModifierClass classifyModifierChar(Unicode u) {
     switch (u) {
         case (Unicode) 776: //COMBINING DIAERESIS
         case (Unicode) 168: //DIAERESIS
@@ -2559,6 +2413,83 @@ ModifierClass IWord::classifyChar(Unicode u) {
     }
 
 }
+
+ModifierClass TextPage::classifyChar(Unicode u) { return classifyModifierChar(u); }
+
+/*
+ * Returns the correct base char for composition with icu4c following unicode standard.
+ */
+Unicode IWord::getStandardBaseChar(Unicode c) {
+    switch (c) {
+        case 305:
+            return 105;
+        default:
+            return c;
+    }
+}
+
+Unicode TextPage::getCombiningDiacritic(ModifierClass modifierClass) {
+
+    Unicode diactritic = 0;
+    switch (modifierClass) {
+        case DIAERESIS:
+            diactritic = 776;
+            break;
+        case ACUTE_ACCENT:
+            diactritic = 769;
+            break;
+        case GRAVE_ACCENT:
+            diactritic = 768;
+            break;
+        case CIRCUMFLEX:
+            diactritic = 770;
+            break;
+        case TILDE:
+            diactritic = 771;
+            break;
+        case NORDIC_RING:
+            diactritic = 778;
+            break;
+        case CZECH_CARON:
+            diactritic = 780;
+            break;
+        case CEDILLA:
+            diactritic = 807;
+            break;
+        case DOUBLE_ACUTE_ACCENT:
+            diactritic = 779;
+            break;
+        case DOUBLE_GRAVE_ACCENT:
+            diactritic = 783;
+            break;
+        case BREVE_ACCENT:
+            diactritic = 785;
+            break;
+        case INVERTED_BREVE_ACCENT:
+            diactritic = 785;
+            break;
+        case DOT_ABOVE:
+            diactritic = 775;
+            break;
+        case HOOK:
+            diactritic = 777;
+            break;
+        case HORN:
+            diactritic = 795;
+            break;
+        case OGONEK:
+            diactritic = 808;
+            break;
+        case MACRON:
+            diactritic = 772;
+            break;
+        default:
+            break;
+    }
+    return diactritic;
+}
+
+ModifierClass IWord::classifyChar(Unicode u) { return classifyModifierChar(u); }
 
 Unicode IWord::getCombiningDiacritic(ModifierClass modifierClass) {
 
