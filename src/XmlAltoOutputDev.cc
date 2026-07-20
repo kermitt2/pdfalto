@@ -553,10 +553,32 @@ int TextChar::cmpY(const void *p1, const void *p2) {
 }
 
 
+// Skip a PDF subset tag when matching a font name for style keywords.
+//
+// A subsetted font's name begins with exactly six letters and a plus sign, and
+// "the choice of letters is arbitrary" (PDF 32000-1 9.6.4) -- the tag carries no
+// style information. Searching it means "BOLDXY+Helvetica" is reported bold while
+// the identical "ABCDEF+Helvetica" is not, so the style of a word would depend on
+// a tag the producer picked at random rather than on the font.
+//
+// Only a conformant tag is skipped: anything else before a '+' is part of the real
+// name and must be kept, e.g. the synthetic "cidfont+f2" used for unnamed CID fonts.
+static const char *skipSubsetTag(const char *fontName) {
+    if (fontName && strlen(fontName) > 7 && fontName[6] == '+' &&
+        isalpha((unsigned char) fontName[0]) && isalpha((unsigned char) fontName[1]) &&
+        isalpha((unsigned char) fontName[2]) && isalpha((unsigned char) fontName[3]) &&
+        isalpha((unsigned char) fontName[4]) && isalpha((unsigned char) fontName[5])) {
+        return fontName + 7;
+    }
+    return fontName;
+}
+
 #if 0
+
 //------------------------------------------------------------------------
 // TextWord
 //------------------------------------------------------------------------
+
 
 TextWord::TextWord(GList *charsA, int start, int lenA,
                    int rotA, int dirA, GBool spaceAfterA, GfxState *state,
@@ -678,15 +700,18 @@ TextWord::TextWord(GList *charsA, int start, int lenA,
             //Type 1 font. (See implementation note 62 in Appendix H.)
             fontName = strdup(fontA->getFontName()->getCString());
             char* localLowerFontName = fontA->getFontName()->lowerCase()->getCString();
-            if (strstr(localLowerFontName, "bold") ||
-                strstr(localLowerFontName, "_bd")) {
+            const char* styleName = skipSubsetTag(localLowerFontName);
+            if (strstr(styleName, "bold") ||
+                strstr(styleName, "heavy") ||
+                strstr(styleName, "black") ||
+                strstr(styleName, "_bd")) {
 
                 bold = gTrue;
             }
 
-            if (strstr(localLowerFontName, "italic") ||
-                strstr(localLowerFontName, "oblique") ||
-                    strstr(localLowerFontName, "_it")) {
+            if (strstr(styleName, "italic") ||
+                strstr(styleName, "oblique") ||
+                    strstr(styleName, "_it")) {
 
                 italic = gTrue;
             }
@@ -893,6 +918,7 @@ TextWord::~TextWord() {
 }
 #endif
 
+
 //------------------------------------------------------------------------
 // TextRawWord
 //------------------------------------------------------------------------
@@ -1014,12 +1040,15 @@ TextRawWord::TextRawWord(GfxState *state, double x0, double y0,
             //Type 1 font. (See implementation note 62 in Appendix H.)
             fontName = strdup(state->getFont()->getName()->getCString());
             char *localLowerFontName = state->getFont()->getName()->lowerCase()->getCString();
-            if (strstr(localLowerFontName, "bold") ||
-                strstr(localLowerFontName, "_bd"))
+            const char *styleName = skipSubsetTag(localLowerFontName);
+            if (strstr(styleName, "bold") ||
+                strstr(styleName, "heavy") ||
+                strstr(styleName, "black") ||
+                strstr(styleName, "_bd"))
                 bold = gTrue;
-            if (strstr(localLowerFontName, "italic") ||
-                strstr(localLowerFontName, "oblique") ||
-                strstr(localLowerFontName, "_it"))
+            if (strstr(styleName, "italic") ||
+                strstr(styleName, "oblique") ||
+                strstr(styleName, "_it"))
                 italic = gTrue;
         } else {
             fontName = NULL;
