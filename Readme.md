@@ -26,6 +26,8 @@ end-user.
 * compilers : clang > 5 or gcc > 7, c++17 required
 * makefile generator : cmake >= 3.10.0
 * fetching dependencies : wget
+* git : the Xpdf source is a git submodule, so the repository must be cloned (not downloaded as a zip) and the
+  submodule initialised with `git submodule update --init --recursive` — see [Build](#build)
 
 ## Usage
 
@@ -127,19 +129,25 @@ line, the following outputs the text content only:
 
 ## Dependencies
 
-Dependencies can be recompiled by running this [script](https://github.com/kermitt2/pdfalto/blob/master/install_deps.sh)
+**Nothing to do here for a normal build.** The static libraries pdfalto links against (libxml2, freetype, libpng,
+zlib, ICU) are committed to this repository under `libs/`, prebuilt for each supported platform (`linux/64`,
+`linux/arm64`, `mac/64`, `mac/arm64`, and windows). The xpdf language support packages are likewise committed under
+`languages/`. Cloning the repository is enough — go straight to [Build](#build).
 
-> ./install_deps.sh
+These libraries are produced by the
+[`ci-build-libs.yml`](https://github.com/kermitt2/pdfalto/blob/master/.github/workflows/ci-build-libs.yml) workflow,
+which builds every platform in a matrix and is run manually (`workflow_dispatch`) when a dependency needs updating.
+The library versions it pins are declared at the top of that file. Rebuilding them is a maintainer task, not a
+prerequisite for building pdfalto.
 
-The script will download and build the dependencies unders `libs/` and the additional language support packages for xpdf
-under `languages/`.
-
-If necessary, see [compiling dependencies procedures](Dependencies_INSTALL.md) for further details.
+If you do need to rebuild them locally — porting to a new platform, or bisecting a dependency — `./install_deps.sh`
+downloads and builds them into `libs/` and `languages/`; see
+[compiling dependencies procedures](Dependencies_INSTALL.md) for details.
 
 ### Known issues
 
 ([issue 41](https://github.com/kermitt2/pdfalto/issues/41)) might occur while building, in this case you'll need to
-compile the dependencies before building pdflato.
+compile the dependencies before building pdfalto.
 
 ## Build
 
@@ -187,7 +195,9 @@ building, see described workaround.
 
 - map special characters in secondary fonts to their expected unicode
 
-- try to optimize speed and memory
+- reduce the memory still retained per page in the text extraction path: peak memory no longer grows with the number
+  of pages, but some per-page allocations are released later than they could be, so very long documents (tens of
+  thousands of pages) still hold more than they need to
 
 - see the issue tracker for further tasks
 
