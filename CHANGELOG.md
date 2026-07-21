@@ -10,6 +10,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - Add `-vectorLimit <N>` to cap the number of vector paths emitted per page, guarding against pathological/corrupt files
 - Add `-vectorBoxes` to emit one bounding box per vector group in the ALTO instead of a single per-page union box, so vector coordinates can be read without parsing the `.svg` files
 - Guard bitmap extraction against implausible image dimensions before allocation
+- Catch `GMemException` in `main()` so allocation failures exit with code 98 and an error message, as every other xpdf front-end does, instead of terminating the process with SIGABRT
 - Change release schema following the major.minor.patch convention
 - update to xpdf-4.05
 - add more font mappings

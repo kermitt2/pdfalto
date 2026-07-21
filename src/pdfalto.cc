@@ -154,6 +154,10 @@ static ArgDesc argDesc[] = {
 * Main method which execute pdfalto tool <br/>
 */
 int main(int argc, char *argv[]) {
+#if USE_EXCEPTIONS
+    try {
+#endif
+
     PDFDocXrce *doc;
 
     GString *fileName;
@@ -534,8 +538,20 @@ int main(int argc, char *argv[]) {
     // check for memory leaks
     Object::memCheck(stderr);
     gMemReport(stderr);
-    
+
     return exitCode;
+
+#if USE_EXCEPTIONS
+    } catch (GMemException e) {
+        // xpdf's allocator throws this when a requested size is implausible or
+        // an allocation fails. Every other xpdf front-end (pdftotext, pdftoppm,
+        // ...) catches it here; pdfalto did not, so the exception escaped main
+        // and terminate() killed the process with SIGABRT instead of reporting
+        // an error. Exit code 98 matches the other tools.
+        fprintf(stderr, "Out of memory\n");
+        return 98;
+    }
+#endif
 }
 
 /** Remove all files which are in data directory of file pdf if it is already exist
