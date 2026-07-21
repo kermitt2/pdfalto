@@ -57,6 +57,9 @@ static GBool noText = gFalse;
 static GBool noImage = gFalse;
 static GBool onlyGraphsCoord = gFalse;
 static GBool skipGraphs = gFalse;
+static GBool vectorCoordsOnly = gFalse;
+static int vectorPathLimit = 0;
+static GBool vectorBoxes = gFalse;
 static GBool outline = gFalse;
 static GBool cutPages = gFalse;
 //static GBool blocks = gFalse;
@@ -91,6 +94,12 @@ static ArgDesc argDesc[] = {
                 "only extract image coordinates, do not dump image files"},
         {"-skipGraphs",    argFlag,   &skipGraphs,      0,
                 "skip all graphics processing (bitmap and vectorial)"},
+        {"-vectorCoordsOnly", argFlag, &vectorCoordsOnly, 0,
+                "for vector graphics, dump only each path's bounding-box rectangle instead of full curve geometry (smaller .svg, same coordinates)"},
+        {"-vectorLimit",   argInt,    &vectorPathLimit, 0,
+                "max vector paths emitted per page (0 = unlimited); guards against pathological files"},
+        {"-vectorBoxes",   argFlag,   &vectorBoxes,     0,
+                "emit one bounding box per vector group in the ALTO (instead of a single per-page union box), so vector coordinates can be read without the .svg files"},
         {"-noImageInline", argFlag,   &noImageInline,   0,
                 "deprecated"},
         {"-outline",       argFlag,   &outline,         0,
@@ -145,6 +154,10 @@ static ArgDesc argDesc[] = {
 * Main method which execute pdfalto tool <br/>
 */
 int main(int argc, char *argv[]) {
+#if USE_EXCEPTIONS
+    try {
+#endif
+
     PDFDocXrce *doc;
 
     GString *fileName;
@@ -230,6 +243,27 @@ int main(int argc, char *argv[]) {
 
     if (!skipGraphs) {
         parameters->setSkipGraphs(gFalse);
+    }
+
+    if (vectorCoordsOnly) {
+        parameters->setVectorCoordsOnly(gTrue);
+        cmd->append("-vectorCoordsOnly ");
+    } else {
+        parameters->setVectorCoordsOnly(gFalse);
+    }
+
+    parameters->setVectorPathLimit(vectorPathLimit);
+    if (vectorPathLimit > 0) {
+        char vlbuf[64];
+        snprintf(vlbuf, sizeof(vlbuf), "-vectorLimit %d ", vectorPathLimit);
+        cmd->append(vlbuf);
+    }
+
+    if (vectorBoxes) {
+        parameters->setVectorBoxes(gTrue);
+        cmd->append("-vectorBoxes ");
+    } else {
+        parameters->setVectorBoxes(gFalse);
     }
 
     if (noText) {
@@ -504,8 +538,20 @@ int main(int argc, char *argv[]) {
     // check for memory leaks
     Object::memCheck(stderr);
     gMemReport(stderr);
-    
+
     return exitCode;
+
+#if USE_EXCEPTIONS
+    } catch (GMemException e) {
+        // xpdf's allocator throws this when a requested size is implausible or
+        // an allocation fails. Every other xpdf front-end (pdftotext, pdftoppm,
+        // ...) catches it here; pdfalto did not, so the exception escaped main
+        // and terminate() killed the process with SIGABRT instead of reporting
+        // an error. Exit code 98 matches the other tools.
+        fprintf(stderr, "Out of memory\n");
+        return 98;
+    }
+#endif
 }
 
 /** Remove all files which are in data directory of file pdf if it is already exist
