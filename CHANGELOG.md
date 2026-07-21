@@ -4,13 +4,17 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
-## [0.6.0] 
-- Bound peak memory on vector-heavy PDFs: when the `.svg` is not written (`-onlyGraphsCoord`/`-noImage`) the full vector geometry is no longer built in memory, only the per-page bounding box that consumers read (fixes >6GB OOM on pathological figures; output unchanged)
+## [0.6.1] - unreleased
+- Fix nondeterministic output: `TextRawWord::spaceAfter` was never initialised and font ascent/descent were read through an already-freed `GfxFont`, so line/block grouping and `<SP>` emission depended on heap contents. The same PDF could produce different `<TextLine>`/`<TextBlock>` structure across runs (extracted text was unaffected), which showed up as a ~0.3-0.5% noise floor in downstream A/B comparisons #248
+- Bound peak memory on vector-heavy PDFs: when the `.svg` is not written (`-onlyGraphsCoord`/`-noImage`) the full vector geometry is no longer built in memory, only the per-page bounding box that consumers read (fixes >6GB OOM on pathological figures; ALTO output unchanged)
 - Add `-vectorCoordsOnly` to dump each vector path's bounding-box rectangle instead of full curve geometry (smaller `.svg`, same coordinates)
 - Add `-vectorLimit <N>` to cap the number of vector paths emitted per page, guarding against pathological/corrupt files
 - Add `-vectorBoxes` to emit one bounding box per vector group in the ALTO instead of a single per-page union box, so vector coordinates can be read without parsing the `.svg` files
+- **Changes `.svg` output**: fix fill groups losing their colour. `fill()`/`eoFill()` built the style string with `GString(tmp, sizeof(tmp))`, embedding NUL bytes that truncated it to `fill: `, so colour and fill-opacity were silently dropped from every fill group ever written. They are now emitted (e.g. `fill: #000000;fill-rule: evenodd;fill-opacity: 1;`). The ALTO is unaffected, but tools diffing `.svg` files against previous output will see changes
 - Guard bitmap extraction against implausible image dimensions before allocation
 - Catch `GMemException` in `main()` so allocation failures exit with code 98 and an error message, as every other xpdf front-end does, instead of terminating the process with SIGABRT
+
+## [0.6.0]
 - Change release schema following the major.minor.patch convention
 - update to xpdf-4.05
 - add more font mappings
