@@ -897,6 +897,11 @@ void TextWord::setLineNumber(bool theBool) {
 
 TextWord::TextWord(TextWord *word) {
     *this = *word;
+    // *this = *word shallow-copied the strdup'd fontName; give this instance its
+    // own copy, otherwise both destructors would free the same pointer.
+    if (fontName) {
+        fontName = strdup(fontName);
+    }
 //    text = (Unicode *)gmallocn(len, sizeof(Unicode));
 //    memcpy(text, word->text, len * sizeof(Unicode));
     chars = word->chars->copy();
@@ -910,6 +915,11 @@ TextWord::~TextWord() {
     //gfree(text);
     gfree(edge);
     gfree(charPos);
+    // fontName is strdup'd in the constructor (or NULL); it was never released.
+    if (fontName) {
+        free(fontName);
+        fontName = NULL;
+    }
     // Clean up the chars GList to prevent memory leak
     if (chars) {
         deleteGList(chars, TextChar);
@@ -1164,6 +1174,11 @@ TextRawWord::TextRawWord(GfxState *state, double x0, double y0,
 
 TextRawWord::~TextRawWord() {
     gfree(edge);
+    // fontName is strdup'd in the constructor (or NULL); it was never released.
+    if (fontName) {
+        free(fontName);
+        fontName = NULL;
+    }
     if (chars) {
         deleteGList(chars, TextChar);
         chars = nullptr;
@@ -1555,6 +1570,14 @@ const char *IWord::normalizeFontName(char *fontName) {
 
 TextLine::TextLine() {
     xMin = yMin = xMax = yMax = 0;
+    // These were left uninitialised, so ~TextLine freed garbage pointers for
+    // every line built through this constructor -- which is why the page's
+    // block tree could never be released.
+    words = NULL;
+    text = NULL;
+    edge = NULL;
+    len = 0;
+    rot = 0;
 }
 
 #if 0
@@ -1608,7 +1631,9 @@ TextLine::TextLine(GList *wordsA, double xMinA, double yMinA,
 #endif
 
 TextLine::~TextLine() {
-    deleteGList(words, TextRawWord);
+    if (words) {
+        deleteGList(words, TextRawWord);
+    }
     gfree(text);
     gfree(edge);
 }
@@ -1636,6 +1661,10 @@ int TextLine::cmpX(const void *p1, const void *p2) {
 
 TextParagraph::TextParagraph() {
     xMin = yMin = xMax = yMax = 0;
+    // Same as TextLine above: left uninitialised, so ~TextParagraph walked a
+    // garbage list.
+    lines = NULL;
+    dropCap = gFalse;
 }
 
 TextParagraph::TextParagraph(GList *linesA, GBool dropCapA) {
@@ -1663,7 +1692,9 @@ TextParagraph::TextParagraph(GList *linesA, GBool dropCapA) {
 }
 
 TextParagraph::~TextParagraph() {
-    deleteGList(lines, TextLine);
+    if (lines) {
+        deleteGList(lines, TextLine);
+    }
 }
 
 //------------------------------------------------------------------------
@@ -1889,6 +1920,9 @@ TextPage::TextPage(GBool verboseA, Catalog *catalog, xmlNodePtr node,
 
     root = node;
     verbose = verboseA;
+    // Previously left uninitialised until the first dump(); the per-page
+    // release in dump() guards on it.
+    blocks = NULL;
     //rawOrder = 1;
     remapping = globalParams->getUnicodeRemapping();
     uBufSize = 16;
@@ -3107,11 +3141,15 @@ bool TextPage::addAttributsNode(xmlNodePtr node, IWord *word, TextFontStyleInfo 
     GString *gsFontName = new GString();
     if (word->getFontName()) {
         xmlChar *xcFontName;
+        // normalizeFontName() returns a new char[]; the fullFontName branch
+        // borrows the word's own buffer. Only the former must be released.
+        char *normalizedFontName = NULL;
         // If the font name normalization option is selected
         if (fullFontName) {
             xcFontName = (xmlChar *) word->getFontName();
         } else {
-            xcFontName = (xmlChar *) word->normalizeFontName(word->getFontName());
+            normalizedFontName = (char *) word->normalizeFontName(word->getFontName());
+            xcFontName = (xmlChar *) normalizedFontName;
         }
         //ugly code because I don't know how all these types...
         //convert to a Unicode*
@@ -3123,9 +3161,12 @@ bool TextPage::addAttributsNode(xmlNodePtr node, IWord *word, TextFontStyleInfo 
         }
         uncdFontName[size] = (Unicode) 0;
         dumpFragment(uncdFontName, size, uMap, gsFontName);
-
+        free(uncdFontName);
+        delete[] normalizedFontName;
     }
 
+    // NB: GString::lowerCase() lowercases in place and returns `this`, so this
+    // hands gsFontName itself to fontStyleInfo, which takes ownership of it.
     fontStyleInfo->setFontName(gsFontName->lowerCase());
 
     if (word->font != NULL) {
@@ -5625,6 +5666,26 @@ static void clampIllustrationBox(double &x, double &y, double &w, double &h) {
 
 void TextPage::dump(GBool noLineNumbers, GBool fullFontName, const vector<bool> &lineNumberStatus) {
     // Output the page in raw (content stream) order
+    // Release the previous page's block tree before building this page's.
+    // The TextRawWords held by these lines are borrowed: TextPage::words owns
+    // them and clear() frees them. So detach each line's word list first --
+    // otherwise ~TextLine's deleteGList would double-free every word.
+    if (blocks) {
+        for (int bi = 0; bi < blocks->getLength(); bi++) {
+            TextParagraph *par = (TextParagraph *) blocks->get(bi);
+            GList *parLines = par->getLines();
+            if (parLines) {
+                for (int li = 0; li < parLines->getLength(); li++) {
+                    TextLine *ln = (TextLine *) parLines->get(li);
+                    delete ln->getWords();       // frees the list shell only
+                    ln->setWords(new GList());   // ~TextLine now frees nothing
+                }
+            }
+        }
+        deleteGList(blocks, TextParagraph);
+        blocks = NULL;
+    }
+
     blocks = new GList(); // these are blocks in alto schema
     vector<TextParagraph*> originalBlocks; // only used when reading order is selected
 
@@ -5711,7 +5772,9 @@ void TextPage::dump(GBool noLineNumbers, GBool fullFontName, const vector<bool> 
         char *tmp;
 
         tmp = (char *) malloc(10 * sizeof(char));
-        fontStyleInfo = new TextFontStyleInfo;
+        // No TextFontStyleInfo is allocated here: this loop never reads one, and
+        // the loops below that do use `fontStyleInfo` assign it themselves. The
+        // allocation that used to sit here was dead and leaked once per word.
 
         lineFinish = gFalse;
         if (firstword) { // test useful?
@@ -6582,6 +6645,13 @@ void TextPage::dump(GBool noLineNumbers, GBool fullFontName, const vector<bool> 
 
                         xmlAddChild(nodeline, spacingNode);
                     }
+                } else {
+                    // Line-number tokens are not emitted, but `node` was already
+                    // built and populated above. Without this it is never linked
+                    // into the tree and never freed -- the dominant leak on
+                    // documents with line numbers on every line.
+                    xmlFreeNode(node);
+                    node = NULL;
                 }
 
                 if (!fontStyleInfo->isSuperscript() && !fontStyleInfo->isSubscript()) {
