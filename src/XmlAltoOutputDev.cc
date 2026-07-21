@@ -5261,7 +5261,114 @@ int find_index_relaxed(vector<double> positions, double val, double margin) {
     return index;
 }
 
-bool TextPage::markLineNumber() {
+// Non-negative integer value of an all-digit word, or -1 if it holds a non-digit.
+static long word_number_value(TextRawWord *word) {
+    long val = 0;
+    for (int i = 0; i < word->len; i++) {
+        Unicode u = ((TextChar *) word->chars->get(i))->c;
+        if (u < '0' || u > '9')
+            return -1;
+        val = val * 10 + (long) (u - '0');
+    }
+    return val;
+}
+
+// A margin cluster of numbers is line numbering even at low page coverage when its values
+// form a regular arithmetic progression (dominant constant increment). Two accept paths:
+//  - "big numbers": the smallest value already exceeds this page's line count, so the numbers
+//    cannot be a per-page list (references / figure labels start near 1) - they are line
+//    numbers accumulated from earlier pages (e.g. 428..444 on a late page). Accept regardless
+//    of vertical spacing, which a figure or column break may disrupt.
+//  - "even pitch": otherwise (fresh, small-valued numbering such as every-5th-line on page 1)
+//    require roughly even vertical spacing.
+// Footnote / bibliographic reference numbers match neither: they restart near 1 and are not
+// evenly spaced down the page.
+static bool is_regular_number_sequence(const vector<int> &cluster,
+                                       const vector<TextRawWord *> &lineNumberWords,
+                                       int totalNumberOfLines) {
+    int n = (int) cluster.size();
+    if (n < 3)
+        return false;
+
+    // collect (yMin, value), ordered top-to-bottom
+    vector<pair<double, long> > seq;
+    for (int i = 0; i < n; i++) {
+        TextRawWord *w = lineNumberWords[cluster[i]];
+        long v = word_number_value(w);
+        if (v < 0)
+            return false;
+        seq.push_back(make_pair(w->yMin, v));
+    }
+    sort(seq.begin(), seq.end());
+
+    // values must strictly increase going down the page
+    vector<long> dv;
+    vector<double> dy;
+    for (int i = 1; i < (int) seq.size(); i++) {
+        long d = seq[i].second - seq[i - 1].second;
+        double gy = seq[i].first - seq[i - 1].first;
+        if (d <= 0 || gy <= 0)
+            return false;
+        dv.push_back(d);
+        dy.push_back(gy);
+    }
+
+    // dominant (median) increment; line numbering steps are small (1, 2, 5, 10, 25...)
+    vector<long> sortedDv = dv;
+    sort(sortedDv.begin(), sortedDv.end());
+    long g = sortedDv[sortedDv.size() / 2];
+    if (g < 1 || g > 50)
+        return false;
+
+    // a strong majority of steps must share that exact increment; a line number missed
+    // by extraction shows up as a multiple of g and is simply not counted here
+    int agree = 0;
+    for (int i = 0; i < (int) dv.size(); i++)
+        if (dv[i] == g)
+            agree++;
+    if (agree < (int) ((dv.size() * 3 + 4) / 5))   // >= 60%
+        return false;
+
+    // "big numbers" path: smallest value exceeds this page's line count -> accumulated line
+    // numbers, accept without requiring even pitch (figure/column breaks disrupt spacing).
+    long minVal = seq[0].second;
+    if (minVal > (long) totalNumberOfLines)
+        return true;
+
+    // otherwise require roughly even vertical pitch per unit increment
+    vector<double> pitch;
+    for (int i = 0; i < (int) dv.size(); i++)
+        if (dv[i] == g)
+            pitch.push_back(dy[i] / (double) dv[i]);
+    if ((int) pitch.size() < 2)
+        return false;
+    double mean = 0.0;
+    for (int i = 0; i < (int) pitch.size(); i++)
+        mean += pitch[i];
+    mean /= pitch.size();
+    if (mean <= 0.0)
+        return false;
+    double var = 0.0;
+    for (int i = 0; i < (int) pitch.size(); i++)
+        var += (pitch[i] - mean) * (pitch[i] - mean);
+    double cv = sqrt(var / pitch.size()) / mean;
+    return cv < 0.30;
+}
+
+// Minimum y (top) of the margin number column near x=clusterX, across the cluster's page.
+// Line numbers jitter over a few x-positions, so we scan all candidates near that x.
+static double column_top(const vector<TextRawWord *> &lineNumberWords, double clusterX) {
+    double top = 1e18;
+    for (int k = 0; k < (int) lineNumberWords.size(); k++) {
+        TextRawWord *w = lineNumberWords[k];
+        if (fabs(w->xMin - clusterX) < 12.0 || fabs(w->xMax - clusterX) < 12.0)
+            if (w->yMin < top)
+                top = w->yMin;
+    }
+    return top;
+}
+
+bool TextPage::markLineNumber(vector<double> &lineNumberColumnsX) {
     // Detect the presence of line number column in the page and mark the corresponding TextWord objects for further appropriate handling
 
     // Line number conditions:
@@ -5290,6 +5397,11 @@ bool TextPage::markLineNumber() {
 
     int rightMostBoundary = 0;
     int leftMostBoundary = 999990;
+
+    // vertical extent of the page's text content (used to tell a full-height line-number column
+    // from a footnote/reference number block, which is confined to the bottom of the page)
+    double contentTop = 1e9;
+    double contentBottom = -1e9;
 
     // the total number of lines on the page
     int totalNumberOfLines = 0;
@@ -5333,6 +5445,10 @@ bool TextPage::markLineNumber() {
                 leftMostBoundary = line1->xMin;
             if (line1->xMax > rightMostBoundary)
                 rightMostBoundary = line1->xMax;
+            if (line1->yMin < contentTop)
+                contentTop = line1->yMin;
+            if (line1->yMax > contentBottom)
+                contentBottom = line1->yMax;
         }
 
         if (par->xMin < leftMostBoundary)
@@ -5584,8 +5700,38 @@ bool TextPage::markLineNumber() {
         else
             requiredCoverage = 0.5;
 
-        if (coverage < requiredCoverage)
-            continue;
+        // Low coverage can still be genuine sparse line numbering (every Nth line). Accept it
+        // only when the cluster is a regular arithmetic progression at even vertical pitch AND
+        // sits at the extreme page margin. Figure panels / legends with small ascending labels
+        // (e.g. rows numbered 1..6) are regular too but are inset from the margin, so they must
+        // not be stripped; footnote/reference numbers fail the regular-sequence test.
+        if (coverage < requiredCoverage) {
+            double span = (double) (rightMostBoundary - leftMostBoundary);
+            double marginTol = span * 0.06;
+            bool atMargin = (final_vpos - leftMostBoundary <= marginTol) ||
+                            ((double) rightMostBoundary - final_vpos <= marginTol);
+            if (!(atMargin &&
+                  is_regular_number_sequence(clusters[bestClusterIndex[j]], lineNumberWords, totalNumberOfLines)))
+                continue;
+
+            // Document-level footnote guard. A line-number column reaches the top of the page's
+            // text on some page of the document (numbering starts at the top and runs down every
+            // page); a footnote / reference block never does - it sits at the bottom. Accept this
+            // low-coverage column only if it reaches the top HERE, or was already confirmed as a
+            // line-number column on an earlier page (2-column pages and figures push the numbers
+            // down, so a confirmed column may start mid-page on some pages).
+            double contentHeight = contentBottom - contentTop;
+            double colTop = column_top(lineNumberWords, final_vpos);
+            bool reachesTop = (contentHeight <= 0) ||
+                              ((colTop - contentTop) <= 0.4 * contentHeight);
+            bool confirmed = false;
+            for (int c = 0; c < (int) lineNumberColumnsX.size(); c++)
+                if (fabs(lineNumberColumnsX[c] - final_vpos) < 15.0) { confirmed = true; break; }
+            if (!reachesTop && !confirmed)
+                continue;
+            if (reachesTop && !confirmed)
+                lineNumberColumnsX.push_back(final_vpos);
+        }
         validClusterIndices.push_back(bestClusterIndex[j]);
     }
 
@@ -5664,7 +5810,7 @@ static void clampIllustrationBox(double &x, double &y, double &w, double &h) {
     if (h < 0) { h = 0; }
 }
 
-void TextPage::dump(GBool noLineNumbers, GBool fullFontName, const vector<bool> &lineNumberStatus) {
+void TextPage::dump(GBool noLineNumbers, GBool fullFontName, const vector<bool> &lineNumberStatus, vector<double> &lineNumberColumnsX) {
     // Output the page in raw (content stream) order
     // Release the previous page's block tree before building this page's.
     // The TextRawWords held by these lines are borrowed: TextPage::words owns
@@ -6271,7 +6417,7 @@ void TextPage::dump(GBool noLineNumbers, GBool fullFontName, const vector<bool> 
 
     bool hasLineNumber = false;
     if ( (currentPageNumber < nbTotalPage/2) || (previousLineNumber && nbTotalPage>4)) {
-        hasLineNumber = markLineNumber();
+        hasLineNumber = markLineNumber(lineNumberColumnsX);
     }
     setLineNumber(hasLineNumber);
 
@@ -9336,7 +9482,7 @@ void XmlAltoOutputDev::endPage() {
 //        if (readingOrder) {
 //            text->dumpInReadingOrder(noLineNumbers, fullFontName);
 //        } else
-        text->dump(noLineNumbers, fullFontName, lineNumberStatus);
+        text->dump(noLineNumbers, fullFontName, lineNumberStatus, lineNumberColumnsX);
         appendLineNumberStatus(text->getLineNumber());
     }
 
