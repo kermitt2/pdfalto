@@ -6667,8 +6667,15 @@ void TextPage::dump(GBool noLineNumbers, GBool fullFontName, const vector<bool> 
                 if (!fontStyleRetained) delete fontStyleInfo;
             }
 
-            if (nonEmptyLine)
+            if (nonEmptyLine) {
                 xmlAddChild(nodeblocks, nodeline);
+            } else {
+                // A line holding only line-number tokens contributes nothing, but
+                // nodeline was already built and populated above; free it rather
+                // than dropping the reference (same leak as the token node).
+                xmlFreeNode(nodeline);
+                nodeline = NULL;
+            }
 
         }
 
