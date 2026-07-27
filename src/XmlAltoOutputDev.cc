@@ -6625,7 +6625,32 @@ void TextPage::dump(GBool noLineNumbers, GBool fullFontName, const vector<bool> 
                     xmlAddChild(nodeline, node);
                     nonEmptyLine = true;
 
-                    if (wordI < line1->words->getLength() - 1 and (word->spaceAfter == gTrue)) {
+                    // Force a token boundary before/after a SUPERSCRIPT run. A superscript
+                    // citation or affiliation callout ("13-15", "1,2,*") abutting a baseline
+                    // word with no space character in the content stream otherwise merges
+                    // into it ("developed13-15", "Kowalczyk1,2,*"); strict letter/digit
+                    // tokenizers (e.g. GROBID's) will not split that, hiding the callout.
+                    // The smaller-font neighbour is the scripted run; it is a SUPERscript
+                    // when its baseline is raised relative to the baseline word. Subscripts
+                    // (lowered — e.g. the "2" in a chemical formula "CO2") are deliberately
+                    // NOT separated, so formulae stay intact. Adjacent words are tested
+                    // directly to avoid depending on the running-line-baseline state.
+                    bool scriptBoundary = false;
+                    if (nextWord != NULL && word->fontSize > 0 && nextWord->fontSize > 0 &&
+                        word->fontSize != nextWord->fontSize) {
+                        bool wordSmaller = word->fontSize < nextWord->fontSize;
+                        double larger  = wordSmaller ? nextWord->fontSize : word->fontSize;
+                        double smaller = wordSmaller ? word->fontSize : nextWord->fontSize;
+                        double scriptBase   = wordSmaller ? word->base : nextWord->base;
+                        double baselineBase = wordSmaller ? nextWord->base : word->base;
+                        // markedly smaller font, and the scripted run's baseline raised
+                        // (base value smaller => higher on the page) => superscript.
+                        if (smaller <= 0.85 * larger &&
+                            (baselineBase - scriptBase) >= 0.15 * larger)
+                            scriptBoundary = true;
+                    }
+
+                    if (wordI < line1->words->getLength() - 1 and (word->spaceAfter == gTrue or scriptBoundary)) {
                         xmlNodePtr spacingNode = xmlNewNode(NULL, (const xmlChar *) TAG_SPACING);
                         spacingNode->type = XML_ELEMENT_NODE;
                         // The inter-word gap can be negative when consecutive words overlap
