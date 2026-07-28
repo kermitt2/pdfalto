@@ -550,8 +550,10 @@ public:
     /** The number of content stream characters in this word */
     int charLen;
 
-    GBool spaceAfter;		// set if there is a space between this
-    //   word and the next word on the line
+    GBool spaceAfter = gFalse;	// set if there is a space between this
+    //   word and the next word on the line. Default-initialised: it is set true
+    //   only when a space character follows, so an unassigned value would make
+    //   <SP> emission depend on heap contents (see #248).
 
     /** <code>true</code> if the current <code>TextRawWord</code> is <b>bold</b>, <code>false</code> else */
     GBool  bold;
