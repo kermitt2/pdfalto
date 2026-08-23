@@ -15,6 +15,7 @@ Parameters::Parameters() {
   vectorCoordsOnly = gFalse;
   vectorPathLimit = 0;
   vectorBoxes = gFalse;
+  discardClippedText = gFalse;
 }
 
 Parameters::~Parameters() {}
@@ -71,6 +72,12 @@ void Parameters::setFullFontName(GBool fullFontsNames) {
 void Parameters::setReadingOrder(GBool readingOrders) {
   lockGlobalParams;
   readingOrder = readingOrders;
+  unlockGlobalParams;
+}
+
+void Parameters::setDiscardClippedText(GBool discardClippedTextA) {
+  lockGlobalParams;
+  discardClippedText = discardClippedTextA;
   unlockGlobalParams;
 }
 

@@ -973,6 +973,9 @@ public:
                  double dx, double dy,
                  CharCode c, int nBytes, Unicode *u, int uLen, SplashFont * splashFont, GBool isNonUnicodeGlyph);
 
+    /** True if the glyph at (x,y) with advance (dx,dy) lies entirely outside the current clip path */
+    GBool isClippedOut(GfxState *state, double x, double y, double dx, double dy);
+
     /** Add a character to the list of characters in the page
      *  @param state The state description
      *  @param x The x value of left bottom corner of the box character
