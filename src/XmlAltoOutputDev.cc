@@ -3009,9 +3009,51 @@ void TextPage::addCharToRawWord(GfxState *state, double x, double y, double dx,
         curWord = NULL;
 }
 
+// Is the glyph drawn at (x,y) with advance (dx,dy) entirely outside the current clip path?
+// Mirrors the (disabled) xpdf discardClippedText test: the midpoint of the rotation-aware
+// glyph box is compared against the device-space clip bounding box. Typical case: a figure
+// embedded as a PDF Form XObject whose content stream still carries the text of the page it
+// was exported from, clipped to the figure rectangle -- invisible when rendered, but present
+// in the content stream and therefore duplicated in the extraction.
+GBool TextPage::isClippedOut(GfxState *state, double x, double y, double dx, double dy) {
+    double x1, y1, w1, h1, xMid, yMid, ascent, descent;
+    double clipXMin, clipYMin, clipXMax, clipYMax;
+
+    state->transform(x, y, &x1, &y1);
+    state->transformDelta(dx, dy, &w1, &h1);
+    ascent = curFont ? curFont->ascent * curFontSize : 0.0;
+    descent = curFont ? curFont->descent * curFontSize : 0.0;
+    switch (curRot) {
+        case 0:
+        default:
+            xMid = x1 + 0.5 * w1;
+            yMid = y1 - 0.5 * (ascent + descent);
+            break;
+        case 1:
+            xMid = x1 + 0.5 * (ascent + descent);
+            yMid = y1 + 0.5 * h1;
+            break;
+        case 2:
+            xMid = x1 + 0.5 * w1;
+            yMid = y1 + 0.5 * (ascent + descent);
+            break;
+        case 3:
+            xMid = x1 - 0.5 * (ascent + descent);
+            yMid = y1 + 0.5 * h1;
+            break;
+    }
+    state->getClipBBox(&clipXMin, &clipYMin, &clipXMax, &clipYMax);
+    return (xMid < clipXMin || xMid > clipXMax || yMid < clipYMin || yMid > clipYMax);
+}
+
 void TextPage::addChar(GfxState *state, double x, double y, double dx,
                        double dy, CharCode c, int nBytes, Unicode *u, int uLen, SplashFont *splashFont,
                        GBool isNonUnicodeGlyph) {
+    if (parameters->getDiscardClippedText() && isClippedOut(state, x, y, dx, dy)) {
+        // keep charPos in sync with the content stream even for dropped glyphs
+        charPos += nBytes;
+        return;
+    }
 //    if (parameters->getReadingOrder() == gTrue)
 //        addCharToPageChars(state, x, y, dx, dy, c, nBytes, u, uLen, splashFont, isNonUnicodeGlyph);
 //    else

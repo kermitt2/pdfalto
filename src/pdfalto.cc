@@ -71,6 +71,7 @@ static GBool noImageInline = gFalse;
 
 static GBool annots = gFalse;
 static GBool readingOrder = gFalse;
+static GBool discardClippedText = gFalse;
 static GBool charReadingOrderAttr = gFalse;
 static GBool ocr = gFalse;
 
@@ -115,6 +116,8 @@ static ArgDesc argDesc[] = {
                 "do not output line numbers added in manuscript-style textual documents"},
         {"-readingOrder",  argFlag,   &readingOrder,    0,
                 "blocks follow the reading order"},
+        {"-discardClippedText", argFlag, &discardClippedText, 0,
+                "drop characters whose glyph lies entirely outside the current clip path (hidden text inside clipped Form XObjects, e.g. manuscript text carried by embedded figure PDFs)"},
         {"-noText",        argFlag,   &noText,          0,
                 "do not extract textual objects (might be useful, but non-valid ALTO)"},
         {"-charReadingOrderAttr",  argFlag,   &charReadingOrderAttr,    0,
@@ -299,6 +302,13 @@ int main(int argc, char *argv[]) {
         cmd->append("-readingOrder ");
     } else {
         parameters->setReadingOrder(gFalse);
+    }
+
+    if (discardClippedText) {
+        parameters->setDiscardClippedText(gTrue);
+        cmd->append("-discardClippedText ");
+    } else {
+        parameters->setDiscardClippedText(gFalse);
     }
 
     if (charReadingOrderAttr) {

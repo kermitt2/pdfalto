@@ -74,6 +74,13 @@ public:
 	 */
 	GBool getReadingOrder() {return readingOrder;}
 
+	/** Return whether characters whose glyph box lies entirely outside the current clip
+	 *  path are discarded (text hidden inside clipped Form XObjects, e.g. manuscript text
+	 *  carried along by embedded figure PDFs).
+	 * @return <code>true</code> if the discardClippedText option is selected
+	 */
+	GBool getDiscardClippedText() {return discardClippedText;}
+
 	/** PL: Return the boolean that controls whether to include TYPE attributes to String elements to
 	 * indicate right-to-left reading order (produces non-valid ALTO)
 	 * @return <code>true</code> if the charReadingOrderAttr option is selected, <code>false</code> otherwise
@@ -160,6 +167,9 @@ public:
 	 */	
 	void setReadingOrder(GBool readingOrders);
 
+	/** Set whether fully clipped characters are discarded (see getDiscardClippedText) */
+	void setDiscardClippedText(GBool discardClippedTextA);
+
 	/** PL: Modifiy the boolean that controls whether to include TYPE attributes to String elements to indicate
 	 * right-to-left reading order (produces non-valid ALTO)
 	 * @param charReadingOrderAttr <code>true</code> if the charReadingOrderAttr option is selected, <code>false</code> otherwise
@@ -214,6 +224,9 @@ private:
 	//GBool imageInline;
 	/** PL: The value of the readingOrder option */
 	GBool readingOrder;
+
+	/** The value of the discardClippedText option */
+	GBool discardClippedText;
 	/** PL: The value of the charReadingOrderAttr option */
 	GBool charReadingOrderAttr;
 	/** The value of ocr option */
