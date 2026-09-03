@@ -57,21 +57,32 @@ if (APPLE)
     #set(CMAKE_CXX_STANDARD_LIBRARIES "-static-compiler-rt -static-libc++")
     set(OSSUFFIX "mac")
 
-    include(CheckCCompilerFlag)
-    check_c_compiler_flag("-arch arm64" arm64Supported)
-    message("arm64Supported=${arm64Supported}")
+    # Which prebuilt libraries under libs/*/mac/ to link against depends on the
+    # architecture being BUILT FOR. This used to be inferred from
+    # check_c_compiler_flag("-arch arm64"), which answers a different question
+    # -- "can this compiler emit arm64?" -- and is true on an Intel mac with a
+    # current SDK. CMAKE_OSX_ARCHITECTURES is the architecture actually
+    # selected; scikit-build-core sets it from ARCHFLAGS when building the
+    # Python wheels, so an x86_64 wheel job was picking the arm64 libraries.
+    # With it unset (a plain `cmake ./`), the host architecture is the answer.
+    if (CMAKE_OSX_ARCHITECTURES)
+        list(GET CMAKE_OSX_ARCHITECTURES 0 PDFALTO_MAC_ARCH)
+    else ()
+        set(PDFALTO_MAC_ARCH "${CMAKE_HOST_SYSTEM_PROCESSOR}")
+    endif ()
 
-
-    IF (${arm64Supported} MATCHES 1)
+    if (PDFALTO_MAC_ARCH MATCHES "^(arm64|aarch64)$")
         set(ARCHSUFFIX "arm64")
         set(CMAKE_REQUIRED_LINK_OPTIONS "-arch;arm64")
-        MESSAGE(STATUS "Check if the building for MacOS ARM64")
-    ELSE ()
+        MESSAGE(STATUS "Building for macOS arm64")
+    else ()
         set(ARCHSUFFIX "64")
         set(C_INCLUDE_PATH "/usr/local/include")
         set(CPLUS_INCLUDE_PATH "/usr/local/include")
-        MESSAGE(STATUS "Check if the building for MacOS X86_64")
-    ENDIF ()
+        MESSAGE(STATUS "Building for macOS x86_64")
+    endif ()
+
+    MESSAGE(STATUS "macOS architecture: ${PDFALTO_MAC_ARCH} -> libs/*/mac/${ARCHSUFFIX}")
 
 elseif (CYGWIN OR MSVC OR WIN32 OR MINGW)
     message("Using windows settings.")
