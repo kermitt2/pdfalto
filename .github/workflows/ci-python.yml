@@ -15,8 +15,11 @@ jobs:
     name: ${{ matrix.label }}
     strategy:
       matrix:
+        # The same runners as ci-build.yml's matrix
+        # ( self-hosted, macos-latest, ubuntu-24.04-arm, macos-15-intel ),
+        # paired with the label the artifact is named after.
         include:
-          - os: ubuntu-24.04
+          - os: self-hosted
             label: linux-x86_64
           - os: ubuntu-24.04-arm
             label: linux-aarch64
@@ -34,10 +37,20 @@ jobs:
         with:
           submodules: true
 
+      # cibuildwheel needs a reasonably recent Python of its own to run under;
+      # it is present on the GitHub-hosted images but not guaranteed on a
+      # self-hosted one.
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
       # Each runner builds only for its own architecture; there is no
       # cross-compilation and no QEMU, which keeps this matrix aligned with
       # the one in ci-build.yml and with the prebuilt static libraries under
       # libs/*/{linux,mac}/{64,arm64}.
+      #
+      # The Linux jobs build inside a manylinux container, so their runner
+      # needs a usable Docker.
       - name: Build and test wheel
         uses: pypa/cibuildwheel@v4.2.0
 
