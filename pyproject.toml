@@ -123,6 +123,15 @@ test-command = "pytest {project}/python/tests -q"
 manylinux-x86_64-image = "manylinux_2_28"
 manylinux-aarch64-image = "manylinux_2_28"
 
+# Cap compile parallelism. ninja defaults to roughly one job per core, and
+# xpdf's heaviest translation units -- Gfx.cc, GfxState.cc, Splash.cc -- each
+# want on the order of a gigabyte in g++. On a many-core machine that peak
+# scales with the core count and not with the memory the container is actually
+# allowed, which a 4-core hosted runner never runs into. It also keeps a
+# failing compiler's output next to ninja's "build stopped" line instead of
+# interleaved with dozens of other jobs.
+environment = { CMAKE_BUILD_PARALLEL_LEVEL = "4" }
+
 [tool.cibuildwheel.macos]
 # Both architectures target macOS 11. The prebuilt static libraries under
 # libs/*/mac/ are themselves built with a minimum of macOS 15 (they come from
