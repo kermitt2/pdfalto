@@ -118,6 +118,12 @@ set(ICUDATA_LIBRARY ${ICU_SUBDIR}/${OSSUFFIX}/${ARCHSUFFIX}/libicudata.a)
 
 set(XPDF_BUILD_DIR ${XPDF_SUBDIR}/build)
 
+# xpdf generates aconf.h with configure_file() into the binary directory of its
+# own subproject. For an in-source build (`cmake ./`) that is the source
+# directory, which is why ${XPDF_SUBDIR} alone used to be enough; an
+# out-of-source build -- what the Python wheel does -- puts it here instead.
+set(XPDF_BINARY_DIR ${CMAKE_CURRENT_BINARY_DIR}/xpdf-4.05)
+
 add_subdirectory(${XPDF_SUBDIR})
 
 set(SOURCE_FILES
@@ -167,5 +173,31 @@ target_include_directories(
         PUBLIC ${XPDF_SUBDIR}/fofi
         PUBLIC ${XPDF_SUBDIR}/xpdf
         PUBLIC ${XPDF_BUILD_DIR}
+        PUBLIC ${XPDF_BINARY_DIR}
         PUBLIC ${ICU_SUBDIR}/include
 )
+
+#--- install layout for the Python wheel (driven by scikit-build-core)
+#
+# Off by default so a plain `cmake ./ && make` keeps behaving exactly as before.
+# pdfalto locates its runtime resources relative to the executable itself
+# (src/whereami.c), and the paths inside xpdfrc are relative to that same
+# directory, so the wheel has to keep the three side by side under _bin/.
+option(PDFALTO_PYTHON_WHEEL "Install pdfalto into the layout expected by the Python wheel" OFF)
+
+if (PDFALTO_PYTHON_WHEEL)
+    # Everything is tagged with a component so the wheel build can install
+    # only these rules: the vendored xpdf tree installs libxpdf.a and a man
+    # page unconditionally, which have no business inside a Python wheel.
+    set(PDFALTO_WHEEL_BIN_DIR "pdfalto/_bin")
+    set(PDFALTO_WHEEL_COMPONENT "pdfalto_wheel")
+    install(TARGETS pdfalto
+            RUNTIME DESTINATION "${PDFALTO_WHEEL_BIN_DIR}"
+            COMPONENT "${PDFALTO_WHEEL_COMPONENT}")
+    install(FILES "${CMAKE_CURRENT_SOURCE_DIR}/xpdfrc"
+            DESTINATION "${PDFALTO_WHEEL_BIN_DIR}"
+            COMPONENT "${PDFALTO_WHEEL_COMPONENT}")
+    install(DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/languages"
+            DESTINATION "${PDFALTO_WHEEL_BIN_DIR}"
+            COMPONENT "${PDFALTO_WHEEL_COMPONENT}")
+endif ()

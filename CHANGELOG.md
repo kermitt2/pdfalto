@@ -5,6 +5,8 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [0.6.1] - unreleased
+- Add Python bindings and PyPI packaging: `pip install pdfalto` installs wheels bundling the compiled executable, exposing `pdfalto.convert()`/`convert_to_string()` with every command line option as a keyword argument, plus the `pdfalto` command itself. Wheels are built for Linux x86-64/aarch64 and macOS arm64/x86-64 by the new `ci-python.yml` workflow and published on a `v*` tag
+- Fix out-of-source CMake builds: `aconf.h` is generated into the xpdf subproject's binary directory, which was not on pdfalto's include path, so only an in-source `cmake ./` could compile
 - Fix nondeterministic output: `TextRawWord::spaceAfter` was never initialised and font ascent/descent were read through an already-freed `GfxFont`, so line/block grouping and `<SP>` emission depended on heap contents. The same PDF could produce different `<TextLine>`/`<TextBlock>` structure across runs (extracted text was unaffected), which showed up as a ~0.3-0.5% noise floor in downstream A/B comparisons #248
 - Bound peak memory on vector-heavy PDFs: when the `.svg` is not written (`-onlyGraphsCoord`/`-noImage`) the full vector geometry is no longer built in memory, only the per-page bounding box that consumers read (fixes >6GB OOM on pathological figures; ALTO output unchanged)
 - Add `-vectorCoordsOnly` to dump each vector path's bounding-box rectangle instead of full curve geometry (smaller `.svg`, same coordinates)

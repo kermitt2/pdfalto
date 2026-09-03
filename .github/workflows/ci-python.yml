@@ -1,0 +1,113 @@
+name: Python wheels
+
+# Wheels are built on every push so a break in the packaging shows up with the
+# commit that caused it, and published to PyPI only from a v* tag — the same
+# trigger the C++ release in ci-build.yml uses.
+on:
+  push:
+    branches: ['**']
+    tags: ['v*']
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  wheels:
+    name: ${{ matrix.label }}
+    strategy:
+      matrix:
+        include:
+          - os: ubuntu-24.04
+            label: linux-x86_64
+          - os: ubuntu-24.04-arm
+            label: linux-aarch64
+          - os: macos-latest
+            label: macos-arm64
+          - os: macos-15-intel
+            label: macos-x86_64
+      fail-fast: false
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: true
+
+      # Each runner builds only for its own architecture; there is no
+      # cross-compilation and no QEMU, which keeps this matrix aligned with
+      # the one in ci-build.yml and with the prebuilt static libraries under
+      # libs/*/{linux,mac}/{64,arm64}.
+      - name: Build and test wheel
+        uses: pypa/cibuildwheel@v4.2.0
+
+      - name: Upload wheel
+        uses: actions/upload-artifact@v4
+        with:
+          name: wheel-${{ matrix.label }}
+          path: wheelhouse/*.whl
+
+  sdist:
+    name: sdist
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: true
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Build sdist
+        run: pipx run build --sdist
+
+      # A source build has to work for the platforms with no wheel, so check
+      # that the sdist alone is enough to produce a working install.
+      - name: Install from the sdist and run the tests
+        run: |
+          set -euo pipefail
+          python -m venv /tmp/sdist-venv
+          /tmp/sdist-venv/bin/pip install dist/*.tar.gz pytest
+          /tmp/sdist-venv/bin/python -m pytest python/tests -q
+
+      - name: Upload sdist
+        uses: actions/upload-artifact@v4
+        with:
+          name: sdist
+          path: dist/*.tar.gz
+
+  publish:
+    name: Publish to PyPI
+    needs: [wheels, sdist]
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-24.04
+    environment: pypi
+    permissions:
+      # Required by PyPI trusted publishing; no API token is stored in the
+      # repository. Configure the publisher once at
+      # https://pypi.org/manage/project/pdfalto/settings/publishing/
+      # with owner kermitt2, repository pdfalto, workflow ci-python.yml,
+      # environment pypi.
+      id-token: write
+
+    steps:
+      - name: Download all distributions
+        uses: actions/download-artifact@v4
+        with:
+          pattern: 'wheel-*'
+          path: dist
+          merge-multiple: true
+
+      - name: Download sdist
+        uses: actions/download-artifact@v4
+        with:
+          name: sdist
+          path: dist
+
+      - name: Show what will be uploaded
+        run: ls -lh dist/
+
+      - name: Publish
+        uses: pypa/gh-action-pypi-publish@v1.14.2

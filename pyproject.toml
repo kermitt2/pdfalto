@@ -1,0 +1,140 @@
+[build-system]
+requires = ["scikit-build-core>=0.11"]
+build-backend = "scikit_build_core.build"
+
+[project]
+name = "pdfalto"
+description = "PDF to ALTO XML conversion — Python bindings for the pdfalto command line tool"
+readme = "python/README.md"
+license = "GPL-2.0-only"
+license-files = ["LICENSE"]
+requires-python = ">=3.9"
+authors = [{ name = "The pdfalto contributors" }]
+keywords = ["pdf", "alto", "xml", "ocr", "text-extraction", "grobid", "xpdf"]
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Intended Audience :: Science/Research",
+    "Programming Language :: C++",
+    "Programming Language :: Python :: 3",
+    "Topic :: Text Processing :: Markup :: XML",
+    "Topic :: Scientific/Engineering :: Information Analysis",
+]
+dynamic = ["version"]
+
+[project.urls]
+Homepage = "https://github.com/kermitt2/pdfalto"
+Source = "https://github.com/kermitt2/pdfalto"
+Issues = "https://github.com/kermitt2/pdfalto/issues"
+Changelog = "https://github.com/kermitt2/pdfalto/blob/master/CHANGELOG.md"
+
+[project.scripts]
+pdfalto = "pdfalto.__main__:main"
+
+[project.optional-dependencies]
+test = ["pytest>=7"]
+
+# ---------------------------------------------------------------------------
+# scikit-build-core: drive the existing CMake build and drop the resulting
+# executable into the wheel next to the pure-Python sources.
+# ---------------------------------------------------------------------------
+[tool.scikit-build]
+minimum-version = "0.11"
+cmake.version = ">=3.15"
+build-dir = "build/{wheel_tag}"
+
+# Only the pdfalto target — xpdf's CMakeLists declares a number of sibling
+# tools we have no use for here.
+build.targets = ["pdfalto"]
+
+# Install only our own rules; the vendored xpdf tree has install() calls of its
+# own that would otherwise drop libxpdf.a and a man page into the wheel.
+install.components = ["pdfalto_wheel"]
+
+# The wheel ships a plain executable, not an extension module, so it is
+# independent of the Python version and the CPython ABI: one py3-none-<plat>
+# wheel covers every supported interpreter.
+wheel.py-api = "py3"
+wheel.packages = ["python/pdfalto"]
+
+sdist.include = [
+    "python/README.md",
+    # xpdf-4.05 is a submodule, and its own .gitignore lists the four source
+    # directories below even though they are tracked. scikit-build-core applies
+    # those ignore rules on top of the git file list, so without these includes
+    # the sdist would ship an xpdf tree with no sources in it and the source
+    # build would fail at `add_subdirectory(xpdf)`. Patterns are per-extension
+    # rather than "**" so a local build's artifacts cannot leak in — in
+    # particular xpdf-4.05/aconf.h, which is generated into the build directory
+    # and would shadow the generated one if it were shipped.
+    "xpdf-4.05/fofi/*.c", "xpdf-4.05/fofi/*.cc", "xpdf-4.05/fofi/*.h", "xpdf-4.05/fofi/*.txt", "xpdf-4.05/fofi/*.manifest",
+    "xpdf-4.05/goo/*.c", "xpdf-4.05/goo/*.cc", "xpdf-4.05/goo/*.h", "xpdf-4.05/goo/*.txt", "xpdf-4.05/goo/*.manifest",
+    "xpdf-4.05/splash/*.c", "xpdf-4.05/splash/*.cc", "xpdf-4.05/splash/*.h", "xpdf-4.05/splash/*.txt", "xpdf-4.05/splash/*.manifest",
+    "xpdf-4.05/xpdf/*.c", "xpdf-4.05/xpdf/*.cc", "xpdf-4.05/xpdf/*.h", "xpdf-4.05/xpdf/*.txt", "xpdf-4.05/xpdf/*.manifest",
+]
+# The source distribution has to be able to build the executable, so it keeps
+# src/, xpdf-4.05/, libs/ (the prebuilt static libraries), languages/ and
+# xpdfrc. Only things a source build has no use for are dropped.
+sdist.exclude = [
+    "build",
+    "samples",
+    "docs",
+    ".github",
+    ".claude",
+    # 35 MB of ICU that nothing links: CMakeLists.txt uses only libicuuc and
+    # libicudata.
+    "libs/**/libicui18n.a",
+]
+
+[tool.scikit-build.cmake.define]
+# Turn on the install rules that lay the executable, its xpdfrc and the
+# languages/ tree out under pdfalto/_bin/ inside the wheel.
+PDFALTO_PYTHON_WHEEL = "ON"
+
+# Wheels are built without fontconfig so the binary carries no dependency on
+# the build machine's font stack: identical input then gives identical output
+# everywhere, which is what a library consumer expects. Build from source with
+#   pip install . -C cmake.define.NO_FONTCONFIG=OFF
+# to get the system-font substitution the GitHub release binaries have.
+NO_FONTCONFIG = "ON"
+
+# Single source of truth for the version: CMakeLists.txt, which is what
+# .bumpversion.toml already updates.
+[tool.scikit-build.metadata.version]
+provider = "scikit_build_core.metadata.regex"
+input = "CMakeLists.txt"
+regex = '''project\(pdfalto VERSION (?P<value>[0-9]+\.[0-9]+\.[0-9]+)\)'''
+
+# ---------------------------------------------------------------------------
+# cibuildwheel: one wheel per platform, built and tested in CI.
+# ---------------------------------------------------------------------------
+[tool.cibuildwheel]
+# The wheel contains an executable rather than an extension module, so it is
+# tagged py3-none-<platform> and a single build covers every Python version.
+# We therefore build under one interpreter only.
+build = "cp312-*"
+# The static libraries under libs/ are built against glibc, so a musl build
+# cannot link.
+skip = "*-musllinux_*"
+build-frontend = "build"
+test-requires = "pytest"
+test-command = "pytest {project}/python/tests -q"
+
+[tool.cibuildwheel.linux]
+# AlmaLinux 8 (glibc 2.28): covers RHEL 8+, Debian 10+, Ubuntu 18.10+, and
+# ships a toolchain new enough for C++17 without the devtoolset gymnastics
+# the older CentOS 7 images need.
+manylinux-x86_64-image = "manylinux_2_28"
+manylinux-aarch64-image = "manylinux_2_28"
+
+[tool.cibuildwheel.macos]
+# Oldest targets the respective architectures support. Bump these if the
+# prebuilt static libraries under libs/*/mac/ ever start requiring newer.
+environment = { MACOSX_DEPLOYMENT_TARGET = "11.0" }
+
+[[tool.cibuildwheel.overrides]]
+select = "*-macosx_x86_64"
+inherit.environment = "append"
+environment = { MACOSX_DEPLOYMENT_TARGET = "10.13" }
+
+[tool.pytest.ini_options]
+testpaths = ["python/tests"]
