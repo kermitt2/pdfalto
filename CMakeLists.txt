@@ -180,12 +180,16 @@ target_include_directories(
         PUBLIC ${FREETYPE_INCLUDE_DIR}
         PUBLIC ${PNG_INCLUDE_DIRS}
         PUBLIC ${ZLIB_INCLUDE_DIRS}
+        # Ahead of ${XPDF_SUBDIR}: aconf.h is generated into the binary
+        # directory, and an in-source build leaves a copy in the source tree.
+        # Whichever include directory comes first wins, and the generated one
+        # is the one that matches this build's options.
+        PUBLIC ${XPDF_BINARY_DIR}
         PUBLIC ${XPDF_SUBDIR}
         PUBLIC ${XPDF_SUBDIR}/goo
         PUBLIC ${XPDF_SUBDIR}/fofi
         PUBLIC ${XPDF_SUBDIR}/xpdf
         PUBLIC ${XPDF_BUILD_DIR}
-        PUBLIC ${XPDF_BINARY_DIR}
         PUBLIC ${ICU_SUBDIR}/include
 )
 

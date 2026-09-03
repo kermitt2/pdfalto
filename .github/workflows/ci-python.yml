@@ -47,24 +47,21 @@ jobs:
         with:
           python-version: '3.12'
 
-      # Temporary, while the x86_64 job is being diagnosed: the resources a
-      # compile can run out of are invisible in the build log itself. Remove
-      # once that job is green.
-      - name: Runner diagnostics
-        if: runner.os == 'Linux'
-        continue-on-error: true
+      # cibuildwheel copies the whole workspace into the build container, and a
+      # self-hosted runner reuses that workspace across workflows. ci-build.yml
+      # builds in-source on the same machine, with libfontconfig-dev present,
+      # leaving xpdf-4.05/aconf.h behind with HAVE_FONTCONFIG set. xpdf's
+      # include path puts the source tree ahead of the build directory, so that
+      # stale header wins over the freshly generated one and GlobalParams.cc
+      # fails on <fontconfig/fontconfig.h>, which the manylinux image does not
+      # have. aconf.h is listed in the submodule's .gitignore, so -x is what
+      # makes it go; a plain clean leaves it in place.
+      - name: Remove generated files left behind by other builds
         shell: bash
         run: |
-          echo "--- cpu/memory ---"
-          nproc || true
-          free -h || true
-          echo "--- disk ---"
-          df -h . /var/lib/docker /tmp 2>/dev/null || df -h || true
-          echo "--- docker ---"
-          docker info --format 'server={{.ServerVersion}} driver={{.Driver}} memlimit={{.MemoryLimit}} total_mem={{.MemTotal}}' || true
-          echo "--- leftovers in the workspace that would be copied into the container ---"
-          git status --porcelain --ignored=matching | head -30 || true
-          ls -la xpdf-4.05/aconf.h build 2>/dev/null || echo "(none)"
+          set -euo pipefail
+          git clean -ffdx
+          git submodule foreach --recursive git clean -ffdx
 
       # Each runner builds only for its own architecture; there is no
       # cross-compilation and no QEMU, which keeps this matrix aligned with
