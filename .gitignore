@@ -10,7 +10,7 @@ cmake-build-debug
 exe/*
 CMakeCache.txt
 *.cmake
-pdfalto
+/pdfalto
 Makefile
 ./*.xml
 *.pdf
@@ -25,3 +25,11 @@ build/
 install/
 .ninja_*
 build.ninja
+
+# Python packaging
+dist/
+*.egg-info/
+__pycache__/
+.pytest_cache/
+python/pdfalto/_bin/
+wheelhouse/
