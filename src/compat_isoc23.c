@@ -22,7 +22,11 @@
  * the real thing rather than recursing into themselves.
  */
 
-#include <features.h>
+/* <stdlib.h> rather than <features.h>: it declares the functions wrapped
+ * below, and on glibc it pulls in <features.h> transitively, which is what
+ * defines __GLIBC__ and __GLIBC_PREREQ. <features.h> is glibc's own header and
+ * does not exist on macOS. */
+#include <stdlib.h>
 
 #if defined(__GLIBC__) && defined(__GLIBC_PREREQ)
 #if !__GLIBC_PREREQ(2, 38)
@@ -31,8 +35,6 @@
 #endif
 
 #ifdef PDFALTO_NEEDS_ISOC23_SHIM
-
-#include <stdlib.h>
 
 long int __isoc23_strtol(const char *nptr, char **endptr, int base) {
     return strtol(nptr, endptr, base);
