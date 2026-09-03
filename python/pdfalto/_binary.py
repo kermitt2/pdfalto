@@ -1,41 +1,56 @@
-"""Locating the bundled pdfalto executable."""
+"""Locating the pdfalto executable."""
 
 from __future__ import annotations
 
 import os
-import re
 import subprocess
 import sys
 from pathlib import Path
 
 __all__ = ["binary_path", "binary_version"]
 
-#: Directory inside the installed package holding the executable, its xpdfrc
-#: and the languages/ tree. pdfalto resolves both of the latter relative to
-#: its own location, so they must stay together.
-_BIN_DIR = Path(__file__).parent / "_bin"
-
-#: Set this to an absolute path to run a pdfalto built elsewhere (a local
-#: CMake build, a distribution package) instead of the bundled one.
-_ENV_OVERRIDE = "PDFALTO_BINARY"
-
-
 #: Name of the executable on this platform.
 _EXE = "pdfalto.exe" if sys.platform == "win32" else "pdfalto"
 
+#: Set this to an absolute path to run a pdfalto built elsewhere (a local CMake
+#: build, a distribution package) instead of the installed one.
+_ENV_OVERRIDE = "PDFALTO_BINARY"
 
-def _bundled() -> Path:
-    return _BIN_DIR / _EXE
+
+def _script_dirs():
+    """Directories where this environment's installed executables live.
+
+    The wheel installs pdfalto as a real executable in the environment's
+    scripts directory rather than as a console-script wrapper, so it is on PATH
+    and costs nothing to start. sysconfig knows where that directory is for the
+    interpreter running us; the user scheme covers ``pip install --user``.
+    """
+    import sysconfig
+
+    schemes = [sysconfig.get_default_scheme()]
+    user_scheme = "nt_user" if os.name == "nt" else "posix_user"
+    if user_scheme in sysconfig.get_scheme_names():
+        schemes.append(user_scheme)
+
+    seen = set()
+    for scheme in schemes:
+        try:
+            path = sysconfig.get_path("scripts", scheme=scheme)
+        except (KeyError, ValueError):  # pragma: no cover - exotic schemes
+            continue
+        if path and path not in seen:
+            seen.add(path)
+            yield Path(path)
 
 
 def _source_tree_candidates():
     """Where a binary built from a checkout of this repository would be.
 
-    Only consulted when the wheel's own ``_bin`` directory is absent, which is
-    the case for an editable install: scikit-build-core keeps the CMake output
-    in its build directory rather than next to the Python sources. Both
-    candidates sit beside the repository's xpdfrc and languages/, which is what
-    pdfalto needs to find its runtime resources.
+    Only reached when nothing is installed, which is the case for an editable
+    install: scikit-build-core keeps the CMake output in its build directory
+    rather than next to the Python sources. Both candidates sit beside the
+    repository's own xpdfrc and languages/, which is what pdfalto needs to find
+    its runtime resources.
     """
     # <repo>/python/pdfalto/_binary.py -> <repo>
     repo = Path(__file__).resolve().parents[2]
@@ -43,11 +58,27 @@ def _source_tree_candidates():
     yield from sorted(repo.glob(f"build/*/{_EXE}"))    # scikit-build-core
 
 
+def _candidates():
+    for directory in _script_dirs():
+        yield directory / _EXE
+    # Covers layouts sysconfig does not describe, e.g. a relocated environment.
+    from shutil import which
+
+    found = which(_EXE)
+    if found:
+        yield Path(found)
+    yield from _source_tree_candidates()
+
+
+def _usable(path: Path) -> bool:
+    return path.is_file() and os.access(path, os.X_OK)
+
+
 def binary_path() -> Path:
     """Return the path of the pdfalto executable that this package will run.
 
     Honours the ``PDFALTO_BINARY`` environment variable, which lets you point
-    the Python API at a locally built binary without reinstalling the wheel.
+    the Python API at a locally built binary without reinstalling.
 
     Raises:
         FileNotFoundError: if no usable executable is found.
@@ -61,20 +92,17 @@ def binary_path() -> Path:
             )
         return path
 
-    path = _bundled()
-    if not path.is_file():
-        for candidate in _source_tree_candidates():
-            if candidate.is_file() and os.access(candidate, os.X_OK):
-                return candidate
-        raise FileNotFoundError(
-            f"the pdfalto executable is missing from {_BIN_DIR}, and no build "
-            "was found in the surrounding source tree. Install from a wheel "
-            "(pip install pdfalto), build the tool in a checkout (cmake ./ && "
-            f"make), or point {_ENV_OVERRIDE} at an existing pdfalto binary."
-        )
-    if not os.access(path, os.X_OK):
-        raise FileNotFoundError(f"{path} exists but is not executable")
-    return path
+    for candidate in _candidates():
+        if _usable(candidate):
+            return candidate
+
+    searched = ", ".join(str(d) for d in _script_dirs())
+    raise FileNotFoundError(
+        f"the pdfalto executable was not found (looked in {searched}, on PATH, "
+        "and in the surrounding source tree). Install from a wheel "
+        "(pip install pdfalto), build the tool in a checkout (cmake ./ && "
+        f"make), or point {_ENV_OVERRIDE} at an existing pdfalto binary."
+    )
 
 
 def binary_version() -> str:
@@ -86,6 +114,8 @@ def binary_version() -> str:
     # `pdfalto -v` prints "pdfalto version X.Y.Z" on stderr and exits non-zero
     # (it shares the usage-error path), so neither the stream nor the exit code
     # can be taken at face value here.
+    import re
+
     proc = subprocess.run(
         [str(binary_path()), "-v"],
         stdout=subprocess.PIPE,

@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import os
+import shutil
 import subprocess
 import sys
 
@@ -132,9 +134,7 @@ def test_binary_override(monkeypatch, tmp_path):
         pdfalto.binary_path()
 
 
-def test_console_script_matches_the_binary():
-    from pdfalto.__main__ import main  # noqa: F401  (import must succeed)
-
+def test_python_m_pdfalto_runs_the_binary():
     proc = subprocess.run(
         [sys.executable, "-m", "pdfalto", "-v"],
         stdout=subprocess.PIPE,
@@ -144,24 +144,175 @@ def test_console_script_matches_the_binary():
     assert "pdfalto version" in proc.stdout
 
 
-def test_source_tree_fallback_is_used_when_the_wheel_has_no_bin(
-    monkeypatch, tmp_path
-):
+def _isolate_lookup(monkeypatch, tmp_path, source_tree=()):
+    """Make binary_path() see an environment with nothing installed."""
     from pdfalto import _binary
 
+    monkeypatch.setattr(_binary, "_script_dirs", lambda: iter([tmp_path / "absent"]))
+    monkeypatch.setattr(
+        _binary, "_source_tree_candidates", lambda: iter(list(source_tree))
+    )
+    monkeypatch.setenv("PATH", "")  # so shutil.which cannot find the real one
+    monkeypatch.delenv("PDFALTO_BINARY", raising=False)
+    return _binary
+
+
+def test_source_tree_fallback_is_used_when_nothing_is_installed(
+    monkeypatch, tmp_path
+):
     built = tmp_path / "pdfalto"
     built.write_text("#!/bin/sh\n")
     built.chmod(0o755)
 
-    monkeypatch.setattr(_binary, "_BIN_DIR", tmp_path / "absent")
-    monkeypatch.setattr(_binary, "_source_tree_candidates", lambda: iter([built]))
+    _binary = _isolate_lookup(monkeypatch, tmp_path, source_tree=[built])
     assert _binary.binary_path() == built
 
 
 def test_missing_binary_reports_how_to_get_one(monkeypatch, tmp_path):
-    from pdfalto import _binary
-
-    monkeypatch.setattr(_binary, "_BIN_DIR", tmp_path / "absent")
-    monkeypatch.setattr(_binary, "_source_tree_candidates", lambda: iter([]))
+    _binary = _isolate_lookup(monkeypatch, tmp_path)
     with pytest.raises(FileNotFoundError, match="pip install pdfalto"):
         _binary.binary_path()
+
+
+# --- the executable on PATH --------------------------------------------------
+
+
+def _installed_in_scripts_dir():
+    """The binary as installed by the wheel, or None when running from a
+    checkout (where the tests run against a plain `cmake ./ && make` build)."""
+    from pdfalto import _binary
+
+    for directory in _binary._script_dirs():
+        candidate = directory / _binary._EXE
+        if candidate.is_file():
+            return candidate
+    return None
+
+
+def test_the_executable_is_installed_on_path():
+    installed = _installed_in_scripts_dir()
+    if installed is None:
+        pytest.skip("not an installed build")
+    assert os.access(installed, os.X_OK)
+    # It must be the executable itself, not a console-script wrapper: a Python
+    # wrapper would add the interpreter's startup cost to every invocation.
+    assert installed.read_bytes()[:4] in (b"\x7fELF", b"\xcf\xfa\xed\xfe")
+    assert shutil.which("pdfalto", path=str(installed.parent)) == str(installed)
+
+
+def test_the_wheel_puts_the_resources_under_share():
+    installed = _installed_in_scripts_dir()
+    if installed is None:
+        pytest.skip("not an installed build")
+    share = installed.parent.parent / "share" / "pdfalto"
+    assert (share / "xpdfrc").is_file()
+    assert (share / "languages").is_dir()
+
+
+def test_the_installed_executable_converts_without_any_help(sample_pdf, tmp_path):
+    installed = _installed_in_scripts_dir()
+    if installed is None:
+        pytest.skip("not an installed build")
+    out = tmp_path / "out.xml"
+    proc = subprocess.run(
+        [str(installed), str(sample_pdf), str(out)],
+        capture_output=True,
+        text=True,
+        cwd=tmp_path,
+    )
+    assert proc.returncode == 0, proc.stderr
+    assert f'CONTENT="{TEXT.split()[0]}"' in out.read_text()
+
+
+# --- findResourceDir ---------------------------------------------------------
+#
+# pdfalto reads xpdfrc from the directory it decides holds its resources, and
+# reports the file name when it hits a line it does not understand. Planting a
+# deliberately bad line and looking for that file name in stderr is what makes
+# these tests prove *which* xpdfrc was opened, rather than merely that the run
+# succeeded -- a missing xpdfrc is not an error, so success proves nothing.
+
+BAD_XPDFRC = "thisIsNotAConfigCommand 1\n"
+
+
+def _place_binary(directory):
+    """Put a runnable copy of pdfalto in `directory` and return its path.
+
+    A hard link where the filesystem allows one, to avoid copying 39 MB per
+    test. Not a symlink: pdfalto locates itself through /proc/self/exe, which
+    resolves symlinks and would defeat the point.
+    """
+    directory.mkdir(parents=True, exist_ok=True)
+    target = directory / "pdfalto"
+    real = pdfalto.binary_path()
+    try:
+        os.link(real, target)
+    except OSError:
+        shutil.copy2(real, target)
+    return target
+
+
+def _run_and_capture_config_errors(binary, sample_pdf, tmp_path, env=None):
+    proc = subprocess.run(
+        [str(binary), str(sample_pdf), str(tmp_path / "out.xml")],
+        capture_output=True,
+        text=True,
+        env=env,
+    )
+    assert proc.returncode == 0, proc.stderr
+    return proc.stderr
+
+
+def test_resources_are_read_from_beside_the_executable(sample_pdf, tmp_path):
+    binary = _place_binary(tmp_path / "flat")
+    xpdfrc = tmp_path / "flat" / "xpdfrc"
+    xpdfrc.write_text(BAD_XPDFRC)
+
+    stderr = _run_and_capture_config_errors(binary, sample_pdf, tmp_path)
+    assert str(xpdfrc) in stderr
+
+
+def test_resources_are_read_from_share_when_the_binary_is_in_bin(
+    sample_pdf, tmp_path
+):
+    """The layout the wheel installs: <prefix>/bin/pdfalto with its resources
+    in <prefix>/share/pdfalto, so bin/ is not filled with encoding tables."""
+    prefix = tmp_path / "prefix"
+    binary = _place_binary(prefix / "bin")
+    share = prefix / "share" / "pdfalto"
+    share.mkdir(parents=True)
+    xpdfrc = share / "xpdfrc"
+    xpdfrc.write_text(BAD_XPDFRC)
+
+    stderr = _run_and_capture_config_errors(binary, sample_pdf, tmp_path)
+    assert "share/pdfalto/xpdfrc" in stderr
+
+
+def test_beside_the_executable_wins_over_share(sample_pdf, tmp_path):
+    """Existing installs keep working unchanged: ../share is only a fallback."""
+    prefix = tmp_path / "prefix"
+    binary = _place_binary(prefix / "bin")
+    beside = prefix / "bin" / "xpdfrc"
+    beside.write_text(BAD_XPDFRC)
+    share = prefix / "share" / "pdfalto"
+    share.mkdir(parents=True)
+    (share / "xpdfrc").write_text(BAD_XPDFRC)
+
+    stderr = _run_and_capture_config_errors(binary, sample_pdf, tmp_path)
+    assert str(beside) in stderr
+    assert "share/pdfalto/xpdfrc" not in stderr
+
+
+def test_pdfalto_data_dir_overrides_both(sample_pdf, tmp_path):
+    prefix = tmp_path / "prefix"
+    binary = _place_binary(prefix / "bin")
+    (prefix / "bin" / "xpdfrc").write_text(BAD_XPDFRC)
+
+    elsewhere = tmp_path / "elsewhere"
+    elsewhere.mkdir()
+    chosen = elsewhere / "xpdfrc"
+    chosen.write_text(BAD_XPDFRC)
+
+    env = dict(os.environ, PDFALTO_DATA_DIR=str(elsewhere))
+    stderr = _run_and_capture_config_errors(binary, sample_pdf, tmp_path, env=env)
+    assert str(chosen) in stderr

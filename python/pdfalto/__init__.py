@@ -9,8 +9,8 @@ system dependency to install and no build step at import time.
     >>> result.alto
     PosixPath('paper.xml')
 
-The ``pdfalto`` command line tool is installed alongside the package and
-behaves exactly like the upstream binary.
+Installing the package also puts the ``pdfalto`` executable itself on PATH --
+the real binary, not a Python wrapper, so invoking it costs nothing extra.
 """
 
 from __future__ import annotations
@@ -39,9 +39,19 @@ __all__ = [
     "EXIT_STREAMING_DISABLED",
 ]
 
-try:  # pragma: no cover - trivial
-    from importlib.metadata import PackageNotFoundError, version as _version
 
-    __version__ = _version("pdfalto")
-except PackageNotFoundError:  # pragma: no cover - running from a source tree
-    __version__ = "0.0.0.dev0"
+def __getattr__(name: str) -> str:
+    # Resolved on first access rather than at import: importlib.metadata pulls
+    # in email and inspect, which is a third of the cost of importing this
+    # package and is wasted on everyone who never reads __version__.
+    if name == "__version__":
+        from importlib.metadata import PackageNotFoundError
+        from importlib.metadata import version as _version
+
+        try:
+            value = _version("pdfalto")
+        except PackageNotFoundError:  # running from a source tree
+            value = "0.0.0.dev0"
+        globals()["__version__"] = value
+        return value
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")

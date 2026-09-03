@@ -27,9 +27,6 @@ Source = "https://github.com/kermitt2/pdfalto"
 Issues = "https://github.com/kermitt2/pdfalto/issues"
 Changelog = "https://github.com/kermitt2/pdfalto/blob/master/CHANGELOG.md"
 
-[project.scripts]
-pdfalto = "pdfalto.__main__:main"
-
 [project.optional-dependencies]
 test = ["pytest>=7"]
 

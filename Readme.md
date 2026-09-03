@@ -79,6 +79,19 @@ files are generated:
   use `-onlyGraphsCoord` (or the deprecated alias `-noImage`) to keep extracting image coordinates without dumping the
   image files. To skip all graphics processing (bitmap and vectorial), use `-skipGraphs`.
 
+### Runtime resources
+
+pdfalto reads `xpdfrc` and the `languages/` tree at startup; the paths inside `xpdfrc` are resolved relative to
+the directory holding it. It is looked for in this order:
+
+1. `$PDFALTO_DATA_DIR`, if set.
+2. Beside the executable — how the release archives and a local `cmake ./ && make` build are laid out.
+3. `../share/pdfalto` relative to the executable, so pdfalto can be installed the way any Unix program is,
+   with the binary in `bin/` and its data under `share/`. This is what the Python wheel does.
+
+None of them being present is not an error: xpdf falls back to its built-in defaults, and only documents needing
+the non-Latin encoding tables are affected.
+
 ### Memory footprint on large or pathological PDFs
 
 Some PDFs (very long documents, or figures built from millions of vector paths) can push peak memory well beyond
@@ -145,9 +158,15 @@ print(result.alto, result.metadata, result.outline, result.data_dir)
 alto_xml = pdfalto.convert_to_string("paper.pdf")   # no files left behind
 ```
 
-Every command line option is a keyword argument of `convert()`, and the `pdfalto` command itself is installed
-alongside the package. See [python/README.md](python/README.md) for the full API, the list of platforms with
-wheels, and the differences between the wheel binaries and the ones on the releases page.
+Every command line option is a keyword argument of `convert()`. Installing the package also puts the `pdfalto`
+executable itself on PATH — the real binary, not a Python wrapper, so it starts just as fast:
+
+```console
+pdfalto -outline paper.pdf paper.xml
+```
+
+See [python/README.md](python/README.md) for the full API, the list of platforms with wheels, and the
+differences between the wheel binaries and the ones on the releases page.
 
 ## Dependencies
 

@@ -73,12 +73,28 @@ was no longer bounded. That case is reported as
 
 ## Command line
 
-The wheel also installs the `pdfalto` executable itself, with the upstream
-command line unchanged:
+Installing the package puts `pdfalto` on PATH, with the upstream command line
+unchanged:
 
 ```console
 $ pdfalto -outline paper.pdf paper.xml
 ```
+
+This is the executable itself, not a Python wrapper around it, so it starts as
+fast as a hand-built binary (~7 ms rather than ~100 ms) — which matters when
+something invokes it once per PDF.
+
+It is installed the way any Unix program is, into the environment's `bin/` with
+its resources in `share/pdfalto/`:
+
+```
+<venv>/bin/pdfalto
+<venv>/share/pdfalto/xpdfrc
+<venv>/share/pdfalto/languages/
+```
+
+pdfalto finds them relative to itself. `PDFALTO_DATA_DIR` overrides the lookup
+if you ever need to point it somewhere else.
 
 ## Notes on the wheels
 
@@ -97,7 +113,9 @@ $ pdfalto -outline paper.pdf paper.xml
   ```
 
 - `PDFALTO_BINARY=/path/to/pdfalto` makes the Python API run a different
-  executable, which is handy for testing a local CMake build.
+  executable, which is handy for testing a local CMake build. Without it the
+  API runs the `pdfalto` installed in the current environment, falling back to
+  a binary built in a surrounding checkout, so an editable install works too.
 
 ## License
 
