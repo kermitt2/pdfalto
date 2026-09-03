@@ -47,6 +47,25 @@ jobs:
         with:
           python-version: '3.12'
 
+      # Temporary, while the x86_64 job is being diagnosed: the resources a
+      # compile can run out of are invisible in the build log itself. Remove
+      # once that job is green.
+      - name: Runner diagnostics
+        if: runner.os == 'Linux'
+        continue-on-error: true
+        shell: bash
+        run: |
+          echo "--- cpu/memory ---"
+          nproc || true
+          free -h || true
+          echo "--- disk ---"
+          df -h . /var/lib/docker /tmp 2>/dev/null || df -h || true
+          echo "--- docker ---"
+          docker info --format 'server={{.ServerVersion}} driver={{.Driver}} memlimit={{.MemoryLimit}} total_mem={{.MemTotal}}' || true
+          echo "--- leftovers in the workspace that would be copied into the container ---"
+          git status --porcelain --ignored=matching | head -30 || true
+          ls -la xpdf-4.05/aconf.h build 2>/dev/null || echo "(none)"
+
       # Each runner builds only for its own architecture; there is no
       # cross-compilation and no QEMU, which keeps this matrix aligned with
       # the one in ci-build.yml and with the prebuilt static libraries under
