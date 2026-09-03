@@ -127,6 +127,7 @@ set(XPDF_BINARY_DIR ${CMAKE_CURRENT_BINARY_DIR}/xpdf-4.05)
 add_subdirectory(${XPDF_SUBDIR})
 
 set(SOURCE_FILES
+        src/compat_isoc23.c
         src/AnnotsXrce.cc
         src/AnnotsXrce.h
         src/ConstantsUtils.cc

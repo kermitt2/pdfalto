@@ -124,14 +124,12 @@ manylinux-x86_64-image = "manylinux_2_28"
 manylinux-aarch64-image = "manylinux_2_28"
 
 [tool.cibuildwheel.macos]
-# Oldest targets the respective architectures support. Bump these if the
-# prebuilt static libraries under libs/*/mac/ ever start requiring newer.
+# Both architectures target macOS 11. The prebuilt static libraries under
+# libs/*/mac/ are themselves built with a minimum of macOS 15 (they come from
+# the macos-15 runners), so a lower floor than this was never something the
+# wheels could honestly claim -- an earlier 10.13 override for x86_64 is what
+# broke that job while arm64, at 11.0, built and tested clean.
 environment = { MACOSX_DEPLOYMENT_TARGET = "11.0" }
-
-[[tool.cibuildwheel.overrides]]
-select = "*-macosx_x86_64"
-inherit.environment = "append"
-environment = { MACOSX_DEPLOYMENT_TARGET = "10.13" }
 
 [tool.pytest.ini_options]
 testpaths = ["python/tests"]
