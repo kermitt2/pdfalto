@@ -180,24 +180,37 @@ target_include_directories(
 #--- install layout for the Python wheel (driven by scikit-build-core)
 #
 # Off by default so a plain `cmake ./ && make` keeps behaving exactly as before.
-# pdfalto locates its runtime resources relative to the executable itself
-# (src/whereami.c), and the paths inside xpdfrc are relative to that same
-# directory, so the wheel has to keep the three side by side under _bin/.
+#
+# The executable goes into the environment's bin/ so it lands on PATH, and its
+# runtime resources into ../share/pdfalto. pdfalto resolves them relative to
+# its own location (see findResourceDir in src/pdfalto.cc), and every install
+# scheme pip uses -- venv, system, --user -- puts scripts in <prefix>/bin and
+# data under <prefix>, so ../share/pdfalto resolves correctly in all of them.
 option(PDFALTO_PYTHON_WHEEL "Install pdfalto into the layout expected by the Python wheel" OFF)
 
 if (PDFALTO_PYTHON_WHEEL)
-    # Everything is tagged with a component so the wheel build can install
-    # only these rules: the vendored xpdf tree installs libxpdf.a and a man
-    # page unconditionally, which have no business inside a Python wheel.
-    set(PDFALTO_WHEEL_BIN_DIR "pdfalto/_bin")
+    # scikit-build-core defines these; the fallbacks make a manual
+    # `cmake --install` produce the same standard prefix layout.
+    if (NOT DEFINED SKBUILD_SCRIPTS_DIR)
+        set(SKBUILD_SCRIPTS_DIR "bin")
+    endif ()
+    if (NOT DEFINED SKBUILD_DATA_DIR)
+        set(SKBUILD_DATA_DIR ".")
+    endif ()
+
+    # Everything is tagged with a component so the wheel build can install only
+    # these rules: the vendored xpdf tree installs libxpdf.a and a man page
+    # unconditionally, which have no business inside a Python wheel.
     set(PDFALTO_WHEEL_COMPONENT "pdfalto_wheel")
+    set(PDFALTO_WHEEL_DATA_DIR "${SKBUILD_DATA_DIR}/share/pdfalto")
+
     install(TARGETS pdfalto
-            RUNTIME DESTINATION "${PDFALTO_WHEEL_BIN_DIR}"
+            RUNTIME DESTINATION "${SKBUILD_SCRIPTS_DIR}"
             COMPONENT "${PDFALTO_WHEEL_COMPONENT}")
     install(FILES "${CMAKE_CURRENT_SOURCE_DIR}/xpdfrc"
-            DESTINATION "${PDFALTO_WHEEL_BIN_DIR}"
+            DESTINATION "${PDFALTO_WHEEL_DATA_DIR}"
             COMPONENT "${PDFALTO_WHEEL_COMPONENT}")
     install(DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/languages"
-            DESTINATION "${PDFALTO_WHEEL_BIN_DIR}"
+            DESTINATION "${PDFALTO_WHEEL_DATA_DIR}"
             COMPONENT "${PDFALTO_WHEEL_COMPONENT}")
 endif ()
