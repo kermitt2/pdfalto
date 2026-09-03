@@ -153,6 +153,66 @@ static ArgDesc argDesc[] = {
         {NULL}
 };
 
+// Name of the directory holding pdfalto's runtime resources under a prefix,
+// i.e. <prefix>/share/pdfalto next to <prefix>/bin/pdfalto.
+#define PDFALTO_SHARE_SUBDIR "/../share/pdfalto"
+
+// Environment variable naming the resource directory outright.
+#define PDFALTO_DATA_DIR_ENV "PDFALTO_DATA_DIR"
+
+/**
+* True if `dir` holds an xpdfrc file, which is what makes it a usable resource
+* directory: the languages/ paths inside xpdfrc are resolved relative to it.
+*/
+static GBool hasXpdfrc(const char *dir) {
+    size_t size = strlen(dir) + 8;  // "/xpdfrc" plus the terminator
+    char *path = (char *)gmalloc(size);
+    snprintf(path, size, "%s/xpdfrc", dir);
+    FILE *f = fopen(path, "r");
+    gfree(path);
+    if (f) {
+        fclose(f);
+        return gTrue;
+    }
+    return gFalse;
+}
+
+/**
+* Find the directory holding xpdfrc and the languages/ tree.
+*
+* They normally sit beside the executable, which is how the release archives
+* and a plain `cmake ./ && make` build are laid out, and that stays the first
+* thing tried. A packaged install -- a Python wheel, or a distribution package
+* -- instead puts the executable in bin/ and its data in ../share/pdfalto,
+* because a bin/ directory is no place for an 11 MB tree of encoding tables.
+* PDFALTO_DATA_DIR overrides both.
+*
+* Falls back to the executable's own directory, preserving the previous
+* behaviour (GlobalParams then finds no xpdfrc and carries on with defaults).
+* The returned string is kept for the life of globalParams, which resolves the
+* relative paths in xpdfrc against it.
+*/
+static char *findResourceDir(const char *executableDir) {
+    const char *fromEnv = getenv(PDFALTO_DATA_DIR_ENV);
+    if (fromEnv && fromEnv[0]) {
+        return copyString(fromEnv);
+    }
+
+    if (hasXpdfrc(executableDir)) {
+        return copyString(executableDir);
+    }
+
+    size_t size = strlen(executableDir) + sizeof(PDFALTO_SHARE_SUBDIR);
+    char *shared = (char *)gmalloc(size);
+    snprintf(shared, size, "%s%s", executableDir, PDFALTO_SHARE_SUBDIR);
+    if (hasXpdfrc(shared)) {
+        return shared;
+    }
+    gfree(shared);
+
+    return copyString(executableDir);
+}
+
 /**
 * Main method which execute pdfalto tool <br/>
 */
@@ -213,12 +273,19 @@ int main(int argc, char *argv[]) {
     strncpy(dirname, thePath, dirname_length); 
     dirname[dirname_length] = '\0';
 
-    // set the config file path as alongside the executable
-    char *xpdfrc_path;
-    xpdfrc_path = (char*)malloc(dirname_length + 8);
-    snprintf(xpdfrc_path, dirname_length + 8, "%s/xpdfrc", dirname);
+    // locate xpdfrc and the languages/ tree: beside the executable, or under
+    // ../share/pdfalto when pdfalto has been installed into a bin/ directory
+    char *resourceDir;
+    resourceDir = findResourceDir(dirname);
 
-    globalParams = new GlobalParams(xpdfrc_path, dirname);
+    size_t xpdfrc_size;
+    xpdfrc_size = strlen(resourceDir) + 8;
+
+    char *xpdfrc_path;
+    xpdfrc_path = (char*)malloc(xpdfrc_size);
+    snprintf(xpdfrc_path, xpdfrc_size, "%s/xpdfrc", resourceDir);
+
+    globalParams = new GlobalParams(xpdfrc_path, resourceDir);
 
     // Parameters specifics to pdfalto
     parameters = new Parameters();
