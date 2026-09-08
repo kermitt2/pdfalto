@@ -278,9 +278,34 @@ Python package takes its version from `project(pdfalto VERSION ...)` in `CMakeLi
 `bump-my-version` already updates, so there is nothing extra to bump.
 
 PyPI upload uses [trusted publishing](https://docs.pypi.org/trusted-publishers/) rather than a stored API
-token. It has to be configured once, on
-[the project's publishing settings](https://pypi.org/manage/project/pdfalto/settings/publishing/), with
-workflow `ci-python.yml` and environment `pypi`.
+token. It has to be configured once, as a
+[pending publisher](https://docs.pypi.org/trusted-publishers/creating-a-project-through-oidc/) while the
+project does not exist yet, with owner `kermitt2`, repository `pdfalto`, workflow `ci-python.yml` and
+environment `pypi`.
+
+### Rehearsing a release on TestPyPI
+
+Before tagging, the whole publishing path can be exercised against
+[TestPyPI](https://test.pypi.org/): run the `Python wheels` workflow from the Actions tab with
+**Upload the result to TestPyPI** ticked and a pre-release **version** such as `0.7.0.dev1`. It builds the
+same wheels and sdist and uploads them through the same trusted-publishing path, so an index that rejects
+the metadata or the wheel tags says so before the tag exists rather than after.
+
+The version must be given, and must be one TestPyPI has never seen: an index refuses a version it already
+holds, and does not release it even if the file is deleted. Bump the suffix (`.dev2`, `.dev3`, ...) on each
+attempt. It is only used for the rehearsal — a tag push always takes its version from `CMakeLists.txt`.
+
+TestPyPI needs its own pending publisher, configured at
+[test.pypi.org/manage/account/publishing](https://test.pypi.org/manage/account/publishing/) with the same
+owner, repository and workflow but environment `testpypi`.
+
+Installing the result needs the real index for the dependencies, since TestPyPI does not mirror them:
+
+```bash
+pip install --index-url https://test.pypi.org/simple/ \
+            --extra-index-url https://pypi.org/simple/ \
+            pdfalto==0.7.0.dev1
+```
 
 # Contributors
 
