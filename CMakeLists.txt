@@ -57,21 +57,32 @@ if (APPLE)
     #set(CMAKE_CXX_STANDARD_LIBRARIES "-static-compiler-rt -static-libc++")
     set(OSSUFFIX "mac")
 
-    include(CheckCCompilerFlag)
-    check_c_compiler_flag("-arch arm64" arm64Supported)
-    message("arm64Supported=${arm64Supported}")
+    # Which prebuilt libraries under libs/*/mac/ to link against depends on the
+    # architecture being BUILT FOR. This used to be inferred from
+    # check_c_compiler_flag("-arch arm64"), which answers a different question
+    # -- "can this compiler emit arm64?" -- and is true on an Intel mac with a
+    # current SDK. CMAKE_OSX_ARCHITECTURES is the architecture actually
+    # selected; scikit-build-core sets it from ARCHFLAGS when building the
+    # Python wheels, so an x86_64 wheel job was picking the arm64 libraries.
+    # With it unset (a plain `cmake ./`), the host architecture is the answer.
+    if (CMAKE_OSX_ARCHITECTURES)
+        list(GET CMAKE_OSX_ARCHITECTURES 0 PDFALTO_MAC_ARCH)
+    else ()
+        set(PDFALTO_MAC_ARCH "${CMAKE_HOST_SYSTEM_PROCESSOR}")
+    endif ()
 
-
-    IF (${arm64Supported} MATCHES 1)
+    if (PDFALTO_MAC_ARCH MATCHES "^(arm64|aarch64)$")
         set(ARCHSUFFIX "arm64")
         set(CMAKE_REQUIRED_LINK_OPTIONS "-arch;arm64")
-        MESSAGE(STATUS "Check if the building for MacOS ARM64")
-    ELSE ()
+        MESSAGE(STATUS "Building for macOS arm64")
+    else ()
         set(ARCHSUFFIX "64")
         set(C_INCLUDE_PATH "/usr/local/include")
         set(CPLUS_INCLUDE_PATH "/usr/local/include")
-        MESSAGE(STATUS "Check if the building for MacOS X86_64")
-    ENDIF ()
+        MESSAGE(STATUS "Building for macOS x86_64")
+    endif ()
+
+    MESSAGE(STATUS "macOS architecture: ${PDFALTO_MAC_ARCH} -> libs/*/mac/${ARCHSUFFIX}")
 
 elseif (CYGWIN OR MSVC OR WIN32 OR MINGW)
     message("Using windows settings.")
@@ -118,9 +129,16 @@ set(ICUDATA_LIBRARY ${ICU_SUBDIR}/${OSSUFFIX}/${ARCHSUFFIX}/libicudata.a)
 
 set(XPDF_BUILD_DIR ${XPDF_SUBDIR}/build)
 
+# xpdf generates aconf.h with configure_file() into the binary directory of its
+# own subproject. For an in-source build (`cmake ./`) that is the source
+# directory, which is why ${XPDF_SUBDIR} alone used to be enough; an
+# out-of-source build -- what the Python wheel does -- puts it here instead.
+set(XPDF_BINARY_DIR ${CMAKE_CURRENT_BINARY_DIR}/xpdf-4.05)
+
 add_subdirectory(${XPDF_SUBDIR})
 
 set(SOURCE_FILES
+        src/compat_isoc23.c
         src/AnnotsXrce.cc
         src/AnnotsXrce.h
         src/ConstantsUtils.cc
@@ -162,6 +180,11 @@ target_include_directories(
         PUBLIC ${FREETYPE_INCLUDE_DIR}
         PUBLIC ${PNG_INCLUDE_DIRS}
         PUBLIC ${ZLIB_INCLUDE_DIRS}
+        # Ahead of ${XPDF_SUBDIR}: aconf.h is generated into the binary
+        # directory, and an in-source build leaves a copy in the source tree.
+        # Whichever include directory comes first wins, and the generated one
+        # is the one that matches this build's options.
+        PUBLIC ${XPDF_BINARY_DIR}
         PUBLIC ${XPDF_SUBDIR}
         PUBLIC ${XPDF_SUBDIR}/goo
         PUBLIC ${XPDF_SUBDIR}/fofi
@@ -169,3 +192,41 @@ target_include_directories(
         PUBLIC ${XPDF_BUILD_DIR}
         PUBLIC ${ICU_SUBDIR}/include
 )
+
+#--- install layout for the Python wheel (driven by scikit-build-core)
+#
+# Off by default so a plain `cmake ./ && make` keeps behaving exactly as before.
+#
+# The executable goes into the environment's bin/ so it lands on PATH, and its
+# runtime resources into ../share/pdfalto. pdfalto resolves them relative to
+# its own location (see findResourceDir in src/pdfalto.cc), and every install
+# scheme pip uses -- venv, system, --user -- puts scripts in <prefix>/bin and
+# data under <prefix>, so ../share/pdfalto resolves correctly in all of them.
+option(PDFALTO_PYTHON_WHEEL "Install pdfalto into the layout expected by the Python wheel" OFF)
+
+if (PDFALTO_PYTHON_WHEEL)
+    # scikit-build-core defines these; the fallbacks make a manual
+    # `cmake --install` produce the same standard prefix layout.
+    if (NOT DEFINED SKBUILD_SCRIPTS_DIR)
+        set(SKBUILD_SCRIPTS_DIR "bin")
+    endif ()
+    if (NOT DEFINED SKBUILD_DATA_DIR)
+        set(SKBUILD_DATA_DIR ".")
+    endif ()
+
+    # Everything is tagged with a component so the wheel build can install only
+    # these rules: the vendored xpdf tree installs libxpdf.a and a man page
+    # unconditionally, which have no business inside a Python wheel.
+    set(PDFALTO_WHEEL_COMPONENT "pdfalto_wheel")
+    set(PDFALTO_WHEEL_DATA_DIR "${SKBUILD_DATA_DIR}/share/pdfalto")
+
+    install(TARGETS pdfalto
+            RUNTIME DESTINATION "${SKBUILD_SCRIPTS_DIR}"
+            COMPONENT "${PDFALTO_WHEEL_COMPONENT}")
+    install(FILES "${CMAKE_CURRENT_SOURCE_DIR}/xpdfrc"
+            DESTINATION "${PDFALTO_WHEEL_DATA_DIR}"
+            COMPONENT "${PDFALTO_WHEEL_COMPONENT}")
+    install(DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/languages"
+            DESTINATION "${PDFALTO_WHEEL_DATA_DIR}"
+            COMPONENT "${PDFALTO_WHEEL_COMPONENT}")
+endif ()

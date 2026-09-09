@@ -4,7 +4,19 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
-## [0.6.1] - unreleased
+## [0.6.3] - unreleased
+- Add `-discardClippedText` to drop glyphs whose midpoint falls outside the current clip path. Figures embedded as PDF Form XObjects often carry the text of the page they were exported from, clipped to the figure rectangle: it never renders, but was emitted as ordinary words, duplicating whole paragraphs and headings two or three times (60% of a 2,595-article MDPI corpus was affected). Off by default, so existing output is unchanged
+- Add Python bindings and PyPI packaging: `pip install pdfalto` installs wheels bundling the compiled executable, exposing `pdfalto.convert()`/`convert_to_string()` with every command line option as a keyword argument, and putting the `pdfalto` executable itself on PATH. Wheels are built for Linux x86-64/aarch64 and macOS arm64/x86-64 by the new `ci-python.yml` workflow and published on a `v*` tag
+- Look for `xpdfrc` and `languages/` in `../share/pdfalto` when they are not beside the executable, and honour `PDFALTO_DATA_DIR`, so pdfalto can be installed into a `bin/` directory without dragging an 11 MB tree of encoding tables along. Installs that keep the resources beside the binary are unaffected
+- Supply `__isoc23_strtol`/`strtoul`/`strtoll`/`strtoull` when the C library does not (`src/compat_isoc23.c`). The prebuilt aarch64 `libfreetype.a` and `libicuuc.a` under `libs/` were built against glibc 2.38+, where `<stdlib.h>` redirects `strtol`/`strtoul` to those C23 variants, so linking them on an older glibc left the symbols undefined. The x86_64 archives, built on an older base, are unaffected. The shim compiles to nothing on glibc 2.38+; rebuilding the aarch64 archives on a base matching the x86_64 ones makes it removable
+- Fix out-of-source CMake builds: `aconf.h` is generated into the xpdf subproject's binary directory, which was not on pdfalto's include path, so only an in-source `cmake ./` could compile
+- Fix the macOS library architecture selection: `libs/*/mac/{64,arm64}` was chosen from `check_c_compiler_flag("-arch arm64")`, which reports whether the compiler *can* emit arm64 rather than what is being built for, so an x86_64 build on a current SDK linked the arm64 archives. It now follows `CMAKE_OSX_ARCHITECTURES`, falling back to the host architecture
+
+## [0.6.2]
+- Separate superscript citation/affiliation callouts from adjacent words #251
+- Drive superscript token boundary from pdfalto's own detection, not a font-ratio heuristic #253
+
+## [0.6.1]
 - Fix nondeterministic output: `TextRawWord::spaceAfter` was never initialised and font ascent/descent were read through an already-freed `GfxFont`, so line/block grouping and `<SP>` emission depended on heap contents. The same PDF could produce different `<TextLine>`/`<TextBlock>` structure across runs (extracted text was unaffected), which showed up as a ~0.3-0.5% noise floor in downstream A/B comparisons #248
 - Bound peak memory on vector-heavy PDFs: when the `.svg` is not written (`-onlyGraphsCoord`/`-noImage`) the full vector geometry is no longer built in memory, only the per-page bounding box that consumers read (fixes >6GB OOM on pathological figures; ALTO output unchanged)
 - Add `-vectorCoordsOnly` to dump each vector path's bounding-box rectangle instead of full curve geometry (smaller `.svg`, same coordinates)
