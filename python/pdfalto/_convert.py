@@ -51,6 +51,7 @@ _FLAGS = {
     "annotations": "-annotation",
     "no_line_numbers": "-noLineNumbers",
     "reading_order": "-readingOrder",
+    "discard_clipped_text": "-discardClippedText",
     "no_text": "-noText",
     "char_reading_order_attr": "-charReadingOrderAttr",
     "full_font_name": "-fullFontName",
@@ -191,6 +192,7 @@ def convert(
     no_text: bool = False,
     no_line_numbers: bool = False,
     reading_order: bool = False,
+    discard_clipped_text: bool = False,
     char_reading_order_attr: bool = False,
     full_font_name: bool = False,
     namespace_uri: Optional[str] = None,
@@ -234,6 +236,11 @@ def convert(
         no_line_numbers: drop line numbers added in manuscript-style documents
             (``-noLineNumbers``).
         reading_order: order blocks by reading order (``-readingOrder``).
+        discard_clipped_text: drop characters whose glyph lies entirely outside
+            the current clip path (``-discardClippedText``). Figures embedded as
+            Form XObjects often carry the clipped text of the page they were
+            exported from, which never renders but is otherwise extracted as
+            ordinary words.
         char_reading_order_attr: add a TYPE attribute marking right-to-left
             reading order; the result is not valid ALTO
             (``-charReadingOrderAttr``).

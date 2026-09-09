@@ -316,3 +316,12 @@ def test_pdfalto_data_dir_overrides_both(sample_pdf, tmp_path):
     env = dict(os.environ, PDFALTO_DATA_DIR=str(elsewhere))
     stderr = _run_and_capture_config_errors(binary, sample_pdf, tmp_path, env=env)
     assert str(chosen) in stderr
+
+
+def test_discard_clipped_text_reaches_the_command_line(sample_pdf, tmp_path):
+    result = pdfalto.convert(
+        sample_pdf, tmp_path / "out.xml", discard_clipped_text=True
+    )
+    assert "-discardClippedText" in result.cmd
+    # The sample has no clipped text, so the words must survive the filter.
+    assert f'CONTENT="{TEXT.split()[0]}"' in result.read_text()
