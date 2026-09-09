@@ -3,7 +3,7 @@
 
 The wheel version normally comes from `project(pdfalto VERSION ...)` in
 CMakeLists.txt, which .bumpversion.toml keeps up to date. CMake only accepts
-numeric components there, so a PEP 440 pre-release such as 0.7.0.dev1 cannot be
+numeric components there, so a PEP 440 pre-release such as 0.6.3.dev1 cannot be
 expressed that way -- and a rehearsal upload needs one, because an index refuses
 a version it already holds and never lets it be reused.
 
@@ -11,7 +11,7 @@ This rewrites the dynamic version into a literal one. It is used only by the
 manually dispatched TestPyPI rehearsal; a tag push never runs it, so a real
 release always takes its version from CMakeLists.txt.
 
-    python3 scripts/set_python_version.py 0.7.0.dev1
+    python3 scripts/set_python_version.py 0.6.3.dev1
 """
 
 from __future__ import annotations
@@ -35,7 +35,7 @@ def main(argv: list[str]) -> int:
     if not VERSION_RE.match(version):
         print(
             f"error: {version!r} is not a version this script accepts "
-            "(expected e.g. 0.7.0, 0.7.0.dev1, 0.7.0rc1)",
+            "(expected e.g. 0.6.3, 0.6.3.dev1, 0.6.3rc1)",
             file=sys.stderr,
         )
         return 2

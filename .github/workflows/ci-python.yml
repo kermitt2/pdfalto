@@ -15,7 +15,7 @@ on:
         type: boolean
         default: false
       version:
-        description: 'Version for the rehearsal, e.g. 0.7.0.dev1. An index refuses a version it already holds and never lets it be reused, so give a fresh one each time. Leave empty to use the version in CMakeLists.txt.'
+        description: 'Version for the rehearsal, e.g. 0.6.3.dev1. An index refuses a version it already holds and never lets it be reused, so give a fresh one each time. Leave empty to use the version in CMakeLists.txt.'
         type: string
         default: ''
 
@@ -72,7 +72,7 @@ jobs:
           git clean -ffdx
           git submodule foreach --recursive git clean -ffdx
 
-      # A rehearsal uploads a pre-release version such as 0.7.0.dev1, which
+      # A rehearsal uploads a pre-release version such as 0.6.3.dev1, which
       # CMakeLists.txt cannot hold (CMake versions are numeric). Only ever runs
       # for a manual dispatch that asked for one; a tag push takes its version
       # from CMakeLists.txt as usual.
@@ -110,7 +110,7 @@ jobs:
         with:
           python-version: '3.12'
 
-      # A rehearsal uploads a pre-release version such as 0.7.0.dev1, which
+      # A rehearsal uploads a pre-release version such as 0.6.3.dev1, which
       # CMakeLists.txt cannot hold (CMake versions are numeric). Only ever runs
       # for a manual dispatch that asked for one; a tag push takes its version
       # from CMakeLists.txt as usual.
@@ -139,7 +139,7 @@ jobs:
 
   # A rehearsal of the release, run by hand from the Actions tab: same build,
   # same artifacts, same trusted-publishing path, pointed at TestPyPI. Give it a
-  # pre-release version (0.7.0.dev1, then .dev2, ...) -- an index refuses a
+  # pre-release version (0.6.3.dev1, then .dev2, ...) -- an index refuses a
   # version it already holds and never lets it be reused, even after a delete.
   publish-testpypi:
     name: Publish to TestPyPI

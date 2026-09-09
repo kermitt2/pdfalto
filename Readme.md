@@ -287,7 +287,7 @@ environment `pypi`.
 
 Before tagging, the whole publishing path can be exercised against
 [TestPyPI](https://test.pypi.org/): run the `Python wheels` workflow from the Actions tab with
-**Upload the result to TestPyPI** ticked and a pre-release **version** such as `0.7.0.dev1`. It builds the
+**Upload the result to TestPyPI** ticked and a pre-release **version** such as `0.6.3.dev1`. It builds the
 same wheels and sdist and uploads them through the same trusted-publishing path, so an index that rejects
 the metadata or the wheel tags says so before the tag exists rather than after.
 
@@ -304,7 +304,7 @@ Installing the result needs the real index for the dependencies, since TestPyPI 
 ```bash
 pip install --index-url https://test.pypi.org/simple/ \
             --extra-index-url https://pypi.org/simple/ \
-            pdfalto==0.7.0.dev1
+            pdfalto==0.6.3.dev1
 ```
 
 # Contributors
