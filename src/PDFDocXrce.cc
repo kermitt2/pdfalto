@@ -19,7 +19,9 @@ void PDFDocXrce::displayPages(OutputDev *out, xmlNodePtr docrootA, int firstPage
 			  GBool (*abortCheckCbk)(void *data),
 			  void *abortCheckCbkData){
 			  
-	PDFDoc::displayPages(out, firstPage, lastPage, hDPI, vDPI, rotate, useMediaBox, crop, doLinks); 
+	// xpdf 4.06: LocalParams carries per-run rendering-intent overrides; NULL means the
+	// defaults, as in xpdf's own pdftotext.
+	PDFDoc::displayPages(out, NULL, firstPage, lastPage, hDPI, vDPI, rotate, useMediaBox, crop, doLinks);
 
 	int pageNum;
 	Page *currentPage;
@@ -44,7 +46,7 @@ void PDFDocXrce::displayPages(OutputDev *out, xmlNodePtr docrootA, int firstPage
   			// same page frame as the text (rendered with useMediaBox=false). Otherwise, on pages
   			// whose CropBox is inset from the MediaBox (bleed/trim margins), annotation boxes are
   			// shifted by the CropBox origin and can land on the wrong line.
-  			state = new GfxState(hDPI, vDPI, currentPage->getCropBox(), rotate, out->upsideDown());
+  			state = new GfxState(NULL, hDPI, vDPI, currentPage->getCropBox(), rotate, out->upsideDown());
   			for (i = 0; i < 6; ++i) {
     			ctm[i] = state->getCTM()[i];
   			}
