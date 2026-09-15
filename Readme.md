@@ -207,7 +207,7 @@ compile the dependencies before building pdfalto.
 > make
 
 The executable `pdfalto` is generated in the root directory. Additionally, this will create a static library for
-xpdf-4.05 at the following path `xpdf-4.05/build/xpdf/lib/libxpdf.a` and all the libraries and their respective
+xpdf-4.06 at the following path `xpdf-4.06/build/xpdf/lib/libxpdf.a` and all the libraries and their respective
 subdirectory.
 
 To use the additional xpdf language support packages, the executable `pdfalto` comes with a config file `xpdfrc` and

@@ -59,7 +59,7 @@ jobs:
       # cibuildwheel copies the whole workspace into the build container, and a
       # self-hosted runner reuses that workspace across workflows. ci-build.yml
       # builds in-source on the same machine, with libfontconfig-dev present,
-      # leaving xpdf-4.05/aconf.h behind with HAVE_FONTCONFIG set. xpdf's
+      # leaving xpdf-4.06/aconf.h behind with HAVE_FONTCONFIG set. xpdf's
       # include path puts the source tree ahead of the build directory, so that
       # stale header wins over the freshly generated one and GlobalParams.cc
       # fails on <fontconfig/fontconfig.h>, which the manylinux image does not

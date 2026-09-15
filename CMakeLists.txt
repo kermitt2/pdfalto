@@ -30,7 +30,7 @@ else ()
 endif ()
 
 #build xpdf
-set ( XPDF_SUBDIR ${CMAKE_CURRENT_SOURCE_DIR}/xpdf-4.05)
+set ( XPDF_SUBDIR ${CMAKE_CURRENT_SOURCE_DIR}/xpdf-4.06)
 
 set(IMAGE_SUBDIR ${CMAKE_CURRENT_SOURCE_DIR}/libs/image)
 
@@ -133,7 +133,7 @@ set(XPDF_BUILD_DIR ${XPDF_SUBDIR}/build)
 # own subproject. For an in-source build (`cmake ./`) that is the source
 # directory, which is why ${XPDF_SUBDIR} alone used to be enough; an
 # out-of-source build -- what the Python wheel does -- puts it here instead.
-set(XPDF_BINARY_DIR ${CMAKE_CURRENT_BINARY_DIR}/xpdf-4.05)
+set(XPDF_BINARY_DIR ${CMAKE_CURRENT_BINARY_DIR}/xpdf-4.06)
 
 add_subdirectory(${XPDF_SUBDIR})
 

@@ -67,7 +67,7 @@ def build_in_worktree(revision: str, tmpdir: Path) -> Path:
     )
 
     # Pre-build xpdf dependency (generates aconf.h which is gitignored)
-    xpdf_build = worktree / "xpdf-4.05" / "build"
+    xpdf_build = worktree / "xpdf-4.06" / "build"
     if not (xpdf_build / "aconf.h").exists():
         xpdf_build.mkdir(parents=True, exist_ok=True)
         print(f"  Pre-configuring xpdf (generating aconf.h) ...")
