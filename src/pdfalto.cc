@@ -57,6 +57,9 @@ static GBool noText = gFalse;
 static GBool noImage = gFalse;
 static GBool onlyGraphsCoord = gFalse;
 static GBool skipGraphs = gFalse;
+static GBool vectorCoordsOnly = gFalse;
+static int vectorPathLimit = 0;
+static GBool vectorBoxes = gFalse;
 static GBool outline = gFalse;
 static GBool cutPages = gFalse;
 //static GBool blocks = gFalse;
@@ -68,6 +71,7 @@ static GBool noImageInline = gFalse;
 
 static GBool annots = gFalse;
 static GBool readingOrder = gFalse;
+static GBool discardClippedText = gFalse;
 static GBool charReadingOrderAttr = gFalse;
 static GBool ocr = gFalse;
 
@@ -91,6 +95,12 @@ static ArgDesc argDesc[] = {
                 "only extract image coordinates, do not dump image files"},
         {"-skipGraphs",    argFlag,   &skipGraphs,      0,
                 "skip all graphics processing (bitmap and vectorial)"},
+        {"-vectorCoordsOnly", argFlag, &vectorCoordsOnly, 0,
+                "for vector graphics, dump only each path's bounding-box rectangle instead of full curve geometry (smaller .svg, same coordinates)"},
+        {"-vectorLimit",   argInt,    &vectorPathLimit, 0,
+                "max vector paths emitted per page (0 = unlimited); guards against pathological files"},
+        {"-vectorBoxes",   argFlag,   &vectorBoxes,     0,
+                "emit one bounding box per vector group in the ALTO (instead of a single per-page union box), so vector coordinates can be read without the .svg files"},
         {"-noImageInline", argFlag,   &noImageInline,   0,
                 "deprecated"},
         {"-outline",       argFlag,   &outline,         0,
@@ -106,6 +116,8 @@ static ArgDesc argDesc[] = {
                 "do not output line numbers added in manuscript-style textual documents"},
         {"-readingOrder",  argFlag,   &readingOrder,    0,
                 "blocks follow the reading order"},
+        {"-discardClippedText", argFlag, &discardClippedText, 0,
+                "drop characters whose glyph lies entirely outside the current clip path (hidden text inside clipped Form XObjects, e.g. manuscript text carried by embedded figure PDFs)"},
         {"-noText",        argFlag,   &noText,          0,
                 "do not extract textual objects (might be useful, but non-valid ALTO)"},
         {"-charReadingOrderAttr",  argFlag,   &charReadingOrderAttr,    0,
@@ -141,10 +153,74 @@ static ArgDesc argDesc[] = {
         {NULL}
 };
 
+// Name of the directory holding pdfalto's runtime resources under a prefix,
+// i.e. <prefix>/share/pdfalto next to <prefix>/bin/pdfalto.
+#define PDFALTO_SHARE_SUBDIR "/../share/pdfalto"
+
+// Environment variable naming the resource directory outright.
+#define PDFALTO_DATA_DIR_ENV "PDFALTO_DATA_DIR"
+
+/**
+* True if `dir` holds an xpdfrc file, which is what makes it a usable resource
+* directory: the languages/ paths inside xpdfrc are resolved relative to it.
+*/
+static GBool hasXpdfrc(const char *dir) {
+    size_t size = strlen(dir) + 8;  // "/xpdfrc" plus the terminator
+    char *path = (char *)gmalloc(size);
+    snprintf(path, size, "%s/xpdfrc", dir);
+    FILE *f = fopen(path, "r");
+    gfree(path);
+    if (f) {
+        fclose(f);
+        return gTrue;
+    }
+    return gFalse;
+}
+
+/**
+* Find the directory holding xpdfrc and the languages/ tree.
+*
+* They normally sit beside the executable, which is how the release archives
+* and a plain `cmake ./ && make` build are laid out, and that stays the first
+* thing tried. A packaged install -- a Python wheel, or a distribution package
+* -- instead puts the executable in bin/ and its data in ../share/pdfalto,
+* because a bin/ directory is no place for an 11 MB tree of encoding tables.
+* PDFALTO_DATA_DIR overrides both.
+*
+* Falls back to the executable's own directory, preserving the previous
+* behaviour (GlobalParams then finds no xpdfrc and carries on with defaults).
+* The returned string is kept for the life of globalParams, which resolves the
+* relative paths in xpdfrc against it.
+*/
+static char *findResourceDir(const char *executableDir) {
+    const char *fromEnv = getenv(PDFALTO_DATA_DIR_ENV);
+    if (fromEnv && fromEnv[0]) {
+        return copyString(fromEnv);
+    }
+
+    if (hasXpdfrc(executableDir)) {
+        return copyString(executableDir);
+    }
+
+    size_t size = strlen(executableDir) + sizeof(PDFALTO_SHARE_SUBDIR);
+    char *shared = (char *)gmalloc(size);
+    snprintf(shared, size, "%s%s", executableDir, PDFALTO_SHARE_SUBDIR);
+    if (hasXpdfrc(shared)) {
+        return shared;
+    }
+    gfree(shared);
+
+    return copyString(executableDir);
+}
+
 /**
 * Main method which execute pdfalto tool <br/>
 */
 int main(int argc, char *argv[]) {
+#if USE_EXCEPTIONS
+    try {
+#endif
+
     PDFDocXrce *doc;
 
     GString *fileName;
@@ -197,12 +273,19 @@ int main(int argc, char *argv[]) {
     strncpy(dirname, thePath, dirname_length); 
     dirname[dirname_length] = '\0';
 
-    // set the config file path as alongside the executable
-    char *xpdfrc_path;
-    xpdfrc_path = (char*)malloc(dirname_length + 8);
-    snprintf(xpdfrc_path, dirname_length + 8, "%s/xpdfrc", dirname);
+    // locate xpdfrc and the languages/ tree: beside the executable, or under
+    // ../share/pdfalto when pdfalto has been installed into a bin/ directory
+    char *resourceDir;
+    resourceDir = findResourceDir(dirname);
 
-    globalParams = new GlobalParams(xpdfrc_path, dirname);
+    size_t xpdfrc_size;
+    xpdfrc_size = strlen(resourceDir) + 8;
+
+    char *xpdfrc_path;
+    xpdfrc_path = (char*)malloc(xpdfrc_size);
+    snprintf(xpdfrc_path, xpdfrc_size, "%s/xpdfrc", resourceDir);
+
+    globalParams = new GlobalParams(xpdfrc_path, resourceDir);
 
     // Parameters specifics to pdfalto
     parameters = new Parameters();
@@ -230,6 +313,27 @@ int main(int argc, char *argv[]) {
 
     if (!skipGraphs) {
         parameters->setSkipGraphs(gFalse);
+    }
+
+    if (vectorCoordsOnly) {
+        parameters->setVectorCoordsOnly(gTrue);
+        cmd->append("-vectorCoordsOnly ");
+    } else {
+        parameters->setVectorCoordsOnly(gFalse);
+    }
+
+    parameters->setVectorPathLimit(vectorPathLimit);
+    if (vectorPathLimit > 0) {
+        char vlbuf[64];
+        snprintf(vlbuf, sizeof(vlbuf), "-vectorLimit %d ", vectorPathLimit);
+        cmd->append(vlbuf);
+    }
+
+    if (vectorBoxes) {
+        parameters->setVectorBoxes(gTrue);
+        cmd->append("-vectorBoxes ");
+    } else {
+        parameters->setVectorBoxes(gFalse);
     }
 
     if (noText) {
@@ -265,6 +369,13 @@ int main(int argc, char *argv[]) {
         cmd->append("-readingOrder ");
     } else {
         parameters->setReadingOrder(gFalse);
+    }
+
+    if (discardClippedText) {
+        parameters->setDiscardClippedText(gTrue);
+        cmd->append("-discardClippedText ");
+    } else {
+        parameters->setDiscardClippedText(gFalse);
     }
 
     if (charReadingOrderAttr) {
@@ -510,8 +621,20 @@ int main(int argc, char *argv[]) {
     // check for memory leaks
     Object::memCheck(stderr);
     gMemReport(stderr);
-    
+
     return exitCode;
+
+#if USE_EXCEPTIONS
+    } catch (GMemException e) {
+        // xpdf's allocator throws this when a requested size is implausible or
+        // an allocation fails. Every other xpdf front-end (pdftotext, pdftoppm,
+        // ...) catches it here; pdfalto did not, so the exception escaped main
+        // and terminate() killed the process with SIGABRT instead of reporting
+        // an error. Exit code 98 matches the other tools.
+        fprintf(stderr, "Out of memory\n");
+        return 98;
+    }
+#endif
 }
 
 /** Remove all files which are in data directory of file pdf if it is already exist

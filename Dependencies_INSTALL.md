@@ -1,9 +1,18 @@
 # External Libraries
 
-Here we describe procedures to compile the static dependencies.
+> **You do not need this to build pdfalto.** The static libraries and their headers are committed under `libs/` for
+> every supported platform, so a normal build just works — see [Build](Readme.md#build). This document describes how
+> those libraries are produced, and is only relevant when updating a dependency version or porting to a new platform.
 
-The include and the libraries are shipped under `libs`, you can also find the artifact in the bottom of the page of 
-each [build](https://github.com/kermitt2/pdfalto/actions) under [Manual build static libraries](https://github.com/kermitt2/pdfalto/actions/workflows/ci-build-libs.yml).  
+Normally the libraries are built by the
+[`ci-build-libs.yml`](https://github.com/kermitt2/pdfalto/blob/master/.github/workflows/ci-build-libs.yml) workflow
+("Manual build static libraries"), which runs the procedures below across a matrix of Linux and macOS runners and
+publishes the results as artifacts at the bottom of each [run](https://github.com/kermitt2/pdfalto/actions). Updating
+a dependency means bumping its version variable at the top of that workflow, running it, and committing the resulting
+artifacts into `libs/` — the versions listed below should be kept in sync with it.
+
+The manual steps that follow are the fallback for a platform CI does not cover, or for debugging a dependency
+locally. `./install_deps.sh` automates the same procedures.
 
 ## Requirements
 
@@ -12,6 +21,8 @@ each [build](https://github.com/kermitt2/pdfalto/actions) under [Manual build st
 * fetching dependencies : wget
 
 ## Current versions:
+
+(these mirror the version variables at the top of `ci-build-libs.yml`)
 
 - LibPNG: 1.6.56
 - zLib: 1.3.2
@@ -125,7 +136,7 @@ LibPNG and zLib sources are downloaded and built as part of the dependency build
    make install
     ```
 
-See [ICU Readme](http://source.icu-project.org/repos/icu/trunk/icu4c/readme.html) for futher details.
+See the [ICU4C build guide](https://unicode-org.github.io/icu/userguide/icu4c/build.html) for further details.
 
 7. Copy `output/lib/libicuuc.a` and `output/lib/libicudata.a` under `libs/icu/<OS>/<ARCH>/` and headers from `output/include/` under `libs/icu/include/`.
 

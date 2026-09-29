@@ -131,6 +131,17 @@ public:
     GBool isSymbolic() { return flags & fontSymbolic; }
     GBool isItalic() { return flags & fontItalic; }
     GBool isBold() { return flags & fontBold; }
+
+    // Ascent/descent as captured (and sanitised) when this TextFontInfo was
+    // built. Callers must use these rather than reaching through to the
+    // GfxFont: a word can outlive the font it refers to, because the GfxFontDict
+    // owning it is destroyed when the enclosing form's resources are popped.
+    double getAscent() { return ascent; }
+    double getDescent() { return descent; }
+
+    // Whether a GfxFont was present at construction time. The pointer itself
+    // may since have been freed, so it must never be dereferenced.
+    GBool hasGfxFont() { return gfxFont != NULL; }
 //#endif
 
 private:
@@ -539,8 +550,10 @@ public:
     /** The number of content stream characters in this word */
     int charLen;
 
-    GBool spaceAfter;		// set if there is a space between this
-    //   word and the next word on the line
+    GBool spaceAfter = gFalse;	// set if there is a space between this
+    //   word and the next word on the line. Default-initialised: it is set true
+    //   only when a space character follows, so an unassigned value would make
+    //   <SP> emission depend on heap contents (see #248).
 
     /** <code>true</code> if the current <code>TextRawWord</code> is <b>bold</b>, <code>false</code> else */
     GBool  bold;
@@ -964,6 +977,9 @@ public:
                  double dx, double dy,
                  CharCode c, int nBytes, Unicode *u, int uLen, SplashFont * splashFont, GBool isNonUnicodeGlyph);
 
+    /** True if the glyph at (x,y) with advance (dx,dy) lies entirely outside the current clip path */
+    GBool isClippedOut(GfxState *state, double x, double y, double dx, double dy);
+
     /** Add a character to the list of characters in the page
      *  @param state The state description
      *  @param x The x value of left bottom corner of the box character
@@ -1154,7 +1170,7 @@ public:
      * @param path The path description
      * @param state The state description
      * @param gattributes All attributes for the <i>style</i> attribut*/
-    void doPath(GfxPath *path, GfxState *state, GString *gattributes);
+    void doPath(GfxPath *path, GfxState *state, GString *gattributes, double opacity = 1.0);
 
     /** Add the GROUP tag whithin the CLIP current node
      * @param path The path description
@@ -1166,7 +1182,7 @@ public:
      * @param path The path description
      * @param state The state description
      * @param groupNode The current GROUP node  */
-    void createPath(GfxPath *path, GfxState *state, xmlNodePtr groupNode);
+    void createPath(GfxPath *path, GfxState *state, xmlNodePtr groupNode, GBool recordVectorBox = gFalse, double opacity = 1.0);
 
     /** Get the clipping box and add the CLIP tag whithin the instructions vectorials node.
      * In this case, the rule use is the even-odd.
@@ -1388,6 +1404,17 @@ private:
     double svg_ymin;
     double svg_xmax;
     double svg_ymax;
+
+    /** Number of vector paths already emitted on the current page (for -vectorLimit) */
+    int vecPathCount;
+    /** Whether the per-page vector path-limit warning has already been logged */
+    GBool vecLimitWarned;
+
+    /** One lightweight bounding box per vector group drawn on the current page,
+     * collected when -vectorBoxes is set and emitted in the ALTO instead of the
+     * single per-page union box. Reset at startPage. */
+    struct VectorBox { double x, y, w, h; int idx; };
+    std::vector<VectorBox> vectorBoxes;
 
     /** The directory name which contain all data */
     GString *dataDirectory;
@@ -1806,7 +1833,7 @@ private:
      * @param path The current path
      * @param state The state description
      * @param gattributes Style attributes to add to the current path */
-    void doPath(GfxPath *path, GfxState *state, GString* gattributes);
+    void doPath(GfxPath *path, GfxState *state, GString* gattributes, double opacity = 1.0);
 
     double curstate[6];//this is the ctm
     //double *curstate[1000];

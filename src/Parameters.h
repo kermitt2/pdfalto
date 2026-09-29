@@ -74,6 +74,13 @@ public:
 	 */
 	GBool getReadingOrder() {return readingOrder;}
 
+	/** Return whether characters whose glyph box lies entirely outside the current clip
+	 *  path are discarded (text hidden inside clipped Form XObjects, e.g. manuscript text
+	 *  carried along by embedded figure PDFs).
+	 * @return <code>true</code> if the discardClippedText option is selected
+	 */
+	GBool getDiscardClippedText() {return discardClippedText;}
+
 	/** PL: Return the boolean that controls whether to include TYPE attributes to String elements to
 	 * indicate right-to-left reading order (produces non-valid ALTO)
 	 * @return <code>true</code> if the charReadingOrderAttr option is selected, <code>false</code> otherwise
@@ -99,6 +106,24 @@ public:
 	 * @return <code>true</code> if the skipGraphs option is selected, <code>false</code> otherwise
 	 */
 	GBool getSkipGraphs() { return skipGraphs;};
+
+	/** Return a boolean which informs if vector graphics should be dumped as their
+	 * bounding-box rectangle only (coordinates), instead of their full curve geometry
+	 * @return <code>true</code> if the vectorCoordsOnly option is selected, <code>false</code> otherwise
+	 */
+	GBool getVectorCoordsOnly() { return vectorCoordsOnly; };
+
+	/** Return the maximum number of vector paths emitted per page (0 = unlimited).
+	 * Protects against pathological/corrupt files with huge path counts.
+	 */
+	int getVectorPathLimit() { return vectorPathLimit; }
+
+	/** Return a boolean informing if one bounding box per vector group should be
+	 * emitted directly in the ALTO (instead of a single per-page union box), so a
+	 * consumer can read the vector coordinates without parsing the .svg files.
+	 * @return <code>true</code> if the vectorBoxes option is selected, <code>false</code> otherwise
+	 */
+	GBool getVectorBoxes() { return vectorBoxes; };
 
 	// setters
 
@@ -142,6 +167,9 @@ public:
 	 */	
 	void setReadingOrder(GBool readingOrders);
 
+	/** Set whether fully clipped characters are discarded (see getDiscardClippedText) */
+	void setDiscardClippedText(GBool discardClippedTextA);
+
 	/** PL: Modifiy the boolean that controls whether to include TYPE attributes to String elements to indicate
 	 * right-to-left reading order (produces non-valid ALTO)
 	 * @param charReadingOrderAttr <code>true</code> if the charReadingOrderAttr option is selected, <code>false</code> otherwise
@@ -165,6 +193,17 @@ public:
 	 */
 	void setSkipGraphs(GBool skipGraphsAttr);
 
+	/** Modify the boolean which informs if vector graphics are dumped as bounding-box rectangles only
+	 * @param vectorCoordsOnlyAttr <code>true</code> if the vectorCoordsOnly option is selected, <code>false</code> otherwise
+	 */
+	void setVectorCoordsOnly(GBool vectorCoordsOnlyAttr);
+
+	/** Modify the maximum number of vector paths emitted per page (0 = unlimited) */
+	void setVectorPathLimit(int limit);
+
+	/** Modify the boolean informing if one bounding box per vector group is emitted in the ALTO */
+	void setVectorBoxes(GBool vectorBoxesAttr);
+
 	void saveToXML(const char *fileName,int firstPage,int lastPage);
 	
 private:
@@ -185,6 +224,9 @@ private:
 	//GBool imageInline;
 	/** PL: The value of the readingOrder option */
 	GBool readingOrder;
+
+	/** The value of the discardClippedText option */
+	GBool discardClippedText;
 	/** PL: The value of the charReadingOrderAttr option */
 	GBool charReadingOrderAttr;
 	/** The value of ocr option */
@@ -195,6 +237,12 @@ private:
   	GBool noLineNumbers;
 	/** The value of the skipGraphs option */
 	GBool skipGraphs;
+	/** The value of the vectorCoordsOnly option */
+	GBool vectorCoordsOnly;
+	/** Max number of vector paths emitted per page (0 = unlimited) */
+	int vectorPathLimit;
+	/** The value of the vectorBoxes option */
+	GBool vectorBoxes;
 };
 
 #endif /*PARAMETERS_H_*/
