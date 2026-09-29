@@ -121,6 +121,24 @@ authoritative key when applying corrections. The placeholder codepoints in the
 sidecar are identical to the ones in the
 ALTO file, so a corrections step can simply substitute them in-place.
 
+### Glyph names outside the Adobe Glyph List
+
+A font with no `ToUnicode` CMap is decoded through its glyph *names*, and xpdf only knows the names of the Adobe
+Glyph List. A glyph named otherwise has no Unicode value and is dropped from the output. The `nameToUnicode` files
+under `languages/xpdf-others/`, registered in `xpdfrc`, add the names met in practice:
+
+| file | names |
+|---|---|
+| `tex.nameToUnicode` | TeX math and symbol fonts (CMSY, CMMI, MSAM, MSBM...): `bardbl` (∥), `greatermuch` (≫), `prime` (′), `angbracketleft` (⟨)... Generated from the `texglyphlist.txt` of lcdf-typetools |
+| `sc.nameToUnicode` | small capitals, `a.sc` ... `z.sc` |
+| `oldstyle.nameToUnicode`, `taboldstyle.nameToUnicode` | old-style figures |
+| `ligatures.nameToUnicode`, `fitted.nameToUnicode` | ligatures |
+| `others.nameToUnicode` | miscellaneous |
+
+Each line is `<hexadecimal code point> <glyph name>`; the format has no comment syntax, and a name maps to a single
+code point. `tex.nameToUnicode` therefore leaves out the names `texglyphlist.txt` maps to a sequence or to a combining
+character only (`negationslash`, `vector`), and never redefines a name xpdf already knows.
+
 ### Runtime resources
 
 pdfalto reads `xpdfrc` and the `languages/` tree at startup; the paths inside `xpdfrc` are resolved relative to
@@ -131,8 +149,9 @@ the directory holding it. It is looked for in this order:
 3. `../share/pdfalto` relative to the executable, so pdfalto can be installed the way any Unix program is,
    with the binary in `bin/` and its data under `share/`. This is what the Python wheel does.
 
-None of them being present is not an error: xpdf falls back to its built-in defaults, and only documents needing
-the non-Latin encoding tables are affected.
+None of them being present is not an error: xpdf falls back to its built-in defaults. Documents needing the
+non-Latin encoding tables are then affected, and so are the glyph names described above: without `xpdfrc` they are
+not mapped, and those glyphs are dropped.
 
 ### Memory footprint on large or pathological PDFs
 

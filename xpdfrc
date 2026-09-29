@@ -66,5 +66,6 @@ nameToUnicode	languages/xpdf-others/ligatures.nameToUnicode
 nameToUnicode	languages/xpdf-others/fitted.nameToUnicode
 nameToUnicode	languages/xpdf-others/sc.nameToUnicode
 nameToUnicode	languages/xpdf-others/others.nameToUnicode
+nameToUnicode	languages/xpdf-others/tex.nameToUnicode
 unicodeRemapping	languages/xpdf-others/symbols.unicodeRemapping
 #----- end oldstyle support package
