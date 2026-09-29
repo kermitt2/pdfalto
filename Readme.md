@@ -27,7 +27,8 @@ end-user.
 * makefile generator : cmake >= 3.10.0
 * fetching dependencies : wget
 * git : the Xpdf source is a git submodule, so the repository must be cloned (not downloaded as a zip) and the
-  submodule initialised with `git submodule update --init --recursive` — see [Build](#build)
+  submodule initialised with `git submodule update --init --recursive` — see [Build](#build). The submodule is a lightly patched copy of Xpdf, not the
+  official one; the official Xpdf is at [xpdfreader.com](https://www.xpdfreader.com/)
 
 ## Usage
 
@@ -50,6 +51,7 @@ Usage: pdfalto [options] <PDF-file> [<xml-file>]
   -readingOrder                 : blocks follow the reading order
   -noText                       : do not extract textual objects (might be useful, but non-valid ALTO)
   -charReadingOrderAttr         : include TYPE attribute to String elements to indicate right-to-left reading order (might be useful, but non-valid ALTO)
+  -ocr                          : emit a sidecar listing glyphs with no Unicode mapping (<xml>_data/ocr-regions.json); render + OCR the bounding boxes externally (e.g. pdftoppm).
   -fullFontName                 : fonts names are not normalized
   -nsURI <string>               : add the specified namespace URI
   -opw <string>                 : owner password (for encrypted files)
@@ -79,6 +81,78 @@ files are generated:
   use `-onlyGraphsCoord` (or the deprecated alias `-noImage`) to keep extracting image coordinates without dumping the
   image files. To skip all graphics processing (bitmap and vectorial), use `-skipGraphs`.
 
+### OCR sidecar for glyphs with no Unicode mapping
+
+Some PDFs contain glyphs that have no valid Unicode mapping — typically custom
+Type 3 fonts, symbolic/dingbat fonts with broken `ToUnicode` CMaps, or Private
+Use Area characters. pdfalto first tries to *recover* the real characters
+(including MSTT `GNN`/`gNNN`/`cidNNN` glyph-index naming); `-ocr` only captures
+the *residual* glyphs that recovery genuinely cannot map. For those, pdfalto:
+
+1. Substitutes each glyph with a unique placeholder codepoint allocated
+   sequentially from the Private Use Area (`U+E000` onward) inside the ALTO
+   `<String CONTENT>`, so the output stays valid UTF-8 and each distinct
+   `(fontName, charCode)` gets its own collision-free placeholder.
+2. Writes `<xml>_data/ocr-regions.json` listing every unique `(fontName,
+   charCode)` pair that triggered a placeholder, with a per-occurrence page
+   number and bounding box in page-space points (xpdf bottom-up convention,
+   flip with page height for ALTO top-down).
+
+pdfalto intentionally does not rasterise these regions — this keeps the tool
+dependency-free and lets the caller pick a rendering backend, DPI, and OCR
+engine. A typical pipeline is:
+
+```sh
+pdfalto -ocr in.pdf out.xml
+# render each sidecar occurrence to a bitmap (pdftoppm is one option)
+jq -c '.glyphs[] | .occurrences[] as $o | {placeholder, charCode, page: $o.page, bbox: $o}' \
+    out.xml_data/ocr-regions.json | while read region; do
+  # ... invoke your OCR engine here, then write a corrections JSON ...
+done
+# apply corrections back: replace placeholder codepoints in out.xml
+#   with the recovered Unicode, matched by (fontName, charCode) — the canonical
+#   sidecar key — or by (page, bbox)
+```
+
+Each distinct `(fontName, charCode)` gets its own placeholder, so the codepoint
+alone is a stable key for documents with up to 6400 distinct unmapped glyphs;
+beyond that the allocation saturates, so prefer `(fontName, charCode)` as the
+authoritative key when applying corrections. The placeholder codepoints in the
+sidecar are identical to the ones in the
+ALTO file, so a corrections step can simply substitute them in-place.
+
+### Glyph names outside the Adobe Glyph List
+
+A font with no `ToUnicode` CMap is decoded through its glyph *names*, and xpdf's table holds the names of the Adobe
+Glyph List. A glyph whose name cannot be resolved has no Unicode value and is dropped from the output.
+
+Names that are not in the table are resolved by rule, following the Adobe Glyph List Specification:
+
+| rule | examples |
+|---|---|
+| everything from the first period is a variant suffix and is dropped | `one.pnum` → 1, `a.sc` → a, `parenleft.s2` → ( |
+| underscores separate the components of a ligature | `f_t` → ft, `T_h` → Th |
+| `uni` + groups of four hexadecimal digits, `u` + four to six | `uni20AC` → €, `u1D441` → 𝑁 |
+| TeX size variants stand for the base character | `parenleftbig`, `parenleftBigg` → (, `summationdisplay` → ∑ |
+
+Every component of a name has to resolve, otherwise the name is left alone.
+
+Names that no rule can derive need a table. The `nameToUnicode` files under `languages/xpdf-others/`, registered in
+`xpdfrc`, add the ones met in practice:
+
+| file | names |
+|---|---|
+| `tex.nameToUnicode` | TeX math and symbol fonts (CMSY, CMMI, MSAM, MSBM...): `bardbl` (∥), `greatermuch` (≫), `prime` (′), `angbracketleft` (⟨)... Generated from the `texglyphlist.txt` of lcdf-typetools |
+| `sc.nameToUnicode` | small capitals, `a.sc` ... `z.sc` |
+| `oldstyle.nameToUnicode`, `taboldstyle.nameToUnicode` | old-style figures |
+| `ligatures.nameToUnicode`, `fitted.nameToUnicode` | ligatures |
+| `others.nameToUnicode` | miscellaneous |
+
+Each line is `<hexadecimal code point> <glyph name>`; the format has no comment syntax, and a name maps to a single
+code point. `tex.nameToUnicode` therefore leaves out the names `texglyphlist.txt` maps to a sequence or to a combining
+character only (`negationslash`, `vector`), and never redefines a name xpdf already knows. It is generated, not
+written by hand: `scripts/make_tex_name_to_unicode.py path/to/texglyphlist.txt`.
+
 ### Runtime resources
 
 pdfalto reads `xpdfrc` and the `languages/` tree at startup; the paths inside `xpdfrc` are resolved relative to
@@ -89,8 +163,9 @@ the directory holding it. It is looked for in this order:
 3. `../share/pdfalto` relative to the executable, so pdfalto can be installed the way any Unix program is,
    with the binary in `bin/` and its data under `share/`. This is what the Python wheel does.
 
-None of them being present is not an error: xpdf falls back to its built-in defaults, and only documents needing
-the non-Latin encoding tables are affected.
+None of them being present is not an error: xpdf falls back to its built-in defaults. Documents needing the
+non-Latin encoding tables are then affected, and so are the glyph names described above: without `xpdfrc` they are
+not mapped, and those glyphs are dropped.
 
 ### Memory footprint on large or pathological PDFs
 
@@ -196,7 +271,9 @@ compile the dependencies before building pdfalto.
 
 > git clone https://github.com/kermitt2/pdfalto.git && cd pdfalto
 
-* Xpdf-4.05 is shipped as git submodule, to download it:
+* Xpdf-4.06 is shipped as git submodule, to download it (the submodule points at
+  [lfoppiano/xpdf](https://github.com/lfoppiano/xpdf), which is **not** the official Xpdf: it is the upstream 4.06
+  release from [xpdfreader.com](https://www.xpdfreader.com/) plus the few patches pdfalto needs, listed in its README):
 
 > git submodule update --init --recursive
 
@@ -207,7 +284,7 @@ compile the dependencies before building pdfalto.
 > make
 
 The executable `pdfalto` is generated in the root directory. Additionally, this will create a static library for
-xpdf-4.05 at the following path `xpdf-4.05/build/xpdf/lib/libxpdf.a` and all the libraries and their respective
+xpdf-4.06 at the following path `xpdf-4.06/build/xpdf/lib/libxpdf.a` and all the libraries and their respective
 subdirectory.
 
 To use the additional xpdf language support packages, the executable `pdfalto` comes with a config file `xpdfrc` and
@@ -227,12 +304,12 @@ building, see described workaround.
 
 ## Future work
 
-- Text like containing block element characters (https://unicode.org/charts/PDF/U2B00.pdf) are used as placeholders for
-  unknown character unicodes, instead of what would be expected when visually inspecting the text. The reason for these
-  unsolved character unicode values is that the actual characters are glyphs that are embedded in the PDF document which
-  use free unicode range for embedded fonts, not the right unicode. The only way to extract the valid text for those
-  special characters is to use OCR at glyph level . This is our targeted main future enhancement, relying on a custom
-  Deep Learning approach.
+- Under `-ocr`, glyphs with no recoverable Unicode are substituted with Private Use Area placeholder codepoints
+  (`U+E000` onward, see the OCR sidecar section above) instead of what would be expected when visually inspecting the
+  text. The reason for these unsolved character unicode values is that the actual characters are glyphs embedded in the
+  PDF document which use a free unicode range for embedded fonts, not the right unicode. The only way to extract the
+  valid text for those special characters is to use OCR at glyph level, driven by the `ocr-regions.json` sidecar. This
+  is our targeted main future enhancement, relying on a custom Deep Learning approach.
 
 - map special characters in secondary fonts to their expected unicode
 

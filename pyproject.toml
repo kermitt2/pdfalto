@@ -55,21 +55,21 @@ wheel.packages = ["python/pdfalto"]
 
 sdist.include = [
     "python/README.md",
-    # xpdf-4.05 is a submodule, and its own .gitignore lists the four source
+    # xpdf-4.06 is a submodule, and its own .gitignore lists the four source
     # directories below even though they are tracked. scikit-build-core applies
     # those ignore rules on top of the git file list, so without these includes
     # the sdist would ship an xpdf tree with no sources in it and the source
     # build would fail at `add_subdirectory(xpdf)`. Patterns are per-extension
     # rather than "**" so a local build's artifacts cannot leak in — in
-    # particular xpdf-4.05/aconf.h, which is generated into the build directory
+    # particular xpdf-4.06/aconf.h, which is generated into the build directory
     # and would shadow the generated one if it were shipped.
-    "xpdf-4.05/fofi/*.c", "xpdf-4.05/fofi/*.cc", "xpdf-4.05/fofi/*.h", "xpdf-4.05/fofi/*.txt", "xpdf-4.05/fofi/*.manifest",
-    "xpdf-4.05/goo/*.c", "xpdf-4.05/goo/*.cc", "xpdf-4.05/goo/*.h", "xpdf-4.05/goo/*.txt", "xpdf-4.05/goo/*.manifest",
-    "xpdf-4.05/splash/*.c", "xpdf-4.05/splash/*.cc", "xpdf-4.05/splash/*.h", "xpdf-4.05/splash/*.txt", "xpdf-4.05/splash/*.manifest",
-    "xpdf-4.05/xpdf/*.c", "xpdf-4.05/xpdf/*.cc", "xpdf-4.05/xpdf/*.h", "xpdf-4.05/xpdf/*.txt", "xpdf-4.05/xpdf/*.manifest",
+    "xpdf-4.06/fofi/*.c", "xpdf-4.06/fofi/*.cc", "xpdf-4.06/fofi/*.h", "xpdf-4.06/fofi/*.txt", "xpdf-4.06/fofi/*.manifest",
+    "xpdf-4.06/goo/*.c", "xpdf-4.06/goo/*.cc", "xpdf-4.06/goo/*.h", "xpdf-4.06/goo/*.txt", "xpdf-4.06/goo/*.manifest",
+    "xpdf-4.06/splash/*.c", "xpdf-4.06/splash/*.cc", "xpdf-4.06/splash/*.h", "xpdf-4.06/splash/*.txt", "xpdf-4.06/splash/*.manifest",
+    "xpdf-4.06/xpdf/*.c", "xpdf-4.06/xpdf/*.cc", "xpdf-4.06/xpdf/*.h", "xpdf-4.06/xpdf/*.txt", "xpdf-4.06/xpdf/*.manifest",
 ]
 # The source distribution has to be able to build the executable, so it keeps
-# src/, xpdf-4.05/, libs/ (the prebuilt static libraries), languages/ and
+# src/, xpdf-4.06/, libs/ (the prebuilt static libraries), languages/ and
 # xpdfrc. Only things a source build has no use for are dropped.
 sdist.exclude = [
     "build",
