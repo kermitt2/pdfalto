@@ -123,9 +123,22 @@ ALTO file, so a corrections step can simply substitute them in-place.
 
 ### Glyph names outside the Adobe Glyph List
 
-A font with no `ToUnicode` CMap is decoded through its glyph *names*, and xpdf only knows the names of the Adobe
-Glyph List. A glyph named otherwise has no Unicode value and is dropped from the output. The `nameToUnicode` files
-under `languages/xpdf-others/`, registered in `xpdfrc`, add the names met in practice:
+A font with no `ToUnicode` CMap is decoded through its glyph *names*, and xpdf's table holds the names of the Adobe
+Glyph List. A glyph whose name cannot be resolved has no Unicode value and is dropped from the output.
+
+Names that are not in the table are resolved by rule, following the Adobe Glyph List Specification:
+
+| rule | examples |
+|---|---|
+| everything from the first period is a variant suffix and is dropped | `one.pnum` → 1, `a.sc` → a, `parenleft.s2` → ( |
+| underscores separate the components of a ligature | `f_t` → ft, `T_h` → Th |
+| `uni` + groups of four hexadecimal digits, `u` + four to six | `uni20AC` → €, `u1D441` → 𝑁 |
+| TeX size variants stand for the base character | `parenleftbig`, `parenleftBigg` → (, `summationdisplay` → ∑ |
+
+Every component of a name has to resolve, otherwise the name is left alone.
+
+Names that no rule can derive need a table. The `nameToUnicode` files under `languages/xpdf-others/`, registered in
+`xpdfrc`, add the ones met in practice:
 
 | file | names |
 |---|---|
@@ -137,7 +150,8 @@ under `languages/xpdf-others/`, registered in `xpdfrc`, add the names met in pra
 
 Each line is `<hexadecimal code point> <glyph name>`; the format has no comment syntax, and a name maps to a single
 code point. `tex.nameToUnicode` therefore leaves out the names `texglyphlist.txt` maps to a sequence or to a combining
-character only (`negationslash`, `vector`), and never redefines a name xpdf already knows.
+character only (`negationslash`, `vector`), and never redefines a name xpdf already knows. It is generated, not
+written by hand: `scripts/make_tex_name_to_unicode.py path/to/texglyphlist.txt`.
 
 ### Runtime resources
 
