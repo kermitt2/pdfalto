@@ -79,3 +79,10 @@ def test_type3_glyph_names_are_left_alone(type3_pdf):
     # visible hyphen into a soft one.
     pdf = type3_pdf("t-SNE", {ord(c): c for c in "tSNE"} | {ord("-"): "uni00AD"})
     assert words(pdf) == ["t-SNE"]
+
+
+def test_c_and_a_number_is_a_character_code(glyph_names_pdf):
+    # The symbol fonts of several publishers name their glyphs "C" + the
+    # character code. It is not an index into the Macintosh glyph ordering,
+    # where 176 is the OE ligature.
+    assert words(glyph_names_pdf(["C176"])) == ["\u00b0"]
