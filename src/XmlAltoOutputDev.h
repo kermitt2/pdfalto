@@ -555,6 +555,9 @@ public:
     //   only when a space character follows, so an unassigned value would make
     //   <SP> emission depend on heap contents (see #248).
 
+    /** Set if a space glyph was drawn after this word, not merely a gap left */
+    GBool explicitSpaceAfter = gFalse;
+
     /** <code>true</code> if the current <code>TextRawWord</code> is <b>bold</b>, <code>false</code> else */
     GBool  bold;
     /** <code>true</code> if the current <code>TextRawWord</code> is <b>italic</b>, <code>false</code> else */
@@ -835,6 +838,7 @@ private:
     //   (plus one extra entry for the last char)
     int len;			// number of Unicode chars
     GBool hyphenated;		// set if last char is a hyphen
+    GBool rtlReordered = gFalse;	// set if the words are in logical order, not in x order
     int px;			// x offset (in characters, relative to
     //   containing column) in physical layout mode
     int pw;			// line width (in characters) in physical
@@ -1038,6 +1042,24 @@ public:
     //void unrotateChars(GList *wordsA, int rot);
 
     GBool checkPrimaryLR(GList *charsA);
+
+    /** True if the current font's multi-letter glyphs hold their ToUnicode text in visual order.
+     *  Decided once per font from the whole ToUnicode map. */
+    GBool fontStoresVisualLigatures(GfxState *state);
+
+    /** Bring the page's right-to-left words to the form dump() expects, as if they had been drawn
+     *  left to right: join the fragments of split words, and put words drawn right to left in
+     *  ascending x order. Does nothing on a page without right-to-left text. */
+    void normalizeRtlWords();
+
+    /** Join fragments of right-to-left words that have no space between them */
+    void mergeRtlFragments();
+
+    /** Put stretches of a line that were drawn right to left in ascending x order */
+    void sortRtlStretches();
+
+    /** Put the words of each line in logical order: lines are built in x order */
+    void reorderRtlLines();
 
     TextBlock *splitChars(GList *charsA);
 
@@ -1518,6 +1540,9 @@ private:
     UnicodeRemapping *remapping;
     Unicode *uBuf;
     int uBufSize;
+
+    /** The ligature text order of each font met so far, see fontStoresVisualLigatures() */
+    unordered_map<long long, GBool> fontLigatureOrder;
 
 //    friend class TextBlock;
 //    friend class TextColumn;

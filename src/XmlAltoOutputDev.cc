@@ -143,6 +143,25 @@ static void setNodeContentEncoded(xmlNodePtr node, const xmlChar *str) {
 // Inter-character space width which will cause addChar to start a new word.
 #define minWordBreakSpace 0.1
 
+// Right-to-left text. All fractions of the font size.
+//
+// Largest vertical offset between two fragments of one word. Fonts such as Amiri stack
+// letters and draw them off the baseline, far beyond the 1 point the word builder tolerates.
+#define rtlMaxBaselineShift 0.6
+// Largest overlap between two letter fragments of one word: cursive letters overlap a little.
+#define rtlMaxLetterOverlap 0.35
+// A gap inside a word is compared with the width of a word space, which depends on the font:
+// from 0.15 (Lateef) to 0.32 (Amiri), when kerning alone reaches 0.12. A gap is a word space
+// if it is wider than this share of the line's own word space...
+#define rtlWordGapShare 0.7
+// ...and always if it is wider than this.
+#define rtlMaxGapInWord 0.3
+// Gaps narrower than this are not word spaces.
+#define rtlMinWordGap 0.05
+// Largest horizontal jump inside a stretch of one line; beyond it, the next word is in another
+// column.
+#define rtlMaxLineJump 1.0
+
 // Negative inter-character space width, i.e., overlap, which will
 // cause addChar to start a new word.
 #define minDupBreakOverlap 0.3
@@ -330,6 +349,90 @@ static GBool isUnicodeSpace(Unicode u) {
         0x3000   // IDEOGRAPHIC SPACE
     };
     return unicodeSpaces.count(u) ? gTrue : gFalse;
+}
+
+//------------------------------------------------------------------------
+// right-to-left text
+//------------------------------------------------------------------------
+
+// A combining mark of a right-to-left script (harakat, Hebrew points).
+static GBool isRtlMark(Unicode c) {
+    return unicodeTypeCombiningMark(c) &&
+           ((c >= 0x0591 && c <= 0x07FF) || (c >= 0x08A0 && c <= 0x08FF) || c == 0xFB1E);
+}
+
+// The Arabic comma and percent sign: xpdf's table types them as number separators, like their
+// Latin counterparts, so nothing marks them as right-to-left.
+static GBool isArabicPunctuation(Unicode c) {
+    return c == 0x060C || c == 0x066A;
+}
+
+static GBool isRtlChar(Unicode c) {
+    return unicodeTypeR(c) || isRtlMark(c) || isArabicPunctuation(c);
+}
+
+// Characters kept in left-to-right order inside a right-to-left word.
+static GBool isLtrInRtl(Unicode c) {
+    return unicodeTypeL(c) || unicodeTypeDigit(c);
+}
+
+// Can this Arabic letter join the letter after it? Letters that cannot (alef, dal, reh, waw...)
+// can never be anything but the last letter of a ligature, which is what tells the two orders
+// of a ligature's ToUnicode text apart.
+static GBool arabicJoinsNext(Unicode c) {
+    return c == 0x0626 || c == 0x0628 || (c >= 0x062A && c <= 0x062E) ||
+           (c >= 0x0633 && c <= 0x0647) || c == 0x0649 || c == 0x064A ||
+           (c >= 0x066E && c <= 0x066F) || (c >= 0x0678 && c <= 0x0687) ||
+           (c >= 0x069A && c <= 0x06BF) || (c >= 0x06C1 && c <= 0x06C2) ||
+           c == 0x06CC || c == 0x06CE || (c >= 0x06D0 && c <= 0x06D1) ||
+           (c >= 0x06FA && c <= 0x06FC);
+}
+
+static GBool isArabicBaseLetter(Unicode c) {
+    return (c >= 0x0620 && c <= 0x064A) || (c >= 0x066E && c <= 0x06D3) ||
+           (c >= 0x06FA && c <= 0x06FC);
+}
+
+// Replace an Arabic presentation form by the letters it stands for. Returns the number of
+// letters written, or 0 when c is not a presentation form (or expands to a phrase: U+FDFA and
+// its like hold spaces, and a token must not).
+static int expandPresentationForm(Unicode c, Unicode *out, int size) {
+    if (!((c >= 0xFB50 && c <= 0xFDFF) || (c >= 0xFE70 && c <= 0xFEFC))) {
+        return 0;
+    }
+    UErrorCode status = U_ZERO_ERROR;
+    const Normalizer2 *nfkc = Normalizer2::getNFKCInstance(status);
+    if (U_FAILURE(status)) {
+        return 0;
+    }
+    UnicodeString expanded = nfkc->normalize(UnicodeString((UChar32) c), status);
+    if (U_FAILURE(status) || expanded.length() == 0 || expanded.length() > size) {
+        return 0;
+    }
+    for (int i = 0; i < expanded.length(); ++i) {
+        if (expanded.charAt(i) == 0x20) {
+            return 0;
+        }
+        out[i] = expanded.charAt(i);
+    }
+    return expanded.length();
+}
+
+static void countStrongChars(TextRawWord *word, int *rtl, int *ltr) {
+    for (int i = 0; i < word->len; ++i) {
+        Unicode c = word->getChar(i);
+        if (isRtlChar(c)) {
+            ++*rtl;
+        } else if (unicodeTypeL(c)) {
+            ++*ltr;
+        }
+    }
+}
+
+static GBool isRtlWord(TextRawWord *word) {
+    int rtl = 0, ltr = 0;
+    countStrongChars(word, &rtl, &ltr);
+    return rtl > 0 && rtl >= ltr;
 }
 
 //------------------------------------------------------------------------
@@ -2830,6 +2933,11 @@ void TextPage::addCharToRawWord(GfxState *state, double x, double y, double dx,
         if (curWord) {
             ++curWord->charLen;
             curWord->setSpaceAfter(gTrue);
+            curWord->explicitSpaceAfter = gTrue;
+            if (curWord->len == 0 && words->getLength() > 0) {
+                // the word before this space was closed already
+                ((TextRawWord *) words->get(words->getLength() - 1))->explicitSpaceAfter = gTrue;
+            }
             if (curWord->chars->getLength() > 0)
                 ((TextChar *) curWord->chars->get(curWord->chars->getLength() - 1))->spaceAfter =
                         (char) gTrue;
@@ -2850,6 +2958,38 @@ void TextPage::addCharToRawWord(GfxState *state, double x, double y, double dx,
     }
     u = uBuf;
     uLen = uBufLen;
+
+    // Arabic presentation forms stand for plain letters; a lam-alef form stands for two
+    GBool expanded = gFalse;
+    if (uLen == 1) {
+        Unicode letters[8];
+        int nLetters = expandPresentationForm(u[0], letters, 8);
+        if (nLetters > 0) {
+            memcpy(u, letters, nLetters * sizeof(Unicode));
+            uLen = nLetters;
+            expanded = nLetters > 1;
+        }
+    }
+
+    // A glyph that stands for several right-to-left letters holds them in logical order, but a
+    // word holds its characters in ascending x order and is reversed on output, so the letters
+    // go in reversed. Some fonts store these glyphs in visual order already.
+    if (uLen > 1) {
+        GBool rtl = gTrue;
+        for (i = 0; i < uLen; ++i) {
+            if (!unicodeTypeR(u[i]) && !isRtlMark(u[i])) {
+                rtl = gFalse;
+                break;
+            }
+        }
+        if (rtl && (expanded || !fontStoresVisualLigatures(state))) {
+            for (i = 0; i < uLen / 2; ++i) {
+                Unicode tmp = u[i];
+                u[i] = u[uLen - 1 - i];
+                u[uLen - 1 - i] = tmp;
+            }
+        }
+    }
 
     if (!curWord) {
         beginWord(state, x, y);
@@ -2949,10 +3089,20 @@ void TextPage::addCharToRawWord(GfxState *state, double x, double y, double dx,
         GBool sameBaseline = fabs(base - curWord->base) <= 1;
         GBool wrappedToNextLine = !sameBaseline && sp < -curWord->fontSize;
 
+        // A word holds its glyphs left to right. Right-to-left text can be drawn right to left
+        // (some producers follow logical order), and narrow glyphs then pass all the tests above
+        // and pile up in one word in the wrong order. Keep them apart here:
+        // normalizeRtlWords() joins them again in the right order.
+        GBool drawnBackwards = curWord->rot == 0 && curWord->len > 0 &&
+                               x1 < curWord->edge[curWord->len - 1] - 0.02 * curWord->fontSize &&
+                               isRtlChar(u[0]) &&
+                               isRtlChar(((TextChar *) curWord->chars->get(curWord->len - 1))->c);
+
         // take into account rotation angle ??
         if ( (overlap ||
               fabs(base - curWord->base) > 1 ||
               space ||
+              drawnBackwards ||
               (sp < -minDupBreakOverlap * curWord->fontSize))
               && (modifierClass == NOT_A_MODIFIER || wrappedToNextLine)) {
             endWord();
@@ -3662,6 +3812,54 @@ void TextPage::unrotateChars(GList *wordsA, int rot) {
 
 // Determine the primary text direction (LR vs RL).  Returns true for
 // LR, false for RL.
+GBool TextPage::fontStoresVisualLigatures(GfxState *state) {
+    GfxFont *font = state->getFont();
+    if (!font) {
+        return gFalse;
+    }
+    long long key = ((long long) font->getID()->num << 20) ^ font->getID()->gen;
+    auto known = fontLigatureOrder.find(key);
+    if (known != fontLigatureOrder.end()) {
+        return known->second;
+    }
+
+    // Vote over the font's multi-letter glyphs. In a ligature every letter but the last joins
+    // the next one, so a text like alef + lam can only have been written in visual order, and
+    // lam + alef only in logical order. Letters that all join say nothing.
+    int logical = 0, visual = 0;
+    CharCodeToUnicode *ctu = font->isCIDFont() ? ((GfxCIDFont *) font)->getToUnicode()
+                                               : ((Gfx8BitFont *) font)->getToUnicode();
+    if (ctu) {
+        Unicode u[8], letters[8];
+        int nCodes = font->isCIDFont() ? 65536 : 256;
+        for (int code = 0; code < nCodes; ++code) {
+            int n = ctu->mapToUnicode((CharCode) code, u, 8), nLetters = 0;
+            for (int i = 0; i < n; ++i) {
+                if (isArabicBaseLetter(u[i])) {
+                    letters[nLetters++] = u[i];
+                }
+            }
+            if (nLetters < 2) {
+                continue;
+            }
+            GBool asLogical = gTrue, asVisual = gTrue;
+            for (int i = 0; i + 1 < nLetters; ++i) {
+                asLogical = asLogical && arabicJoinsNext(letters[i]);
+                asVisual = asVisual && arabicJoinsNext(letters[nLetters - 1 - i]);
+            }
+            if (asLogical && !asVisual) {
+                ++logical;
+            } else if (asVisual && !asLogical) {
+                ++visual;
+            }
+        }
+        ctu->decRefCnt();
+    }
+    GBool storesVisual = visual > logical;
+    fontLigatureOrder[key] = storesVisual;
+    return storesVisual;
+}
+
 GBool TextPage::checkPrimaryLR(GList *charsA) {
     TextChar *ch;
     int i, lrCount;
@@ -3671,7 +3869,7 @@ GBool TextPage::checkPrimaryLR(GList *charsA) {
         ch = (TextChar *) charsA->get(i);
         if (unicodeTypeL(ch->c)) {
             ++lrCount;
-        } else if (unicodeTypeR(ch->c)) {
+        } else if (unicodeTypeR(ch->c) || isArabicPunctuation(ch->c)) {
             --lrCount;
         }
     }
@@ -5852,6 +6050,353 @@ static void clampIllustrationBox(double &x, double &y, double &w, double &h) {
     if (h < 0) { h = 0; }
 }
 
+// Which of the gaps of the words in `order` are spaces, given the same words in stream order.
+// A flag on a word speaks of the gap to the word drawn after it, so it has to move when two
+// words swap places.
+static void reassignSpaces(const vector<TextRawWord *> &order, const vector<TextRawWord *> &stream) {
+    unordered_map<TextRawWord *, int> position;
+    vector<GBool> spaceAfter, explicitSpace;
+    for (size_t i = 0; i < stream.size(); ++i) {
+        position[stream[i]] = (int) i;
+        spaceAfter.push_back(stream[i]->spaceAfter);
+        explicitSpace.push_back(stream[i]->explicitSpaceAfter);
+    }
+    for (size_t i = 0; i < order.size(); ++i) {
+        TextRawWord *word = order[i];
+        if (i + 1 == order.size()) {
+            word->spaceAfter = spaceAfter.back();
+            word->explicitSpaceAfter = explicitSpace.back();
+            break;
+        }
+        TextRawWord *next = order[i + 1];
+        int from = position[word], to = position[next];
+        if (abs(from - to) == 1) {
+            int earlier = min(from, to);
+            word->spaceAfter = spaceAfter[earlier];
+            word->explicitSpaceAfter = explicitSpace[earlier];
+        } else {
+            double gap = max(next->xMin - word->xMax, word->xMin - next->xMax);
+            word->spaceAfter = gap > minWordBreakSpace * word->fontSize;
+            word->explicitSpaceAfter = gFalse;
+        }
+    }
+}
+
+void TextPage::mergeRtlFragments() {
+    int n = words->getLength();
+    int drawnLeft = 0, drawnRight = 0;
+    for (int i = 0; i + 1 < n; ++i) {
+        TextRawWord *word = (TextRawWord *) words->get(i);
+        TextRawWord *next = (TextRawWord *) words->get(i + 1);
+        if (isRtlWord(word) && word->rot == 0 && next->rot == 0 &&
+            fabs(next->base - word->base) < rtlMaxBaselineShift * word->fontSize) {
+            drawnLeft += next->xMax <= word->xMin ? 1 : 0;
+            drawnRight += next->xMin >= word->xMax ? 1 : 0;
+        }
+    }
+    GBool drawnBackwards = drawnLeft > drawnRight;
+
+    // Largest gap to find between the words i and i + 1, in font sizes. Each line settles it for
+    // itself, from the width of its word spaces. Where it draws space glyphs, these measure it
+    // directly. Elsewhere, its gaps do, being mostly word spaces. A page can do both: it can draw
+    // some of its spaces and leave the others as gaps, or draw just one at the end of each line.
+    auto median = [](vector<double> values) {
+        nth_element(values.begin(), values.begin() + values.size() / 2, values.end());
+        return values[values.size() / 2];
+    };
+    struct RtlLine { int start; vector<double> spaces, gaps; };
+    vector<RtlLine> lines;
+    vector<double> pageSpaces, pageGaps;
+    for (int start = 0, end; start < n; start = end + 1) {
+        RtlLine line = { start, vector<double>(), vector<double>() };
+        for (end = start; end + 1 < n; ++end) {
+            TextRawWord *word = (TextRawWord *) words->get(end);
+            TextRawWord *next = (TextRawWord *) words->get(end + 1);
+            if (word->rot != 0 || next->rot != 0 ||
+                fabs(next->base - word->base) > rtlMaxBaselineShift * word->fontSize) {
+                break;
+            }
+            // wider gaps are table cells and columns, not word spaces
+            double gap = max(next->xMin - word->xMax, word->xMin - next->xMax) / word->fontSize;
+            if (gap >= rtlMinWordGap && gap < rtlMaxLineJump) {
+                (word->explicitSpaceAfter ? line.spaces : line.gaps).push_back(gap);
+                (word->explicitSpaceAfter ? pageSpaces : pageGaps).push_back(gap);
+            }
+        }
+        lines.push_back(line);
+    }
+    vector<double> maxGap(n, rtlMaxGapInWord);
+    for (size_t k = 0; k < lines.size(); ++k) {
+        const RtlLine &line = lines[k];
+        double wordSpace = 0;
+        if (!line.spaces.empty()) {
+            wordSpace = median(line.spaces);
+        } else if (line.gaps.size() >= 3) {
+            wordSpace = median(line.gaps);
+        } else if (!pageSpaces.empty()) {
+            wordSpace = median(pageSpaces);
+        } else if (!pageGaps.empty()) {
+            wordSpace = median(pageGaps);
+        }
+        // A line that draws nearly all its spaces leaves few gaps, and these are kerning: they
+        // only have to be narrower than a space. Otherwise most gaps are word spaces themselves.
+        GBool drawsSpaces = line.gaps.size() * 2 <= line.spaces.size();
+        double share = drawsSpaces ? 1.0 : rtlWordGapShare;
+        double limit = wordSpace > 0 ? min(share * wordSpace, (double) rtlMaxGapInWord)
+                                     : (double) rtlMaxGapInWord;
+        int lineEnd = k + 1 < lines.size() ? lines[k + 1].start : n;
+        for (int i = line.start; i < lineEnd; ++i) {
+            maxGap[i] = limit;
+        }
+    }
+
+    GList *merged = new GList(words->getLength());
+    TextRawWord *cur = NULL;
+    for (int i = 0; i < words->getLength(); ++i) {
+        TextRawWord *word = (TextRawWord *) words->get(i);
+        GBool join = gFalse, wordIsLeft = gFalse;
+        if (cur && cur->rot == 0 && word->rot == 0 && !cur->explicitSpaceAfter &&
+            fabs(cur->fontSize - word->fontSize) <= 0.2 * cur->fontSize &&
+            fabs(cur->base - word->base) <= rtlMaxBaselineShift * cur->fontSize) {
+            double gapRight = word->xMin - cur->xMax;
+            double gapLeft = cur->xMin - word->xMax;
+            // Overlapping fragments are ordered by their centres, unless one sits on the other
+            // as a mark does: then only the way the page is drawn tells.
+            double shift = (word->xMin + word->xMax) - (cur->xMin + cur->xMax);
+            wordIsLeft = fabs(shift) > 0.05 * cur->fontSize ? shift < 0 : drawnBackwards;
+            double gap = wordIsLeft ? gapLeft : gapRight;
+            Unicode inner0 = wordIsLeft ? cur->getChar(0) : cur->getChar(cur->len - 1);
+            Unicode inner1 = wordIsLeft ? word->getChar(word->len - 1) : word->getChar(0);
+            // On a page drawn right to left, the digits and punctuation of a word are drawn glyph
+            // by glyph like its letters, and come apart with them.
+            if ((isRtlChar(inner0) || (drawnBackwards && !unicodeTypeL(inner0))) &&
+                (isRtlChar(inner1) || (drawnBackwards && !unicodeTypeL(inner1)))) {
+                double size = cur->fontSize;
+                if (isRtlMark(inner0) || isRtlMark(inner1)) {
+                    // a mark can be offset past its letter, so overlap says nothing here
+                    join = gap <= maxGap[i - 1] * size;
+                } else {
+                    // two copies of one text are not one word: some producers draw text twice
+                    GBool duplicate = cur->len == word->len &&
+                                      fabs(cur->xMin - word->xMin) < dupMaxPriDelta * size;
+                    for (int k = 0; duplicate && k < cur->len; ++k) {
+                        duplicate = cur->getChar(k) == word->getChar(k);
+                    }
+                    join = !duplicate && gap <= maxGap[i - 1] * size &&
+                           gap >= -rtlMaxLetterOverlap * size;
+                }
+            }
+        }
+        if (!join) {
+            merged->append(word);
+            cur = word;
+            continue;
+        }
+        // the longer fragment holds the baseline: the shorter one is what was shifted
+        TextRawWord *left = wordIsLeft ? word : cur;
+        TextRawWord *right = wordIsLeft ? cur : word;
+        double base = cur->len >= word->len ? cur->base : word->base;
+        double baseYmin = cur->len >= word->len ? cur->baseYmin : word->baseYmin;
+        GBool spaceAfter = word->spaceAfter, explicitSpace = word->explicitSpaceAfter;
+        left->merge(right);
+        left->base = base;
+        left->baseYmin = baseYmin;
+        left->spaceAfter = spaceAfter;
+        left->explicitSpaceAfter = explicitSpace;
+        merged->put(merged->getLength() - 1, left);
+        delete right;
+        cur = left;
+    }
+    delete words;
+    words = merged;
+}
+
+void TextPage::sortRtlStretches() {
+    int n = words->getLength();
+    int start = 0;
+    while (start < n) {
+        TextRawWord *first = (TextRawWord *) words->get(start);
+        double xMin = first->xMin, xMax = first->xMax;
+        double reach = rtlMaxLineJump * first->fontSize;
+        GBool backwards = gFalse;
+        int end = start;
+        while (first->rot == 0 && end + 1 < n) {
+            TextRawWord *prev = (TextRawWord *) words->get(end);
+            TextRawWord *next = (TextRawWord *) words->get(end + 1);
+            if (next->rot != 0 ||
+                fabs(next->base - first->base) > rtlMaxBaselineShift * first->fontSize ||
+                next->xMax < xMin - reach || next->xMin > xMax + reach) {
+                break;
+            }
+            backwards = backwards || next->xMax <= prev->xMin;
+            xMin = min(xMin, next->xMin);
+            xMax = max(xMax, next->xMax);
+            ++end;
+        }
+        if (backwards) {
+            int rtl = 0, ltr = 0;
+            vector<TextRawWord *> stream, order;
+            for (int i = start; i <= end; ++i) {
+                stream.push_back((TextRawWord *) words->get(i));
+                countStrongChars(stream.back(), &rtl, &ltr);
+            }
+            if (rtl > ltr) {
+                order = stream;
+                stable_sort(order.begin(), order.end(), [](TextRawWord *a, TextRawWord *b) {
+                    return a->xMin < b->xMin;
+                });
+                reassignSpaces(order, stream);
+                for (int i = start; i <= end; ++i) {
+                    words->put(i, order[i - start]);
+                }
+            }
+        }
+        start = end + 1;
+    }
+}
+
+void TextPage::normalizeRtlWords() {
+    GBool anyRtl = gFalse;
+    for (int i = 0; i < words->getLength() && !anyRtl; ++i) {
+        anyRtl = isRtlWord((TextRawWord *) words->get(i));
+    }
+    if (anyRtl) {
+        mergeRtlFragments();
+        sortRtlStretches();
+    }
+}
+
+// The Unicode bidirectional algorithm, on whole words. A line holds its words in x order, which is
+// visual order; this puts them back in the order they are read.
+void TextPage::reorderRtlLines() {
+    enum { wordNeutral, wordNumber, wordLtr, wordRtl };
+
+    int pageRtl = 0, pageLtr = 0;
+    for (int i = 0; i < words->getLength(); ++i) {
+        countStrongChars((TextRawWord *) words->get(i), &pageRtl, &pageLtr);
+    }
+    if (pageRtl == 0) {
+        return;
+    }
+
+    for (int parIdx = 0; parIdx < blocks->getLength(); ++parIdx) {
+        TextParagraph *par = (TextParagraph *) blocks->get(parIdx);
+        for (int lineIdx = 0; lineIdx < par->lines->getLength(); ++lineIdx) {
+            TextLine *line = (TextLine *) par->lines->get(lineIdx);
+            int n = line->words->getLength();
+            int rtl = 0, ltr = 0;
+            vector<TextRawWord *> visual;
+            vector<int> type;
+            for (int i = 0; i < n; ++i) {
+                TextRawWord *word = (TextRawWord *) line->words->get(i);
+                int wordRtlChars = 0, wordLtrChars = 0;
+                GBool digits = gFalse;
+                countStrongChars(word, &wordRtlChars, &wordLtrChars);
+                for (int k = 0; k < word->len; ++k) {
+                    digits = digits || unicodeTypeDigit(word->getChar(k));
+                }
+                visual.push_back(word);
+                type.push_back(wordRtlChars > 0 && wordRtlChars >= wordLtrChars ? (int) wordRtl
+                               : wordLtrChars > 0 ? (int) wordLtr
+                               : digits ? (int) wordNumber : (int) wordNeutral);
+                rtl += wordRtlChars;
+                ltr += wordLtrChars;
+            }
+            // A line of numbers (a table row) has no direction of its own: it takes the page's.
+            GBool rtlLine = rtl > ltr || (rtl == 0 && ltr == 0 && pageRtl > pageLtr);
+            if (rtl == 0 && !rtlLine) {
+                continue;
+            }
+            int runType = rtlLine ? wordLtr : wordRtl;
+
+            // A wide gap separates table cells, and a run never crosses one
+            vector<int> cell(n, 0);
+            for (int i = 1; i < n; ++i) {
+                double gap = visual[i]->xMin - visual[i - 1]->xMax;
+                cell[i] = cell[i - 1] + (gap > rtlMaxLineJump * visual[i]->fontSize ? 1 : 0);
+            }
+
+            // The runs that go against the line: words of the opposite direction, with what lies
+            // between two of them. A number joins a left-to-right run it follows (Python 3,
+            // p < 0.05); apart from one, it stands alone.
+            vector<GBool> inRun(n, gFalse);
+            int last = -1;
+            for (int i = 0; i < n; ++i) {
+                if (type[i] != runType) {
+                    continue;
+                }
+                inRun[i] = gTrue;
+                if (last >= 0 && cell[last] == cell[i]) {
+                    GBool sameRun = gTrue;
+                    for (int k = last + 1; k < i; ++k) {
+                        sameRun = sameRun && type[k] != (rtlLine ? (int) wordRtl : (int) wordLtr);
+                    }
+                    for (int k = last + 1; sameRun && k < i; ++k) {
+                        inRun[k] = gTrue;
+                    }
+                }
+                last = i;
+            }
+            for (int i = 0; rtlLine && i < n; ++i) {
+                if (type[i] != wordLtr) {
+                    continue;
+                }
+                for (int step = -1; step <= 1; step += 2) {
+                    for (int k = i + step; k >= 0 && k < n && type[k] <= wordNumber && cell[k] == cell[i];
+                         k += step) {
+                        if (type[k] == wordNumber) {
+                            for (int m = min(i, k); m <= max(i, k); ++m) {
+                                inRun[m] = gTrue;
+                            }
+                        }
+                    }
+                }
+            }
+
+            // An RTL line reads its words backwards, and its left-to-right runs forwards; an LTR
+            // line reads forwards, and its right-to-left runs backwards.
+            vector<TextRawWord *> order;
+            int i = rtlLine ? n - 1 : 0;
+            while (i >= 0 && i < n) {
+                if (!inRun[i]) {
+                    order.push_back(visual[i]);
+                    i += rtlLine ? -1 : 1;
+                    continue;
+                }
+                int j = i;
+                if (rtlLine) {
+                    while (j > 0 && inRun[j - 1]) {
+                        --j;
+                    }
+                    for (int k = j; k <= i; ++k) {
+                        order.push_back(visual[k]);
+                    }
+                    i = j - 1;
+                } else {
+                    while (j + 1 < n && inRun[j + 1]) {
+                        ++j;
+                    }
+                    for (int k = j; k >= i; --k) {
+                        order.push_back(visual[k]);
+                    }
+                    i = j + 1;
+                }
+            }
+            if (order == visual) {
+                continue;
+            }
+            reassignSpaces(order, visual);
+            GList *reordered = new GList(n);
+            for (size_t k = 0; k < order.size(); ++k) {
+                reordered->append(order[k]);
+            }
+            delete line->words;
+            line->words = reordered;
+            line->rtlReordered = gTrue;
+        }
+    }
+}
+
 void TextPage::dump(GBool noLineNumbers, GBool fullFontName, const vector<bool> &lineNumberStatus, vector<double> &lineNumberColumnsX) {
     // Output the page in raw (content stream) order
     // Release the previous page's block tree before building this page's.
@@ -5873,6 +6418,8 @@ void TextPage::dump(GBool noLineNumbers, GBool fullFontName, const vector<bool> 
         deleteGList(blocks, TextParagraph);
         blocks = NULL;
     }
+
+    normalizeRtlWords();
 
     blocks = new GList(); // these are blocks in alto schema
     vector<TextParagraph*> originalBlocks; // only used when reading order is selected
@@ -6463,6 +7010,8 @@ void TextPage::dump(GBool noLineNumbers, GBool fullFontName, const vector<bool> 
     }
     setLineNumber(hasLineNumber);
 
+    reorderRtlLines();
+
     xmlNodePtr node = NULL;
     xmlNodePtr nodeline = NULL;
     xmlNodePtr nodeblocks = NULL;
@@ -6849,6 +7398,12 @@ void TextPage::dump(GBool noLineNumbers, GBool fullFontName, const vector<bool> 
                         // (backward kerning or reordered runs); ALTO requires a non-negative
                         // WIDTH, so clamp it to 0. See issue #236.
                         double spacingWidth = nextWord->xMin - word->xMax;
+                        double spacingX = word->xMax;
+                        if (line1->rtlReordered && nextWord->xMax <= word->xMin) {
+                            // on a right-to-left line the next word is on the left
+                            spacingWidth = word->xMin - nextWord->xMax;
+                            spacingX = nextWord->xMax;
+                        }
                         if (spacingWidth < 0) { spacingWidth = 0; }
                         formatCoord(tmp, sizeof(tmp), spacingWidth);
                         xmlNewProp(spacingNode, (const xmlChar *) ATTR_WIDTH,
@@ -6856,7 +7411,7 @@ void TextPage::dump(GBool noLineNumbers, GBool fullFontName, const vector<bool> 
                         formatCoord(tmp, sizeof(tmp), (word->yMin));
                         xmlNewProp(spacingNode, (const xmlChar *) ATTR_Y,
                                    (const xmlChar *) tmp);
-                        formatCoord(tmp, sizeof(tmp), (word->xMax));
+                        formatCoord(tmp, sizeof(tmp), spacingX);
                         xmlNewProp(spacingNode, (const xmlChar *) ATTR_X,
                                    (const xmlChar *) tmp);
 
@@ -7615,18 +8170,27 @@ GString *TextPage::buildIdClipZone(int pageNum, int clipZoneNum, GString *id) {
 }
 
 int TextPage::dumpFragment(Unicode *text, int len, UnicodeMap *uMap, GString *s) {
-    char lre[8], rle[8], popdf[8], buf[8];
-    int lreLen, rleLen, popdfLen, n;
+    char buf[8];
+    int n;
     int nCols, i, j, k;
 
     nCols = 0;
 
+    // Append one character, unless it is undefined or a control character
+    auto appendChar = [&](Unicode u) {
+        if (u_isdefined(u) && !u_iscntrl(u)) {
+            n = uMap->mapUnicode(u, buf, sizeof(buf));
+            s->append(buf, n);
+            ++nCols;
+        }
+    };
+
+    // The characters of a word are in ascending x order, and the output is logical order. No
+    // bidi control characters are written: the text is already in reading order, and they
+    // would be part of the token for whatever reads it.
+
     // Unicode OK
     if (uMap->isUnicode()) {
-
-        lreLen = uMap->mapUnicode(0x202a, lre, sizeof(lre));
-        rleLen = uMap->mapUnicode(0x202b, rle, sizeof(rle));
-        popdfLen = uMap->mapUnicode(0x202c, popdf, sizeof(popdf));
 
         // IF primary direction is Left to Right
         if (primaryLR) {
@@ -7636,28 +8200,15 @@ int TextPage::dumpFragment(Unicode *text, int len, UnicodeMap *uMap, GString *s)
                 // output a left-to-right section
                 for (j = i; j < len && !unicodeTypeR(text[j]); ++j);
                 for (k = i; k < j; ++k) {
-
-                    //Check is the code point is defined and not a control one
-                    if(u_isdefined(text[k]) && !u_iscntrl(text[k])) {
-                        n = uMap->mapUnicode(text[k], buf, sizeof(buf));
-                        s->append(buf, n);
-                        ++nCols;
-                    }
+                    appendChar(text[k]);
                 }
                 i = j;
                 // output a right-to-left section
                 for (j = i; j < len && !unicodeTypeL(text[j]); ++j);
                 if (j > i) {
-                    s->append(rle, rleLen);
                     for (k = j - 1; k >= i; --k) {
-                        //Check is the code point is defined and not a control one
-                        if(u_isdefined(text[k]) && !u_iscntrl(text[k])) {
-                            n = uMap->mapUnicode(text[k], buf, sizeof(buf));
-                            s->append(buf, n);
-                            ++nCols;
-                        }
+                        appendChar(text[k]);
                     }
-                    s->append(popdf, popdfLen);
                     i = j;
                 }
             }
@@ -7666,37 +8217,32 @@ int TextPage::dumpFragment(Unicode *text, int len, UnicodeMap *uMap, GString *s)
             // ELSE primary direction is Right to Left
         else {
 
-            s->append(rle, rleLen);
+            // Reversed, except for Latin letters and numbers, which read left to right inside
+            // a right-to-left word.
             i = len - 1;
             while (i >= 0) {
-                // output a right-to-left section
-                for (j = i; j >= 0 && !unicodeTypeL(text[j]); --j);
-                for (k = i; k > j; --k) {
-                    //Check is the code point is defined and not a control one
-                    if(u_isdefined(text[k]) && !u_iscntrl(text[k])) {
-                        n = uMap->mapUnicode(text[k], buf, sizeof(buf));
-                        s->append(buf, n);
-                        ++nCols;
-                    }
+                // a percent sign goes with the number it follows
+                if (!isLtrInRtl(text[i]) && !(text[i] == '%' && i > 0 && unicodeTypeDigit(text[i - 1]))) {
+                    appendChar(text[i]);
+                    --i;
+                    continue;
                 }
-                i = j;
-                // output a left-to-right section
-                for (j = i; j >= 0 && !unicodeTypeR(text[j]); --j);
-                if (j < i) {
-                    s->append(lre, lreLen);
-                    for (k = j + 1; k <= i; ++k) {
-                        //Check is the code point is defined and not a control one
-                        if(u_isdefined(text[k]) && !u_iscntrl(text[k])) {
-                            n = uMap->mapUnicode(text[k], buf, sizeof(buf));
-                            s->append(buf, n);
-                            ++nCols;
-                        }
+                for (j = i; j > 0; --j) {
+                    if (isLtrInRtl(text[j - 1]) || text[j - 1] == '%') {
+                        continue;
                     }
-                    s->append(popdf, popdfLen);
-                    i = j;
+                    // a separator inside a number: 3.14, 1,000
+                    if (j > 1 && unicodeTypeNumSep(text[j - 1]) && !isArabicPunctuation(text[j - 1])
+                        && isLtrInRtl(text[j - 2])) {
+                        continue;
+                    }
+                    break;
                 }
+                for (k = j; k <= i; ++k) {
+                    appendChar(text[k]);
+                }
+                i = j - 1;
             }
-            s->append(popdf, popdfLen);
         }
     }
         // Unicode NOT OK
