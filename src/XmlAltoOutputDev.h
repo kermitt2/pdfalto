@@ -959,6 +959,9 @@ public:
      *  @param y0 The y value of left bottom corner of the box word */
     void beginWord(GfxState *state, double x0, double y0);
 
+    /** Begin a new word with an explicit font (used when placing a held glyph) */
+    void beginWord(GfxState *state, double x0, double y0, TextFontInfo *font, double fontSize);
+
     /** Add a character either to the current word or to the list of page chars to be ordered
      *  @param state The state description
      *  @param x The x value of left bottom corner of the box character
@@ -1457,6 +1460,32 @@ private:
 
     /** To set if the last added char overlapped the previous char */
     GBool lastCharOverlap;
+
+    /** A diacritic glyph drawn before the letter it belongs to (TeX draws "ü" as the accent
+     *  then "u"), held until the next glyph tells whether it is that letter. */
+    struct HeldGlyph {
+        GfxState *state;
+        double x, y, dx, dy;
+        CharCode c;
+        int nBytes;
+        Unicode u;
+        SplashFont *splashFont;
+        GBool isNonUnicodeGlyph;
+        double x1, y1, w1, h1;
+        TextFontInfo *font;
+        double fontSize;
+    };
+    HeldGlyph *heldGlyph;
+
+    void flushHeldGlyph();
+    GBool heldGlyphIsAccentOf(double x1, double y1, double w1, double h1);
+    GBool glyphOverlapsEndOfWord(double x1, double y1, double w1, double h1);
+    void glyphPrimaryExtent(double x1, double y1, double w1, double h1,
+                            double *pMin, double *pMax, double *secondary);
+    void placeGlyph(GfxState *state, double x, double y, double dx, double dy,
+                    CharCode c, int nBytes, Unicode *u, int uLen, SplashFont *splashFont,
+                    GBool isNonUnicodeGlyph, double x1, double y1, double w1, double h1,
+                    TextFontInfo *font, double fontSize, GBool composeWithPrevious);
 
     /** The primary rotation */
     int primaryRot;

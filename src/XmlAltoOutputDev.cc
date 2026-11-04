@@ -1242,40 +1242,74 @@ void TextRawWord::addChar(GfxState *state, double x, double y, double dx,
                     resultChar = nfkc->normalizeSecondAndAppend(resultChar, *diacriticChar, errorCode);
                 } else
                     resultChar = nfkc->normalizeSecondAndAppend(*baseChar, *diacriticChar, errorCode);
-                ((TextChar *) chars->get(len - 1))->c = resultChar.charAt(0);
+                delete baseChar;
+                delete diacriticChar;
+                if (resultChar.countChar32() != 1) {
+                    // no precomposed character for this pair (a math symbol under a hat, a
+                    // private-use glyph): keep the accent as a character of its own rather
+                    // than dropping it
+                    isUpdateAccentedChar = gFalse;
+                } else {
+                ((TextChar *) chars->get(len - 1))->c = resultChar.char32At(0);
 
+                // the composed character, chars[len - 1], spans both glyphs: the accent
+                // is centred over its letter, so neither extent is a superset of the other.
+                // The right edge used to be reset to the accent's, which shrank wide
+                // letters (a capital under a narrow accent) and opened a false gap before
+                // the next glyph.
                 switch (rot) {
                     case 0:
-                        if (len == 0) {
+                        if (x < edge[len - 1]) {
+                            edge[len - 1] = x;
+                        }
+                        if (len == 1 && x < xMin) {
                             xMin = x;
                         }
-                        edge[len] = x;
-                        xMax = edge[len + 1] = x + dx;
+                        if (x + dx > edge[len]) {
+                            edge[len] = x + dx;
+                        }
+                        xMax = edge[len];
                         break;
                     case 3:
-                        if (len == 0) {
+                        if (y < edge[len - 1]) {
+                            edge[len - 1] = y;
+                        }
+                        if (len == 1 && y < yMin) {
                             yMin = y;
                         }
-                        edge[len] = y;
-                        yMax = edge[len + 1] = y + dy;
+                        if (y + dy > edge[len]) {
+                            edge[len] = y + dy;
+                        }
+                        yMax = edge[len];
                         break;
                     case 2:
-                        if (len == 0) {
+                        if (x > edge[len - 1]) {
+                            edge[len - 1] = x;
+                        }
+                        if (len == 1 && x > xMax) {
                             xMax = x;
                         }
-                        edge[len] = x;
-                        xMin = edge[len + 1] = x + dx;
+                        if (x + dx < edge[len]) {
+                            edge[len] = x + dx;
+                        }
+                        xMin = edge[len];
                         break;
                     case 1:
-                        if (len == 0) {
+                        if (y > edge[len - 1]) {
+                            edge[len - 1] = y;
+                        }
+                        if (len == 1 && y > yMax) {
                             yMax = y;
                         }
-                        edge[len] = y;
-                        yMin = edge[len + 1] = y + dy;
+                        if (y + dy < edge[len]) {
+                            edge[len] = y + dy;
+                        }
+                        yMin = edge[len];
                         break;
                 }
+                isUpdateAccentedChar = gTrue;
+                }
             }
-            isUpdateAccentedChar = gTrue;
         }
     }
 
@@ -1955,6 +1989,7 @@ TextPage::TextPage(GBool verboseA, Catalog *catalog, xmlNodePtr node,
     nest = 0;
     nTinyChars = 0;
     lastCharOverlap = gFalse;
+    heldGlyph = NULL;
     idClip = 0;
     stack<int> idStack;
     idCur = 0;
@@ -2184,6 +2219,11 @@ bool TextPage::streamPageNode(FILE *out, xmlDocPtr doc) {
 void TextPage::clear() {
     //TextRawWord *word;
 
+    if (heldGlyph) {
+        delete heldGlyph->state;
+        delete heldGlyph;
+        heldGlyph = NULL;
+    }
     if (curWord) {
         delete curWord;
         curWord = NULL;
@@ -2383,6 +2423,15 @@ void TextPage::beginWord(GfxState *state, double x0, double y0) {
     curWord = new TextRawWord(state, x0, y0, curFont, curFontSize, getIdWORD(), getIdx());
 }
 
+void TextPage::beginWord(GfxState *state, double x0, double y0, TextFontInfo *font, double fontSize) {
+    if (curWord) {
+        ++nest;
+        return;
+    }
+    idx++;
+    curWord = new TextRawWord(state, x0, y0, font, fontSize, getIdWORD(), getIdx());
+}
+
 // Single source of truth for combining-mark classification.
 //
 // This table used to be duplicated as TextPage::classifyChar and
@@ -2529,7 +2578,7 @@ Unicode TextPage::getCombiningDiacritic(ModifierClass modifierClass) {
             diactritic = 783;
             break;
         case BREVE_ACCENT:
-            diactritic = 785;
+            diactritic = 774;
             break;
         case INVERTED_BREVE_ACCENT:
             diactritic = 785;
@@ -2592,7 +2641,7 @@ Unicode IWord::getCombiningDiacritic(ModifierClass modifierClass) {
             diactritic = 783;
             break;
         case BREVE_ACCENT:
-            diactritic = 785;
+            diactritic = 774;
             break;
         case INVERTED_BREVE_ACCENT:
             diactritic = 785;
@@ -2779,42 +2828,55 @@ void TextPage::addCharToPageChars(GfxState *state, double x, double y, double dx
     charPos += nBytes;
 }
 
+// A diacritic glyph does not decide a word boundary on its own: the letter it is
+// attached to does.
+//
+// Fonts without precomposed accented letters (TeX OT1, many Type 1 subsets)
+// draw "ü" as the accent glyph followed by the base letter, the accent centred
+// over the letter and, for capitals, raised. Judged on its own the accent sits
+// about a tenth of an em to the right of the previous letter, on a shifted
+// baseline, so the word-break tests saw a space or a baseline change there and
+// "Müller" came out as "M" + "üller" (GROBID issue on ICML 2025: 9 author names
+// on 294 papers; 79 documents over three corpora). Other producers draw the
+// accent after the letter, drawn back over it: that one landed in the "too much
+// overlap" test and "François" came out as "Franc" + "¸ois".
+//
+// So an accent that overlaps the end of the current word is composed onto its
+// last letter, never a break; an accent to the right of the word is held until
+// the next glyph arrives: if that glyph is the letter under the accent, the
+// letter is placed first with the usual break decision made on its own
+// position, and the accent is then composed onto it; otherwise the accent was a
+// standalone symbol ("~", "^", "`") and it is placed as any other glyph.
 void TextPage::addCharToRawWord(GfxState *state, double x, double y, double dx,
                                 double dy, CharCode c, int nBytes, Unicode *u, int uLen, SplashFont *splashFont,
                                 GBool isNonUnicodeGlyph) {
-    //cout << "addCharToRawWord" << endl;
-    double x1, y1, w1, h1, dx2, dy2, base, sp, delta;
-    GBool overlap = gFalse;
+    double x1, y1, w1, h1, dx2, dy2, sp;
     int uBufLen, i;
 
     if (uLen == 0) {
+        flushHeldGlyph();
         endWord();
         return;
-    }
-
-    // if the previous char was a space, addChar will have called
-    // endWord, so we need to start a new word
-    if (!curWord) {
-        beginWord(state, x, y);
     }
 
     // throw away chars that aren't inside the page bounds
     state->transform(x, y, &x1, &y1);
     if (x1 < 0 || x1 > pageWidth ||
         y1 < 0 || y1 > pageHeight) {
+        flushHeldGlyph();
         charPos += nBytes;
         endWord();
         return;
     }
 
-    // subtract char and word spacing from the dx,dy values 
+    // subtract char and word spacing from the dx,dy values
     sp = state->getCharSpace();
     if (c == (CharCode) 0x20) {
         sp += state->getWordSpace();
     }
     state->textTransformDelta(sp * state->getHorizScaling(), 0, &dx2, &dy2);
-    dx -= dx2; 
-    dy -= dy2; 
+    dx -= dx2;
+    dy -= dy2;
     state->transformDelta(dx, dy, &w1, &h1);
 
     // check the tiny chars limit
@@ -2827,6 +2889,7 @@ void TextPage::addCharToRawWord(GfxState *state, double x, double y, double dx,
 
     // break words at space character
     if (uLen == 1 && isUnicodeSpace(u[0])) {
+        flushHeldGlyph();
         if (curWord) {
             ++curWord->charLen;
             curWord->setSpaceAfter(gTrue);
@@ -2851,8 +2914,160 @@ void TextPage::addCharToRawWord(GfxState *state, double x, double y, double dx,
     u = uBuf;
     uLen = uBufLen;
 
+    GBool isModifier = uLen == 1 && classifyModifierChar(u[0]) != NOT_A_MODIFIER;
+
+    if (heldGlyph) {
+        if (!isModifier && heldGlyphIsAccentOf(x1, y1, w1, h1)) {
+            // this glyph is the letter under the held accent: place the letter first, so
+            // that the word break is decided on the letter, then compose the accent onto it.
+            // The accent is detached first: a break made by the letter ends the current
+            // word, which would otherwise flush the accent into it.
+            HeldGlyph *held = heldGlyph;
+            heldGlyph = NULL;
+            placeGlyph(state, x, y, dx, dy, c, nBytes, u, uLen, splashFont, isNonUnicodeGlyph,
+                       x1, y1, w1, h1, curFont, curFontSize, gFalse);
+            placeGlyph(held->state, held->x, held->y, held->dx, held->dy, held->c, held->nBytes, &held->u, 1,
+                       held->splashFont, held->isNonUnicodeGlyph, held->x1, held->y1, held->w1, held->h1,
+                       held->font, held->fontSize, gTrue);
+            delete held->state;
+            delete held;
+            return;
+        }
+        flushHeldGlyph();
+    }
+
+    if (isModifier) {
+        if (glyphOverlapsEndOfWord(x1, y1, w1, h1)) {
+            // accent drawn back over the last letter of the word: compose, never break
+            placeGlyph(state, x, y, dx, dy, c, nBytes, u, uLen, splashFont, isNonUnicodeGlyph,
+                       x1, y1, w1, h1, curFont, curFontSize, gTrue);
+            return;
+        }
+        // accent (or standalone symbol) to the right of the word: wait for the next glyph
+        heldGlyph = new HeldGlyph();
+        // copy(gTrue) deep-copies the path too, see TextRawWord::addChar
+        heldGlyph->state = state->copy(gTrue);
+        heldGlyph->state->setCTM(state->getCTM()[0], state->getCTM()[1], state->getCTM()[2], state->getCTM()[3],
+                                 state->getCTM()[4], state->getCTM()[5]);
+        heldGlyph->state->setTextMat(state->getTextMat()[0], state->getTextMat()[1], state->getTextMat()[2],
+                                     state->getTextMat()[3], state->getTextMat()[4], state->getTextMat()[5]);
+        heldGlyph->x = x;
+        heldGlyph->y = y;
+        heldGlyph->dx = dx;
+        heldGlyph->dy = dy;
+        heldGlyph->c = c;
+        heldGlyph->nBytes = nBytes;
+        heldGlyph->u = u[0];
+        heldGlyph->splashFont = splashFont;
+        heldGlyph->isNonUnicodeGlyph = isNonUnicodeGlyph;
+        heldGlyph->x1 = x1;
+        heldGlyph->y1 = y1;
+        heldGlyph->w1 = w1;
+        heldGlyph->h1 = h1;
+        heldGlyph->font = curFont;
+        heldGlyph->fontSize = curFontSize;
+        return;
+    }
+
+    placeGlyph(state, x, y, dx, dy, c, nBytes, u, uLen, splashFont, isNonUnicodeGlyph,
+               x1, y1, w1, h1, curFont, curFontSize, gFalse);
+}
+
+// Place a held accent as an ordinary glyph: it was not followed by its base letter.
+void TextPage::flushHeldGlyph() {
+    if (!heldGlyph)
+        return;
+    HeldGlyph *held = heldGlyph;
+    heldGlyph = NULL;
+    placeGlyph(held->state, held->x, held->y, held->dx, held->dy, held->c, held->nBytes, &held->u, 1,
+               held->splashFont, held->isNonUnicodeGlyph, held->x1, held->y1, held->w1, held->h1,
+               held->font, held->fontSize, gFalse);
+    delete held->state;
+    delete held;
+}
+
+// Extent of a glyph along the primary (reading) axis and its position on the secondary axis.
+void TextPage::glyphPrimaryExtent(double x1, double y1, double w1, double h1,
+                                  double *pMin, double *pMax, double *secondary) {
+    double a, b;
+    if (curRot & 1) {
+        a = y1;
+        b = y1 + h1;
+        *secondary = x1;
+    } else {
+        a = x1;
+        b = x1 + w1;
+        *secondary = y1;
+    }
+    *pMin = a < b ? a : b;
+    *pMax = a < b ? b : a;
+}
+
+// Is the glyph at (x1,y1) the letter under the held accent? The accent is centred over
+// its letter, possibly raised (capitals), so the letter starts at or before the middle
+// of the accent and ends after the accent starts. The next ordinary glyph after a
+// standalone accent-like symbol ("~", "`") starts after the symbol's middle, even
+// when kerned.
+GBool TextPage::heldGlyphIsAccentOf(double x1, double y1, double w1, double h1) {
+    double aMin, aMax, aSec, gMin, gMax, gSec;
+    glyphPrimaryExtent(heldGlyph->x1, heldGlyph->y1, heldGlyph->w1, heldGlyph->h1, &aMin, &aMax, &aSec);
+    glyphPrimaryExtent(x1, y1, w1, h1, &gMin, &gMax, &gSec);
+    double fontSize = heldGlyph->fontSize > curFontSize ? heldGlyph->fontSize : curFontSize;
+    if (fontSize <= 0)
+        fontSize = 1;
+    return gMin <= (aMin + aMax) / 2 + 0.02 * fontSize &&
+           gMax > aMin &&
+           fabs(gSec - aSec) < fontSize;
+}
+
+// Does the glyph sit over (or under) the last letter of the current word? True when the
+// middle of the glyph falls inside that letter's extent, on the same line.
+GBool TextPage::glyphOverlapsEndOfWord(double x1, double y1, double w1, double h1) {
+    if (!curWord || curWord->len == 0)
+        return gFalse;
+    double gMin, gMax, gSec;
+    glyphPrimaryExtent(x1, y1, w1, h1, &gMin, &gMax, &gSec);
+    double mid = (gMin + gMax) / 2;
+    double lastMin, lastMax, wordSec;
+    switch (curWord->rot) {
+        case 0:
+            lastMin = curWord->edge[curWord->len - 1];
+            lastMax = curWord->xMax;
+            wordSec = curWord->base;
+            break;
+        case 1:
+            lastMin = curWord->edge[curWord->len - 1];
+            lastMax = curWord->yMax;
+            wordSec = curWord->base;
+            break;
+        case 2:
+            lastMin = curWord->xMin;
+            lastMax = curWord->edge[curWord->len - 1];
+            wordSec = curWord->base;
+            break;
+        default:
+            lastMin = curWord->yMin;
+            lastMax = curWord->edge[curWord->len - 1];
+            wordSec = curWord->base;
+            break;
+    }
+    double fontSize = curWord->fontSize > 0 ? curWord->fontSize : 1;
+    return mid > lastMin && mid < lastMax && fabs(gSec - wordSec) < fontSize;
+}
+
+// Append a glyph to the current raw word, starting a new word first when the glyph does
+// not continue the current one. x1,y1,w1,h1 are the device coordinates of the glyph.
+// composeWithPrevious: the glyph is an accent to compose onto the last letter of the word.
+void TextPage::placeGlyph(GfxState *state, double x, double y, double dx, double dy,
+                          CharCode c, int nBytes, Unicode *u, int uLen, SplashFont *splashFont,
+                          GBool isNonUnicodeGlyph, double x1, double y1, double w1, double h1,
+                          TextFontInfo *font, double fontSize, GBool composeWithPrevious) {
+    double base, sp, delta;
+    GBool overlap = gFalse;
+    int i;
+
     if (!curWord) {
-        beginWord(state, x, y);
+        beginWord(state, x, y, font, fontSize);
     }
 
     // start a new word if:
@@ -2890,7 +3105,7 @@ void TextPage::addCharToRawWord(GfxState *state, double x, double y, double dx,
         }
 
         if (lastCharOverlap) {
-            // the previous overlap (always from a character composition here) 
+            // the previous overlap (always from a character composition here)
             // made the base not reliable, so we align to the current one
             curWord->base = base;
             lastCharOverlap = gFalse;
@@ -2902,31 +3117,19 @@ void TextPage::addCharToRawWord(GfxState *state, double x, double y, double dx,
                                                                            - curWord->base) <
                                                                       dupMaxSecDelta * curWord->fontSize;
 
-        // avoid splitting token when overlapping is surrounded by diacritic
-        ModifierClass modifierClass = NOT_A_MODIFIER;
-        ModifierClass rightClass = NOT_A_MODIFIER;
-        ModifierClass leftClass = NOT_A_MODIFIER;
-        if (curWord->len > 0)
-            leftClass = classifyChar(((TextChar *) curWord->chars->get(curWord->getLength() - 1))->c);
-        //if (modifierClass == NOT_A_MODIFIER)
-            rightClass = classifyChar(u[0]);
+        // The glyph is composed onto the last character of the word: either it is the
+        // accent of that letter, or the last character is an accent glyph that could not
+        // be composed yet (it was placed on its own because its letter was not where
+        // expected) and this glyph is drawn over it. Never a break then; a glyph that
+        // merely follows an accent glyph with a gap ("~ 10", "`code` next") is judged
+        // as any other.
+        ModifierClass leftClass = classifyChar(((TextChar *) curWord->chars->get(curWord->getLength() - 1))->c);
+        GBool composing = composeWithPrevious ||
+                          (leftClass != NOT_A_MODIFIER &&
+                           (overlap || sp < -minDupBreakOverlap * curWord->fontSize));
         GBool space = sp > minWordBreakSpace * curWord->fontSize;
 
-        if ((rightClass != NOT_A_MODIFIER || leftClass != NOT_A_MODIFIER) ) {
-            // break of the word happens at the modifier char, but depending on the
-            // left or right combination, it will consume the left or the right character
-            // and possible break word will occur then after or before the modifier respectively
-            if (leftClass != NOT_A_MODIFIER) {
-                // no break before this char
-                modifierClass = leftClass;
-            }
-            else if (rightClass != NOT_A_MODIFIER) {
-                // break is allowed before this char
-                modifierClass = NOT_A_MODIFIER;
-            }
-        }
-
-        if(space){
+        if (space && !composing) {
             curWord->setSpaceAfter(gTrue);
             if (curWord->chars->getLength() > 0)
                 ((TextChar *) curWord->chars->get(curWord->chars->getLength() - 1))->spaceAfter =
@@ -2954,11 +3157,11 @@ void TextPage::addCharToRawWord(GfxState *state, double x, double y, double dx,
               fabs(base - curWord->base) > 1 ||
               space ||
               (sp < -minDupBreakOverlap * curWord->fontSize))
-              && (modifierClass == NOT_A_MODIFIER || wrappedToNextLine)) {
+              && (!composing || wrappedToNextLine)) {
             endWord();
-            beginWord(state, x, y);
+            beginWord(state, x, y, font, fontSize);
         }
-        if (leftClass != NOT_A_MODIFIER && curWord && curWord->getLength() == 1) {
+        if (composing && leftClass != NOT_A_MODIFIER && curWord && curWord->getLength() == 1) {
             // we keep track of the event composition for the next character, as the base won't be reliable
             // in the case the word starts with a composed character
             lastCharOverlap = gTrue;
@@ -2971,7 +3174,7 @@ void TextPage::addCharToRawWord(GfxState *state, double x, double y, double dx,
 
     if (uLen != 0) {
         if (!curWord) {
-            beginWord(state, x, y);
+            beginWord(state, x, y, font, fontSize);
         }
         // page rotation and/or transform matrices can cause text to be
         // drawn in reverse order -- in this case, swap the begin/end
@@ -2980,7 +3183,7 @@ void TextPage::addCharToRawWord(GfxState *state, double x, double y, double dx,
             || (curWord->rot == 2 && w1 > 0) || (curWord->rot == 1 && h1
                                                                       > 0)) {
             endWord();
-            beginWord(state, x + dx, y + dy);
+            beginWord(state, x + dx, y + dy, font, fontSize);
             x1 += w1;
             y1 += h1;
             w1 = -w1;
@@ -2990,11 +3193,12 @@ void TextPage::addCharToRawWord(GfxState *state, double x, double y, double dx,
         // add the characters to the current word
         w1 /= uLen;
         h1 /= uLen;
+        GBool composeOverlap = composeWithPrevious && curWord->len > 0;
         for (i = 0; i < uLen; ++i) {
             if (isNonUnicodeGlyph)
                 curWord->setContainNonUnicodeGlyph(isNonUnicodeGlyph);
             curWord->addChar(state, x1 + i * w1, y1 + i * h1, w1, h1, u[i], c, charPos,
-                             (overlap || sp < -minDupBreakOverlap * curWord->fontSize), curFont, curFontSize,
+                             (composeOverlap || overlap || sp < -minDupBreakOverlap * curWord->fontSize), font, fontSize,
                              splashFont, nBytes, curRot, isNonUnicodeGlyph);
         }
     }
@@ -3068,6 +3272,8 @@ void TextPage::endWord() {
         --nest;
         return;
     }
+    // a held accent that never got its letter is an ordinary glyph of this word
+    flushHeldGlyph();
 
     if (curWord) {
         //Here once the word is finished check, diacritics
