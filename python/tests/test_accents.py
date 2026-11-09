@@ -137,3 +137,45 @@ def test_composed_word_starts_at_its_letter_not_at_the_accent(accent_pdf, tmp_pa
     _, hpos, width = strings["Müller"]
     assert hpos == pytest.approx(72.0, abs=0.05)
     assert width == pytest.approx(27.22, abs=0.1)
+
+
+def _form_accent_pdf() -> bytes:
+    """A page whose form XObject ends with an accent, then more text with the page's own font.
+
+    The accent is drawn to the right of the last word of the form, so it is held until the next
+    glyph; that glyph only comes after the form, whose resources (and fonts) are freed when it ends.
+    """
+    font = b"<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>"
+    form_content = b"BT /F2 10 Tf 1 0 0 1 72 700 Tm (word) Tj 1 0 0 1 98 700 Tm (\\250) Tj ET\n"
+    page_content = b"q /Fm1 Do Q BT /F1 10 Tf 1 0 0 1 72 650 Tm (after) Tj ET\n"
+    objects = [
+        b"<< /Type /Catalog /Pages 2 0 R >>",
+        b"<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
+        b"<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] "
+        b"/Resources << /Font << /F1 4 0 R >> /XObject << /Fm1 6 0 R >> >> /Contents 5 0 R >>",
+        font,
+        b"<< /Length %d >>\nstream\n" % len(page_content) + page_content + b"endstream",
+        b"<< /Type /XObject /Subtype /Form /BBox [0 0 612 792] "
+        b"/Resources << /Font << /F2 7 0 R >> >> /Length %d >>\nstream\n" % len(form_content)
+        + form_content
+        + b"endstream",
+        font,
+    ]
+    out = bytearray(b"%PDF-1.4\n")
+    for number, body in enumerate(objects, start=1):
+        out += b"%d 0 obj\n" % number + body + b"\nendobj\n"
+    out += b"xref\n"
+    return _rebuild_xref(bytes(out))
+
+
+def test_accent_held_at_the_end_of_a_form_is_placed_before_its_font_is_freed(tmp_path):
+    # the held accent kept the form's font, freed when the form ended: placing it at the next
+    # glyph, or at the end of the page, read freed memory (segfault on 3 of 2,000 bioRxiv papers)
+    path = tmp_path / "form-accent.pdf"
+    path.write_bytes(_form_accent_pdf())
+    result = pdfalto.convert(path, tmp_path / "out.xml")
+    assert result.returncode == 0
+    words = [s[0] for s in _strings(result.read_text())]
+    assert "after" in words
+    assert any(w.startswith("word") for w in words)
+    assert any("¨" in w for w in words)

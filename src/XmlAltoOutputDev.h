@@ -139,6 +139,11 @@ public:
     double getAscent() { return ascent; }
     double getDescent() { return descent; }
 
+    // Whether the font is a Type 3 font, and its font matrix (identity otherwise),
+    // captured at construction for the same reason.
+    GBool isType3() { return type3; }
+    double *getFontMatrix() { return fontMat; }
+
     // Whether a GfxFont was present at construction time. The pointer itself
     // may since have been freed, so it must never be dereferenced.
     GBool hasGfxFont() { return gfxFont != NULL; }
@@ -152,6 +157,8 @@ private:
     int flags;
     double mWidth;
     double ascent, descent;
+    GBool type3;
+    double fontMat[6];
 //#endif
 
 //    friend class TextLine;

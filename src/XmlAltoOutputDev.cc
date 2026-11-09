@@ -362,6 +362,15 @@ TextFontInfo::TextFontInfo(GfxState *state) {
     fontName = (gfxFont && gfxFont->getName()) ? gfxFont->getName()->copy()
                                                : (GString *) NULL;
     flags = gfxFont ? gfxFont->getFlags() : 0;
+    type3 = gfxFont && gfxFont->getType() == fontType3;
+    if (type3) {
+        for (int i = 0; i < 6; ++i) {
+            fontMat[i] = gfxFont->getFontMatrix()[i];
+        }
+    } else {
+        fontMat[0] = fontMat[3] = 1;
+        fontMat[1] = fontMat[2] = fontMat[4] = fontMat[5] = 0;
+    }
     mWidth = 0;
     if (gfxFont && !gfxFont->isCIDFont()) {
         char *name;
@@ -610,8 +619,10 @@ TextWord::TextWord(GList *charsA, int start, int lenA,
     // Compute the rotation
     state->getFontTransMat(&m[0], &m[1], &m[2], &m[3]);
 
-    if (state->getFont()->getType() == fontType3) {
-        fontm = state->getFont()->getFontMatrix();
+    // the font's own GfxFont may have been freed with the resources of a form (a held
+    // accent is placed after its form ended): read what TextFontInfo cached instead
+    if (fontA && fontA->isType3()) {
+        fontm = fontA->getFontMatrix();
         m2[0] = fontm[0] * m[0] + fontm[1] * m[2];
         m2[1] = fontm[0] * m[1] + fontm[1] * m[3];
         m2[2] = fontm[2] * m[0] + fontm[3] * m[2];
@@ -719,13 +730,13 @@ TextWord::TextWord(GList *charsA, int start, int lenA,
             fontName = NULL;
         }
         if (bold == gFalse) {
-            bold = state->getFont()->isBold();
+            bold = fontA->isBold();
         }
         if (italic == gFalse) {
-            italic = state->getFont()->isItalic();
+            italic = fontA->isItalic();
         }
-        symbolic = state->getFont()->isSymbolic();
-        serif = state->getFont()->isSerif();
+        symbolic = fontA->isSymbolic();
+        serif = fontA->isSerif();
     }
 
     horizScaling = state->getHorizScaling();
@@ -959,8 +970,10 @@ TextRawWord::TextRawWord(GfxState *state, double x0, double y0,
     // Compute the rotation
     state->getFontTransMat(&m[0], &m[1], &m[2], &m[3]);
 
-    if (state->getFont()->getType() == fontType3) {
-        fontm = state->getFont()->getFontMatrix();
+    // the font's own GfxFont may have been freed with the resources of a form (a held
+    // accent is placed after its form ended): read what TextFontInfo cached instead
+    if (font && font->isType3()) {
+        fontm = font->getFontMatrix();
         m2[0] = fontm[0] * m[0] + fontm[1] * m[2];
         m2[1] = fontm[0] * m[1] + fontm[1] * m[3];
         m2[2] = fontm[2] * m[0] + fontm[3] * m[2];
@@ -1040,16 +1053,16 @@ TextRawWord::TextRawWord(GfxState *state, double x0, double y0,
     baseYmin = 0;
     fontName = NULL;
 
-    if (state->getFont()) {
-        if (state->getFont()->getName()) {
+    if (font) {
+        if (font->getFontName()) {
             // PDF reference guide 5.5.3 For a font subset, the PostScript name of the font�the value of the font�s
             //BaseFont entry and the font descriptor�s FontName entry�begins with a tag
             //followed by a plus sign (+). The tag consists of exactly six uppercase letters; the
             //choice of letters is arbitrary, but different subsets in the same PDF file must have
             //different tags. For example, EOODIA+Poetica is the name of a subset of Poetica�, a
             //Type 1 font. (See implementation note 62 in Appendix H.)
-            fontName = strdup(state->getFont()->getName()->getCString());
-            char *localLowerFontName = state->getFont()->getName()->lowerCase()->getCString();
+            fontName = strdup(font->getFontName()->getCString());
+            char *localLowerFontName = font->getFontName()->lowerCase()->getCString();
             const char *styleName = skipSubsetTag(localLowerFontName);
             if (strstr(styleName, "bold") ||
                 strstr(styleName, "heavy") ||
@@ -1064,13 +1077,13 @@ TextRawWord::TextRawWord(GfxState *state, double x0, double y0,
             fontName = NULL;
         }
         if (bold == gFalse) {
-            bold = state->getFont()->isBold();
+            bold = font->isBold();
         }
         if (italic == gFalse) {
-            italic = state->getFont()->isItalic();
+            italic = font->isItalic();
         }
-        symbolic = state->getFont()->isSymbolic();
-        serif = state->getFont()->isSerif();
+        symbolic = font->isSymbolic();
+        serif = font->isSerif();
     }
 
     horizScaling = state->getHorizScaling();
