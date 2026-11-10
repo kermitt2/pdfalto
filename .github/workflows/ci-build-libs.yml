@@ -239,7 +239,7 @@ jobs:
       - name: Download source
         run: |
           cd libs/image/zlib
-          wget -O source.tar.gz https://zlib.net/zlib-${{ env.ZLIB_VERSION }}.tar.gz
+          wget -O source.tar.gz https://github.com/madler/zlib/releases/download/v${{ env.ZLIB_VERSION }}/zlib-${{ env.ZLIB_VERSION }}.tar.gz
           tar -zxf source.tar.gz
           mv zlib-* src
 
