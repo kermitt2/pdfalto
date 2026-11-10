@@ -139,6 +139,11 @@ public:
     double getAscent() { return ascent; }
     double getDescent() { return descent; }
 
+    // Whether the font is a Type 3 font, and its font matrix (identity otherwise),
+    // captured at construction for the same reason.
+    GBool isType3() { return type3; }
+    double *getFontMatrix() { return fontMat; }
+
     // Whether a GfxFont was present at construction time. The pointer itself
     // may since have been freed, so it must never be dereferenced.
     GBool hasGfxFont() { return gfxFont != NULL; }
@@ -152,6 +157,8 @@ private:
     int flags;
     double mWidth;
     double ascent, descent;
+    GBool type3;
+    double fontMat[6];
 //#endif
 
 //    friend class TextLine;
@@ -959,6 +966,9 @@ public:
      *  @param y0 The y value of left bottom corner of the box word */
     void beginWord(GfxState *state, double x0, double y0);
 
+    /** Begin a new word with an explicit font (used when placing a held glyph) */
+    void beginWord(GfxState *state, double x0, double y0, TextFontInfo *font, double fontSize);
+
     /** Add a character either to the current word or to the list of page chars to be ordered
      *  @param state The state description
      *  @param x The x value of left bottom corner of the box character
@@ -1014,7 +1024,7 @@ public:
     /** Dump contents of the current page
      * @param blocks To know if the blocks option is selected
      * @param fullFontName To know if the fullFontName option is selected */
-    void dump(GBool noLineNumbers, GBool fullFontName, const vector<bool> &lineNumberStatus);
+    void dump(GBool noLineNumbers, GBool fullFontName, const vector<bool> &lineNumberStatus, vector<double> &lineNumberColumnsX);
 
     /** Dump the current <Page> node to a streaming buffer, then (only on a
      *  successful write) unlink it from the DOM and free it, clearing the internal
@@ -1200,7 +1210,7 @@ public:
     void restoreState(GfxState *state);
 
     /** Identify line numbers and mark corresponding raw word */
-    bool markLineNumber();
+    bool markLineNumber(vector<double> &lineNumberColumnsX);
 
     /** Set if the page contains a column of line numbers*/
     void setLineNumber(bool theBool);
@@ -1457,6 +1467,32 @@ private:
 
     /** To set if the last added char overlapped the previous char */
     GBool lastCharOverlap;
+
+    /** A diacritic glyph drawn before the letter it belongs to (TeX draws "ü" as the accent
+     *  then "u"), held until the next glyph tells whether it is that letter. */
+    struct HeldGlyph {
+        GfxState *state;
+        double x, y, dx, dy;
+        CharCode c;
+        int nBytes;
+        Unicode u;
+        SplashFont *splashFont;
+        GBool isNonUnicodeGlyph;
+        double x1, y1, w1, h1;
+        TextFontInfo *font;
+        double fontSize;
+    };
+    HeldGlyph *heldGlyph;
+
+    void flushHeldGlyph();
+    GBool heldGlyphIsAccentOf(double x1, double y1, double w1, double h1);
+    GBool glyphOverlapsEndOfWord(double x1, double y1, double w1, double h1);
+    void glyphPrimaryExtent(double x1, double y1, double w1, double h1,
+                            double *pMin, double *pMax, double *secondary);
+    void placeGlyph(GfxState *state, double x, double y, double dx, double dy,
+                    CharCode c, int nBytes, Unicode *u, int uLen, SplashFont *splashFont,
+                    GBool isNonUnicodeGlyph, double x1, double y1, double w1, double h1,
+                    TextFontInfo *font, double fontSize, GBool composeWithPrevious);
 
     /** The primary rotation */
     int primaryRot;
@@ -1941,6 +1977,7 @@ private:
 
     /** give for each page if line numbers have been found */
     vector<bool> lineNumberStatus;
+    vector<double> lineNumberColumnsX;   // x-positions of line-number columns confirmed across the document
 };
 
 #endif
