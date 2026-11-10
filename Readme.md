@@ -27,7 +27,8 @@ end-user.
 * makefile generator : cmake >= 3.10.0
 * fetching dependencies : wget
 * git : the Xpdf source is a git submodule, so the repository must be cloned (not downloaded as a zip) and the
-  submodule initialised with `git submodule update --init --recursive` — see [Build](#build)
+  submodule initialised with `git submodule update --init --recursive` — see [Build](#build). The submodule is a lightly patched copy of Xpdf, not the
+  official one; the official Xpdf is at [xpdfreader.com](https://www.xpdfreader.com/)
 
 ## Usage
 
@@ -196,7 +197,9 @@ compile the dependencies before building pdfalto.
 
 > git clone https://github.com/kermitt2/pdfalto.git && cd pdfalto
 
-* Xpdf-4.05 is shipped as git submodule, to download it:
+* Xpdf-4.06 is shipped as git submodule, to download it (the submodule points at
+  [lfoppiano/xpdf](https://github.com/lfoppiano/xpdf), which is **not** the official Xpdf: it is the upstream 4.06
+  release from [xpdfreader.com](https://www.xpdfreader.com/) plus the few patches pdfalto needs, listed in its README):
 
 > git submodule update --init --recursive
 
@@ -207,7 +210,7 @@ compile the dependencies before building pdfalto.
 > make
 
 The executable `pdfalto` is generated in the root directory. Additionally, this will create a static library for
-xpdf-4.05 at the following path `xpdf-4.05/build/xpdf/lib/libxpdf.a` and all the libraries and their respective
+xpdf-4.06 at the following path `xpdf-4.06/build/xpdf/lib/libxpdf.a` and all the libraries and their respective
 subdirectory.
 
 To use the additional xpdf language support packages, the executable `pdfalto` comes with a config file `xpdfrc` and
