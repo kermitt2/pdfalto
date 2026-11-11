@@ -13,6 +13,7 @@
 #include <list>
 #include <vector>
 #include <stack>
+#include <map>
 #include <algorithm>    // std::min_element, std::max_element
 
 #define _USE_MATH_DEFINES
@@ -6071,6 +6072,126 @@ static void clampIllustrationBox(double &x, double &y, double &w, double &h) {
     if (h < 0) { h = 0; }
 }
 
+void TextPage::classifyLineScripts(TextLine *line, double previousWordBaseLine,
+                                   vector<ScriptKind> &kinds) {
+    // A scripted word is always smaller than the line's (max) font size, and raised
+    // (superscript) or lowered (subscript) relative to the baseline of the line,
+    // which is tracked as the last baseline word seen.
+    GList *words = line->words;
+    int n = words->getLength();
+    double lineFontSize = line->fontSize;
+    kinds.assign(n, SCRIPT_NONE);
+    if (n == 0)
+        return;
+
+    if (n == 1) {
+        // Single-word line: no neighbour on the line, so compare against the previous
+        // word's baseline. This catches footnote reference numbers that end up alone on
+        // their TextLine because of the content stream order.
+        IWord *w = (IWord *) words->get(0);
+        if (previousWordBaseLine != 0 && w->fontSize < lineFontSize) {
+            if (w->base < previousWordBaseLine)
+                kinds[0] = SCRIPT_SUPER;
+            else if (w->base > previousWordBaseLine)
+                kinds[0] = SCRIPT_SUB;
+        }
+        return;
+    }
+
+    IWord *ref = NULL;  // the current baseline word
+    int start = 0;
+
+    // Line start: there is no baseline word yet, so the first word is compared with
+    // the word after it. Lines opening with a superscript are common for affiliations
+    // ("1,2 Department of ...") and notes, and the marker is often several tokens
+    // ("1" "," "2" or "*" ",1"). These share one raised baseline, so skip that run and
+    // compare with the first word off it; otherwise the second marker would be taken as
+    // the baseline, labelled normal, and the boundary would land before it rather than
+    // before the text. The run is only extended over words smaller than the size most
+    // of the line is set in, so that a line whose maximum size comes from one larger
+    // symbol (e.g. an operator in inline math) does not turn the text before it into a
+    // "superscript".
+    IWord *first = (IWord *) words->get(0);
+    if (first->fontSize < lineFontSize) {
+        int k = 1;
+        IWord *second = (IWord *) words->get(1);
+        if (second->fontSize < lineFontSize && fabs(second->base - first->base) <= 1) {
+            // dominant font size of the line, weighted by characters
+            map<long, int> sizeWeights;
+            for (int i = 0; i < n; i++) {
+                IWord *w = (IWord *) words->get(i);
+                sizeWeights[lround(w->fontSize * 10)] += w->len;
+            }
+            long dominant = 0;
+            int bestWeight = -1;
+            for (map<long, int>::iterator it = sizeWeights.begin(); it != sizeWeights.end(); ++it) {
+                if (it->second > bestWeight) {
+                    bestWeight = it->second;
+                    dominant = it->first;
+                }
+            }
+            double runMaxFontSize = first->fontSize;
+            while (k < n) {
+                IWord *w = (IWord *) words->get(k);
+                if (w->fontSize < lineFontSize &&
+                    lround(w->fontSize * 10) < dominant &&
+                    fabs(w->base - first->base) <= 1) {
+                    runMaxFontSize = max(runMaxFontSize, w->fontSize);
+                    k++;
+                } else
+                    break;
+            }
+            // Only trust the run when what follows it is the line's text: set in the
+            // dominant size, larger than every token of the run, and clearly off the
+            // run's baseline. A run-in heading in a slightly smaller font sits on the
+            // text baseline (to a few hundredths of a point) and an exponent following
+            // a small-font run is itself scripted; both fall back to the plain
+            // first-vs-second comparison.
+            if (k > 1) {
+                IWord *next = (k < n) ? (IWord *) words->get(k) : NULL;
+                if (next == NULL ||
+                    lround(first->fontSize * 10) >= dominant ||
+                    lround(next->fontSize * 10) < dominant ||
+                    runMaxFontSize >= next->fontSize ||
+                    fabs(first->base - next->base) < 0.15 * next->fontSize)
+                    k = 1;
+            }
+        }
+
+        IWord *next = (IWord *) words->get(k);
+        ScriptKind leading = SCRIPT_NONE;
+        if (first->base < next->base && first->yMax > next->yMin)
+            leading = SCRIPT_SUPER;
+        else if (first->base > next->base && first->yMin < next->yMax)
+            // should not happen at line start, but it keeps the rest of the line
+            // from being measured against a lowered baseline
+            leading = SCRIPT_SUB;
+
+        if (leading != SCRIPT_NONE) {
+            for (int i = 0; i < k; i++)
+                kinds[i] = leading;
+            ref = next;
+            start = k;
+        }
+    }
+
+    // Rest of the line: compare each word with the last baseline word.
+    for (int i = start; i < n; i++) {
+        IWord *w = (IWord *) words->get(i);
+        if (ref != NULL && w->fontSize < lineFontSize) {
+            if (w->base < ref->base && w->yMax > ref->yMin) {
+                kinds[i] = SCRIPT_SUPER;
+                continue;
+            }
+            if (w->base > ref->base && w->yMin < ref->yMax) {
+                kinds[i] = SCRIPT_SUB;
+                continue;
+            }
+        }
+        ref = w;
+    }
+}
+
 void TextPage::dump(GBool noLineNumbers, GBool fullFontName, const vector<bool> &lineNumberStatus, vector<double> &lineNumberColumnsX) {
     // Output the page in raw (content stream) order
     // Release the previous page's block tree before building this page's.
@@ -6698,13 +6819,9 @@ void TextPage::dump(GBool noLineNumbers, GBool fullFontName, const vector<bool> 
     printSpace->type = XML_ELEMENT_NODE;
     xmlAddChild(page, printSpace);
 
-    // for superscript/subscript determination
+    // for superscript/subscript determination of single-word lines
     double previousWordBaseLine = 0;
-    double previousWordYmin = 0;
-    double previousWordYmax = 0;
-    double currentLineBaseLine = 0;
-    double currentLineYmin = 0;
-    double currentLineYmax = 0;
+    vector<ScriptKind> scriptKinds;
 
     if (hasLineNumber && !noLineNumbers) {
         // we preliminary introduce a block for line numbers, if any and if we have to display them
@@ -6871,6 +6988,8 @@ void TextPage::dump(GBool noLineNumbers, GBool fullFontName, const vector<bool> 
             }*/
 
 
+            classifyLineScripts(line1, previousWordBaseLine, scriptKinds);
+
             bool nonEmptyLine = false;
             for (wordI = 0; wordI < line1->words->getLength(); wordI++) {
                 word = (TextRawWord *) line1->words->get(wordI);
@@ -6885,78 +7004,11 @@ void TextPage::dump(GBool noLineNumbers, GBool fullFontName, const vector<bool> 
 
                 node->type = XML_ELEMENT_NODE;
 
-                // determine if the current token is superscript of subscript: a general constraint for superscript and subscript
-                // is that the scripted tokens have a font size smaller than the tokens on the line baseline.
-
-                // superscript
-                if (currentLineBaseLine != 0 &&
-                    wordI > 0 &&
-                    word->base < currentLineBaseLine &&
-                    word->yMax > currentLineYmin &&
-                    word->fontSize < lineFontSize) {
-                    // superscript: general case, not at the beginning of a line
+                // script level computed for the whole line before the loop
+                if (scriptKinds[wordI] == SCRIPT_SUPER)
                     fontStyleInfo->setIsSuperscript(gTrue);
-                }
-                else if (wordI == 0 &&
-                    wordI < line1->words->getLength() - 1 &&
-                    nextWord != NULL &&
-                    word->base < nextWord->base &&
-                    word->yMax > nextWord->yMin &&
-                    word->fontSize < lineFontSize) {
-                    // superscript: case first token of the line, check if the current token is the first token of the line
-                    // and use next tokens to see if we have a vertical shift
-                    // note: it won't work when we have several tokens in superscript at the beginning of the line...
-                    // actually it might screw all the rest :/
-                    // superscript as first token of a line is common for declaring affiliations (and sometime references)
-                    fontStyleInfo->setIsSuperscript(gTrue);
-                    currentLineBaseLine = nextWord->base;
-                    currentLineYmin = nextWord->yMin;
-                    currentLineYmax = nextWord->yMax;
-                }
-                else if (wordI > 0 &&
-                    word->base > currentLineBaseLine &&
-                    word->yMin < currentLineYmax &&
-                    word->fontSize < lineFontSize) {
-                    // common subscript, not at the beginning of a line
+                else if (scriptKinds[wordI] == SCRIPT_SUB)
                     fontStyleInfo->setIsSubscript(gTrue);
-                }
-                else if (wordI == 0 &&
-                    wordI < line1->words->getLength() - 1 &&
-                    nextWord != NULL &&
-                    word->base > nextWord->base &&
-                    word->yMin < nextWord->yMax &&
-                    word->fontSize < lineFontSize) {
-                    // subscript: case first token of the line, check if the current token is the first token of the line
-                    // and use next tokens to see if we have a vertical shift
-                    // note: it won't work when we have several tokens in subscripts at the beginning of the line...
-                    // actually it might screw all the rest :/
-                    // subscript as first token of a line should never appear, but it's better to cover this case to
-                    // avoid having the rest of the line detected as superscript...
-                    fontStyleInfo->setIsSubscript(gTrue);
-                    currentLineBaseLine = nextWord->base;
-                    currentLineYmin = nextWord->yMin;
-                    currentLineYmax = nextWord->yMax;
-                }
-                // single-word line: compare against previous word's baseline since there's no
-                // neighbor on the same line to compare with. This handles footnote reference numbers
-                // that end up alone on their TextLine due to PDF content stream ordering.
-                else if (wordI == 0 &&
-                    line1->words->getLength() == 1 &&
-                    previousWordBaseLine != 0 &&
-                    word->fontSize < lineFontSize &&
-                    word->base < previousWordBaseLine) {
-                    fontStyleInfo->setIsSuperscript(gTrue);
-                }
-                else if (wordI == 0 &&
-                    line1->words->getLength() == 1 &&
-                    previousWordBaseLine != 0 &&
-                    word->fontSize < lineFontSize &&
-                    word->base > previousWordBaseLine) {
-                    fontStyleInfo->setIsSubscript(gTrue);
-                }
-                // PL: above, we need to pay attention to the font style of the previous token and consider the whole line,
-                // because otherwise the token next to a subscript is always superscript even when normal, in addition for
-                // several tokens as superscript or subscript, only the first one will be set as superscript or subscript
 
                 // if option verbose is selected
                 if (verbose) {
@@ -7032,34 +7084,14 @@ void TextPage::dump(GBool noLineNumbers, GBool fullFontName, const vector<bool> 
                     xmlAddChild(nodeline, node);
                     nonEmptyLine = true;
 
-                    // Force a token boundary before/after a SUPERSCRIPT run. A superscript
-                    // citation or affiliation callout ("13-15", "1,2,*") abutting a baseline
-                    // word with no space character in the content stream otherwise merges
-                    // into it ("developed13-15", "Kowalczyk1,2,*"); strict letter/digit
-                    // tokenizers (e.g. GROBID's) will not split that, hiding the callout.
-                    //
-                    // Reuse pdfalto's own superscript detection rather than an ad-hoc
-                    // font-size ratio: the current word's flag was already computed above
-                    // (fontStyleInfo), and the next word is tested against the same
-                    // line-baseline criteria. The running currentLineBaseLine is only
-                    // updated *after* this point, so fold in the current word's
-                    // contribution first: a baseline current word defines the baseline the
-                    // next word is measured against (this is what fixes the case where the
-                    // callout is the word right after the name, e.g. "Zanke5"). Subscripts
-                    // (lowered, e.g. the "2" in "CO2") never satisfy the superscript test,
-                    // so chemical formulae stay intact.
-                    double effBaseLine = currentLineBaseLine;
-                    double effYmin = currentLineYmin;
-                    if (!fontStyleInfo->isSuperscript() && !fontStyleInfo->isSubscript()) {
-                        effBaseLine = word->base;
-                        effYmin = word->yMin;
-                    }
-                    bool curIsSuper = fontStyleInfo->isSuperscript();
-                    bool nextIsSuper = (nextWord != NULL && effBaseLine != 0 &&
-                                        nextWord->base < effBaseLine &&
-                                        nextWord->yMax > effYmin &&
-                                        nextWord->fontSize < lineFontSize);
-                    bool scriptBoundary = (nextWord != NULL) && (curIsSuper != nextIsSuper);
+                    // Force a token boundary where a SUPERSCRIPT run starts or ends, so a
+                    // callout with no space before it ("developed13-15", "Zanke5") is not
+                    // fused to its word (#251, #252). Both flags come from the per-line
+                    // classification, i.e. they are exactly the FONTSTYLE emitted. Subscripts
+                    // never split, so "CO2" stays one token.
+                    bool scriptBoundary = (nextWord != NULL) &&
+                                          ((scriptKinds[wordI] == SCRIPT_SUPER) !=
+                                           (scriptKinds[wordI + 1] == SCRIPT_SUPER));
 
                     if (wordI < line1->words->getLength() - 1 and (word->spaceAfter == gTrue or scriptBoundary)) {
                         xmlNodePtr spacingNode = xmlNewNode(NULL, (const xmlChar *) TAG_SPACING);
@@ -7090,14 +7122,7 @@ void TextPage::dump(GBool noLineNumbers, GBool fullFontName, const vector<bool> 
                     node = NULL;
                 }
 
-                if (!fontStyleInfo->isSuperscript() && !fontStyleInfo->isSubscript()) {
-                    currentLineBaseLine = word->base;
-                    currentLineYmin = word->yMin;
-                    currentLineYmax = word->yMax;
-                }
                 previousWordBaseLine = word->base;
-                previousWordYmin = word->yMin;
-                previousWordYmax = word->yMax;
 
                 // last read of fontStyleInfo done above; free it if addAttributsNode didn't keep it
                 if (!fontStyleRetained) delete fontStyleInfo;
