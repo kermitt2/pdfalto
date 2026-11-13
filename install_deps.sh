@@ -51,7 +51,10 @@ elif [[ "$OSTYPE" == "darwin"* ]]; then
   if ! [ -x "$(command -v autoreconf)" ]; then
     brew install autoconf automake
   fi
-  ICU_CONFIG="MacOSX"
+  # Not "MacOSX": that preset adds -flto, so the static archives would be
+  # LLVM bitcode that links only with an Apple toolchain at least as new as
+  # this one. ICU's configure detects Darwin by itself.
+  ICU_CONFIG="Linux"
   LIB_INSTALL="mac"
 elif [[ "$OSTYPE" == "cygwin" ]]; then
   # POSIX compatibility layer and Linux environment emulation for Windows

@@ -127,8 +127,12 @@ LibPNG and zLib sources are downloaded and built as part of the dependency build
 
 5. Run the `runConfigureICU` script for your platform and install under the local output prefix.
    ```shell
-   ./runConfigureICU <MacOSX | Linux | Cygwin> --enable-static --disable-shared --prefix=$(pwd)/output
+   ./runConfigureICU <Linux | Cygwin> --enable-static --disable-shared --prefix=$(pwd)/output
    ```
+
+   Use `Linux` on macOS too. The `MacOSX` preset compiles with `-flto`, which makes the static archives LLVM bitcode
+   that only links with an Apple toolchain at least as new as the one that built them; ICU's `configure` detects
+   Darwin on its own, and the preset only chooses the compiler flags.
 
 6. Now build and install:
    ```shell

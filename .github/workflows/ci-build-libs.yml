@@ -307,7 +307,11 @@ jobs:
         run: |
           cd libs/icu/src/icu4c/source
           mkdir output
-          ./runConfigureICU ${{ runner.os == 'macOS' && 'MacOSX' || 'Linux' }} --enable-static --disable-shared --prefix=$(pwd)/output
+          # The Linux preset on macOS too: the MacOSX one adds -flto, which makes
+          # the static archives LLVM bitcode that only links with an Apple
+          # toolchain at least as new as the runner's. ICU's configure detects
+          # Darwin by itself; the preset only picks the compiler flags.
+          ./runConfigureICU Linux --enable-static --disable-shared --prefix=$(pwd)/output
           make -j8
           make install
           cd ../../
