@@ -37,7 +37,7 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Set up dependencies Linux
         if: runner.os == 'Linux'
@@ -79,7 +79,7 @@ jobs:
           
 
       - name: Save specific file
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: libxml2-binary-${{ env.OS }}-${{ env.ARCH }}
           path: libs/libxml/src/output
@@ -96,7 +96,7 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Set up dependencies Linux
         if: runner.os == 'Linux'
@@ -137,7 +137,7 @@ jobs:
           mv output/freetype/freetype2 output/freetype/include
 
       - name: Save specific file
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: freetype-binary-${{ env.OS }}-${{ env.ARCH }}
           path: libs/freetype/src/output
@@ -153,7 +153,7 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Set up dependencies Linux
         if: runner.os == 'Linux'
@@ -201,7 +201,7 @@ jobs:
 
 
       - name: Save specific file
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: libpng-binary-${{ env.OS }}-${{ env.ARCH }}
           path: libs/image/png/src/output
@@ -217,7 +217,7 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Set up dependencies Linux
         if: runner.os == 'Linux'
@@ -258,7 +258,7 @@ jobs:
           
 
       - name: Save specific file
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: libzlib-binary-${{ env.OS }}-${{ env.ARCH }}
           path: libs/image/zlib/src/output
@@ -274,7 +274,7 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Set up dependencies Linux
         if: runner.os == 'Linux'
@@ -313,7 +313,7 @@ jobs:
           cp -r icu4c/source/output/include output/icu/
 
       - name: Save specific file
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: icu-binary-${{ env.OS }}-${{ env.ARCH }}
           path: libs/icu/src/output
@@ -325,10 +325,10 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Download artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           path: output
       - name: Move contents to output directory
@@ -343,7 +343,7 @@ jobs:
       - name: Display structure of downloaded files
         run: ls -R
       - name: Save artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: all-binaries
           path: output

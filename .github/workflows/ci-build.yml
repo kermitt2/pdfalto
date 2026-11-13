@@ -17,7 +17,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           submodules: true
 
@@ -124,7 +124,7 @@ jobs:
         # UI gets the binary directly with no nested directories. The os/arch
         # information is encoded in the artifact NAME and reconstructed by the
         # assemble-artifact job, which uses it to build the combined tree.
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: pdfalto-bin-${{ env.OS }}-${{ env.ARCH }}
           path: pdfalto
@@ -133,7 +133,7 @@ jobs:
         # Sibling per-arch artifact alongside the binary upload above. Lets
         # a developer download just one platform's tar.gz directly from the
         # Actions UI without pulling the full pdfalto-archives-<label> bundle.
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: pdfalto-gz-${{ env.OS }}-${{ env.ARCH }}
           path: pdfalto-${{ steps.label.outputs.value }}-${{ env.OS }}-${{ env.ARCH }}.tar.gz
@@ -144,10 +144,10 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Download per-platform artifacts (flat binaries)
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           pattern: pdfalto-bin-*
           path: incoming
@@ -219,7 +219,7 @@ jobs:
           tar -czf "pdfalto-${LABEL}-all.tar.gz" -C output pdfalto
 
       - name: Save assembled tree as artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: pdfalto-bin-all-${{ steps.version.outputs.label }}
           path: output
@@ -229,7 +229,7 @@ jobs:
         # same downloadable archive shape as releases. The release job (gated
         # on tag push) downloads this artifact and re-publishes its contents
         # to the GitHub Release page.
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: pdfalto-archives-${{ steps.version.outputs.label }}
           path: pdfalto-*.tar.gz
@@ -245,7 +245,7 @@ jobs:
       - name: Download tar.gz archives
         # The assemble-artifact job already created and uploaded the archives
         # under pdfalto-archives-<label>. We just download and re-publish.
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           pattern: pdfalto-archives-*
           path: dist
@@ -255,7 +255,7 @@ jobs:
         run: ls -lh dist/
 
       - name: Publish GitHub Release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           files: |
             dist/pdfalto-*.tar.gz
