@@ -1026,6 +1026,19 @@ public:
      * @param fullFontName To know if the fullFontName option is selected */
     void dump(GBool noLineNumbers, GBool fullFontName, const vector<bool> &lineNumberStatus, vector<double> &lineNumberColumnsX);
 
+    /** Script level of a word relative to its line's baseline */
+    enum ScriptKind { SCRIPT_NONE = 0, SCRIPT_SUPER, SCRIPT_SUB };
+
+    /** Classify every word of a line as baseline, superscript or subscript, before any
+     *  of them is emitted, so that both FONTSTYLE and the token boundaries derived from
+     *  it (see #252) read the same, final flags.
+     *  @param line the line whose words are classified
+     *  @param previousWordBaseLine baseline of the last word emitted before this line
+     *         (0 if none), the only reference available for a single-word line
+     *  @param kinds receives one ScriptKind per word of the line */
+    static void classifyLineScripts(TextLine *line, double previousWordBaseLine,
+                                    vector<ScriptKind> &kinds);
+
     /** Dump the current <Page> node to a streaming buffer, then (only on a
      *  successful write) unlink it from the DOM and free it, clearing the internal
      *  pointer so TextPage never holds a dangling node. If the buffer write fails
