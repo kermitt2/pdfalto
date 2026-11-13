@@ -17,18 +17,18 @@ fi
 
 DEP_INSTALL_DIR=install
 
-LIBXML2_VERSION=2.15.2
-FREETYPE2_VERSION=2.14.2
-LIBPNG16_VERSION=1.6.56
-ZLIB_VERSION=1.3.2
+LIBXML2_VERSION=2.15.4
+FREETYPE2_VERSION=2.15.0
+LIBPNG16_VERSION=1.6.59
+ZLIB_VERSION=1.4
 # ICU_VERSION is the full git tag (not just a semver) — upstream uses a dash
 # for 76.x/77.x (release-76-1) but a dot for 78.x (release-78.3).
-ICU_VERSION=release-78.3
+ICU_VERSION=release-79.1
 
 LIBXML_URI="https://gitlab.gnome.org/GNOME/libxml2/-/archive/v${LIBXML2_VERSION}/libxml2-v${LIBXML2_VERSION}.tar.gz"
 FREETYPE_URI="https://sourceforge.net/projects/freetype/files/freetype2/${FREETYPE2_VERSION}/freetype-${FREETYPE2_VERSION}.tar.gz/download"
 LIBPNG_URI="https://sourceforge.net/projects/libpng/files/libpng16/${LIBPNG16_VERSION}/libpng-${LIBPNG16_VERSION}.tar.gz/download"
-ZLIB_URI="https://zlib.net/zlib-${ZLIB_VERSION}.tar.gz"
+ZLIB_URI="https://github.com/madler/zlib/releases/download/v${ZLIB_VERSION}/zlib-${ZLIB_VERSION}.tar.gz"
 ICU_URI="https://github.com/unicode-org/icu/archive/refs/tags/${ICU_VERSION}.tar.gz"
 
 ICU_FILENAME=$(basename "${ICU_URI}")
@@ -51,7 +51,10 @@ elif [[ "$OSTYPE" == "darwin"* ]]; then
   if ! [ -x "$(command -v autoreconf)" ]; then
     brew install autoconf automake
   fi
-  ICU_CONFIG="MacOSX"
+  # Not "MacOSX": that preset adds -flto, so the static archives would be
+  # LLVM bitcode that links only with an Apple toolchain at least as new as
+  # this one. ICU's configure detects Darwin by itself.
+  ICU_CONFIG="Linux"
   LIB_INSTALL="mac"
 elif [[ "$OSTYPE" == "cygwin" ]]; then
   # POSIX compatibility layer and Linux environment emulation for Windows
@@ -100,7 +103,7 @@ mv freetype-* freetype
 cd freetype
 mkdir -p build/output
 cd build
-cmake .. -DCMAKE_INSTALL_PREFIX=$(pwd)/output -G "Unix Makefiles" -D FT_DISABLE_BROTLI=TRUE -D FT_DISABLE_HARFBUZZ=TRUE -D FT_DISABLE_ZLIB=TRUE -D FT_DISABLE_BZIP2=TRUE -D FT_DISABLE_PNG=TRUE
+cmake .. -DCMAKE_INSTALL_PREFIX=$(pwd)/output -G "Unix Makefiles" -D FT_DISABLE_BROTLI=TRUE -D FT_DISABLE_HARFBUZZ=TRUE -D FT_DISABLE_ZLIB=TRUE -D FT_DISABLE_BZIP2=TRUE -D FT_DISABLE_PNG=TRUE -D FT_DISABLE_HVF=TRUE
 make
 make install
 cd ../..

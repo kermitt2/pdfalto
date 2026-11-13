@@ -24,20 +24,20 @@ locally. `./install_deps.sh` automates the same procedures.
 
 (these mirror the version variables at the top of `ci-build-libs.yml`)
 
-- LibPNG: 1.6.56
-- zLib: 1.3.2
-- libxml2: 2.15.2
-- freetype: 2.14.2
-- ICU: 78.3
+- LibPNG: 1.6.59
+- zLib: 1.4
+- libxml2: 2.15.4
+- freetype: 2.15.0
+- ICU: 79.1
 
 ## LibPNG & zLib
 
 LibPNG and zLib sources are downloaded and built as part of the dependency build process.
 
-1. Download and build zlib (tested with 1.3.2):
+1. Download and build zlib (tested with 1.4):
 
    ```shell
-   wget -O source.tar.gz https://zlib.net/zlib-1.3.2.tar.gz
+   wget -O source.tar.gz https://github.com/madler/zlib/releases/download/v1.4/zlib-1.4.tar.gz
    tar -zxf source.tar.gz
    cd zlib-*
    mkdir -p build/output
@@ -47,10 +47,10 @@ LibPNG and zLib sources are downloaded and built as part of the dependency build
    make install
    ```
 
-2. Download and build libpng (tested with 1.6.56):
+2. Download and build libpng (tested with 1.6.59):
 
    ```shell
-   wget -O source.tar.gz https://sourceforge.net/projects/libpng/files/libpng16/1.6.56/libpng-1.6.56.tar.gz/download
+   wget -O source.tar.gz https://sourceforge.net/projects/libpng/files/libpng16/1.6.59/libpng-1.6.59.tar.gz/download
    tar -zxf source.tar.gz
    cd libpng*
    mkdir -p build/output
@@ -67,7 +67,7 @@ LibPNG and zLib sources are downloaded and built as part of the dependency build
 
 ## libxml2
 
-1. Download the source from https://gitlab.gnome.org/GNOME/libxml2/-/archive/v2.15.2/libxml2-v2.15.2.tar.gz and unpack it.
+1. Download the source from https://gitlab.gnome.org/GNOME/libxml2/-/archive/v2.15.4/libxml2-v2.15.4.tar.gz and unpack it.
 
 2. Access the directory and build:
 
@@ -83,7 +83,7 @@ LibPNG and zLib sources are downloaded and built as part of the dependency build
 
 ## Freetype
 
-1. Download the source from https://sourceforge.net/projects/freetype/files/freetype2/2.14.2/ and unpack it.
+1. Download the source from https://sourceforge.net/projects/freetype/files/freetype2/2.15.0/ and unpack it.
 2. Access the directory then build:
    ```shell
    mkdir -p build/output
@@ -93,7 +93,7 @@ LibPNG and zLib sources are downloaded and built as part of the dependency build
    (you might need to use dos2unix to fix encoding problem from windows)
 
    ```shell
-   cmake .. -DCMAKE_INSTALL_PREFIX=$(pwd)/output -G "Unix Makefiles" -D FT_DISABLE_BROTLI=TRUE -D FT_DISABLE_HARFBUZZ=TRUE -D FT_DISABLE_ZLIB=TRUE -D FT_DISABLE_BZIP2=TRUE -D FT_DISABLE_PNG=TRUE
+   cmake .. -DCMAKE_INSTALL_PREFIX=$(pwd)/output -G "Unix Makefiles" -D FT_DISABLE_BROTLI=TRUE -D FT_DISABLE_HARFBUZZ=TRUE -D FT_DISABLE_ZLIB=TRUE -D FT_DISABLE_BZIP2=TRUE -D FT_DISABLE_PNG=TRUE -D FT_DISABLE_HVF=TRUE
    make
    make install
    ```
@@ -104,8 +104,8 @@ LibPNG and zLib sources are downloaded and built as part of the dependency build
 
 ## ICU
 
-1. Download the sources (tested with version 78.3)
-   from https://github.com/unicode-org/icu/archive/refs/tags/release-78.3.tar.gz
+1. Download the sources (tested with version 79.1)
+   from https://github.com/unicode-org/icu/archive/refs/tags/release-79.1.tar.gz
 
 2. Decompress the archive file. For example,
    ```shell
@@ -127,8 +127,12 @@ LibPNG and zLib sources are downloaded and built as part of the dependency build
 
 5. Run the `runConfigureICU` script for your platform and install under the local output prefix.
    ```shell
-   ./runConfigureICU <MacOSX | Linux | Cygwin> --enable-static --disable-shared --prefix=$(pwd)/output
+   ./runConfigureICU <Linux | Cygwin> --enable-static --disable-shared --prefix=$(pwd)/output
    ```
+
+   Use `Linux` on macOS too. The `MacOSX` preset compiles with `-flto`, which makes the static archives LLVM bitcode
+   that only links with an Apple toolchain at least as new as the one that built them; ICU's `configure` detects
+   Darwin on its own, and the preset only chooses the compiler flags.
 
 6. Now build and install:
    ```shell
